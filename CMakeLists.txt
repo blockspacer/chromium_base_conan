@@ -260,7 +260,6 @@ endif(ENABLE_COMPACT_ENC_DET)
 if(TARGET_EMSCRIPTEN)
   list(APPEND EXTRA_CHROMIUM_BASE_LIBS
     ${ced_LIB}
-    ${CUSTOM_ICU_LIB}
   )
 elseif(TARGET_LINUX)
   if(NOT DEFINED libevent_LIB)
@@ -278,7 +277,6 @@ elseif(TARGET_LINUX)
   list(APPEND EXTRA_CHROMIUM_BASE_LIBS
     ${tcmalloc_LIB}
     ${ced_LIB}
-    ${CUSTOM_ICU_LIB}
     # libevent only for posix/linux/e.t.c.
     ${libevent_LIB}
     ${modp_b64_LIB}
@@ -286,14 +284,12 @@ elseif(TARGET_LINUX)
   add_dependencies(${STATIC_LIB_NAME}
     ${tcmalloc_LIB}
     ${ced_LIB}
-    ${CUSTOM_ICU_LIB}
     ${modp_b64_LIB}
   )
 elseif(TARGET_WINDOWS)
   list(APPEND EXTRA_CHROMIUM_BASE_LIBS
     #tcmalloc
     ${ced_LIB}
-    ${CUSTOM_ICU_LIB}
     # libevent only for posix/linux/e.t.c.
     #${libevent_LIB}
     ${modp_b64_LIB}
@@ -417,6 +413,10 @@ target_link_libraries(${STATIC_LIB_NAME} PRIVATE
   #${FOUND_OPENGL_LIBRARIES}
   # ${GLEW_LIBRARY}
   ${PTHREADS_LIBS} # note: not set for emscripten
+)
+
+target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+  ${CUSTOM_ICU_LIB}
 )
 
 if(NOT DEFINED build_util_LIB)
