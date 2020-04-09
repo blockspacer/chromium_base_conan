@@ -188,7 +188,7 @@ bool DoCopyDirectory(const FilePath& from_path,
                      const FilePath& to_path,
                      bool recursive,
                      bool open_exclusive) {
-  printf("file_util_posix.cc: DoCopyDirectory\n");
+  //printf("file_util_posix.cc: DoCopyDirectory\n");
 
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   // Some old callers of CopyDirectory want it to support wildcards.
@@ -360,7 +360,7 @@ FilePath MakeAbsoluteFilePath(const FilePath& input) {
 // that functionality. If not, remove from file_util_win.cc, otherwise add it
 // here.
 bool DeleteFile(const FilePath& path, bool recursive) {
-  printf("file_util_posix.cc: DeleteFile\n");
+  //printf("file_util_posix.cc: DeleteFile\n");
 #if defined(OS_EMSCRIPTEN)
     return false;
 #else
@@ -402,7 +402,7 @@ bool DeleteFile(const FilePath& path, bool recursive) {
 bool ReplaceFile(const FilePath& from_path,
                  const FilePath& to_path,
                  File::Error* error) {
-  printf("file_util_posix.cc: ReplaceFile\n");
+  //printf("file_util_posix.cc: ReplaceFile\n");
 
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   if (rename(from_path.value().c_str(), to_path.value().c_str()) == 0)
@@ -426,7 +426,7 @@ bool CopyDirectoryExcl(const FilePath& from_path,
 #endif  // !defined(OS_NACL_NONSFI)
 
 bool CreatePipe(ScopedFD* read_fd, ScopedFD* write_fd, bool non_blocking) {
-  printf("file_util_posix.cc: CreatePipe\n");
+  //printf("file_util_posix.cc: CreatePipe\n");
 
   int fds[2];
   bool created =
@@ -439,7 +439,7 @@ bool CreatePipe(ScopedFD* read_fd, ScopedFD* write_fd, bool non_blocking) {
 }
 
 bool CreateLocalNonBlockingPipe(int fds[2]) {
-  printf("file_util_posix.cc: CreateLocalNonBlockingPipe\n");
+  //printf("file_util_posix.cc: CreateLocalNonBlockingPipe\n");
 
 #if defined(OS_LINUX)
   return pipe2(fds, O_CLOEXEC | O_NONBLOCK) == 0;
@@ -490,17 +490,17 @@ bool SetCloseOnExec(int fd) {
 }
 
 bool PathExists(const FilePath& path) {
-  printf("file_util_posix.cc: PathExists\n");
+  //printf("file_util_posix.cc: PathExists\n");
 
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
-  printf("PathExists 1 %s /n", path.value().c_str());
+  //printf("PathExists 1 %s /n", path.value().c_str());
 #if defined(OS_ANDROID)
   if (path.IsContentUri()) {
     return ContentUriExists(path);
   }
 #endif
   const bool res = access(path.value().c_str(), F_OK) == 0;
-  printf("PathExists 1 %s, %d /n", path.value().c_str(), res);
+  //printf("PathExists 1 %s, %d /n", path.value().c_str(), res);
   return res;
 }
 
@@ -524,7 +524,7 @@ bool DirectoryExists(const FilePath& path) {
 }
 
 bool ReadFromFD(int fd, char* buffer, size_t bytes) {
-  printf("file_util_posix.cc: ReadFromFD\n");
+  //printf("file_util_posix.cc: ReadFromFD\n");
 
   size_t total_read = 0;
   while (total_read < bytes) {
@@ -590,7 +590,7 @@ bool ReadSymbolicLink(const FilePath& symlink_path, FilePath* target_path) {
 }
 
 bool GetPosixFilePermissions(const FilePath& path, int* mode) {
-  printf("file_util_posix.cc: GetPosixFilePermissions\n");
+  //printf("file_util_posix.cc: GetPosixFilePermissions\n");
 
 #if defined(OS_EMSCRIPTEN)
     return false; // TODO
@@ -846,7 +846,7 @@ bool IsLink(const FilePath& file_path) {
 }
 
 bool GetFileInfo(const FilePath& file_path, File::Info* results) {
-  printf("file_util_posix.cc: GetFileInfo\n");
+  //printf("file_util_posix.cc: GetFileInfo\n");
 
   stat_wrapper_t file_info;
 #if defined(OS_ANDROID)
@@ -869,7 +869,7 @@ bool GetFileInfo(const FilePath& file_path, File::Info* results) {
 #endif  // !defined(OS_NACL_NONSFI)
 
 FILE* OpenFile(const FilePath& filename, const char* mode) {
-  printf("file_util_posix.cc: OpenFile\n");
+  //printf("file_util_posix.cc: OpenFile\n");
 
   // 'e' is unconditionally added below, so be sure there is not one already
   // present before a comma in |mode|.
@@ -908,7 +908,7 @@ FILE* FileToFILE(File file, const char* mode) {
 #endif  // !defined(OS_NACL)
 
 int ReadFile(const FilePath& filename, char* data, int max_size) {
-  printf("file_util_posix.cc: ReadFile\n");
+  //printf("file_util_posix.cc: ReadFile\n");
 
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   int fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY));
@@ -922,7 +922,7 @@ int ReadFile(const FilePath& filename, char* data, int max_size) {
 }
 
 int WriteFile(const FilePath& filename, const char* data, int size) {
-  printf("file_util_posix.cc: WriteFile\n");
+  //printf("file_util_posix.cc: WriteFile\n");
 
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   int fd = HANDLE_EINTR(creat(filename.value().c_str(), 0666));
