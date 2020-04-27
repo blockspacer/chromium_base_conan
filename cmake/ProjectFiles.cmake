@@ -26,6 +26,25 @@ if(BASE_USE_JSON)
   )
 endif(BASE_USE_JSON)
 
+if(USE_ALLOC_SHIM)
+  # https://github.com/blockspacer/chromium_base_conan/blob/8e45a5dc6abfc06505fd660c08ad43c592daf5aa/base/BUILD.gn#L1249
+  list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}allocator/allocator_shim.cc
+  )
+  if(TARGET_WINDOWS)
+    list(APPEND BASE_SOURCES
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_winheap.cc
+      ${BASE_SOURCES_PATH}allocator/winheap_stubs_win.cc
+    )
+  elseif(TARGET_LINUX)
+    # TODO: ONLY TCMALLOC on linux for now
+    list(APPEND BASE_SOURCES
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_tcmalloc.cc
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_override_glibc_weak_symbols.h
+    )
+  endif()
+endif(USE_ALLOC_SHIM)
+
 list(APPEND BASE_SOURCES
   # sources = [
   #${BASE_SOURCES_PATH}critical_closure_internal_ios.mm

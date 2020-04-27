@@ -45,3 +45,4 @@ tmp/
 
 # emacs
 *~
+/base/allocator/buildflags.h

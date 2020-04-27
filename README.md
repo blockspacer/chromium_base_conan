@@ -21,14 +21,14 @@ Chromium docs https://chromium.googlesource.com/chromium/src/+/master/docs
 
 TODO
 ```
-conan create . conan/stable
+conan create . conan/stable -o *:use_alloc_shim=True --profile clang
 ```
 
 ## HOW TO INSTALL FROM CONAN
 
 TODO
 ```
-# conan install --build=missing --profile clang -o enable_tests=False ..
+# conan install --build=missing --profile clang -o enable_tests=False -o *:use_alloc_shim=True ..
 ```
 
 ## USAGE EXAMPLES

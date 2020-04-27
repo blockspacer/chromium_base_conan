@@ -38,6 +38,8 @@ class chromium_base_conan_project(ConanFile):
         "enable_tests": [True, False],
         "enable_sanitizers": [True, False],
         "enable_cobalt": [True, False],
+        "use_alloc_shim": [True, False],
+        "use_deb_alloc": [True, False],
         "enable_web_pthreads": [True, False]
     }
 
@@ -47,6 +49,9 @@ class chromium_base_conan_project(ConanFile):
         "enable_tests=False",
         "enable_sanitizers=False",
         "enable_cobalt=True",
+        # requires to build tcmalloc with same `use_alloc_shim` flag
+        "use_alloc_shim=False",
+        "use_deb_alloc=False",
         "enable_web_pthreads=True"
         # build
         #"*:shared=False"
@@ -126,6 +131,10 @@ class chromium_base_conan_project(ConanFile):
         add_cmake_option("ENABLE_COBALT", self.options.enable_cobalt)
 
         add_cmake_option("ENABLE_WEB_PTHREADS", self.options.enable_web_pthreads)
+
+        add_cmake_option("USE_ALLOC_SHIM", self.options.use_alloc_shim)
+
+        add_cmake_option("USE_DEB_ALLOC", self.options.use_deb_alloc)
 
         cmake.configure(build_folder=self._build_subfolder)
 

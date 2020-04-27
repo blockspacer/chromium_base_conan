@@ -1,6 +1,6 @@
 ﻿# see https://github.com/chromium/chromium/blob/9db0b5162b8648833c3a6b1af044cebd9d7d3855/base/BUILD.gn
 
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.5)
 
 # project() must be before checks, see https://stackoverflow.com/a/26437667/10904212
 set(PROJECT_NAME "chromium_base")
@@ -516,7 +516,7 @@ else()
 endif()
 
 if(NOT MSVC OR IS_CLANG_CL)
-  target_compile_options(${STATIC_LIB_NAME} PUBLIC
+  target_compile_options(${STATIC_LIB_NAME} PRIVATE
     -Wno-c++11-narrowing
     -Wno-c++98-compat
     -Wno-reserved-id-macro
@@ -524,9 +524,12 @@ if(NOT MSVC OR IS_CLANG_CL)
     -Wno-implicit-function-declaration
     -Wno-c++11-narrowing
     -Wno-builtin-macro-redefined
+    -fno-exceptions # disabling exceptions
   )
-else()
-  # TODO
+elseif(MSVC)
+  target_compile_options(${STATIC_LIB_NAME} PRIVATE
+    /EHs-c- # disabling exceptions
+  )
 endif()
 
 set(DEBUG_LIBRARY_SUFFIX "-d")

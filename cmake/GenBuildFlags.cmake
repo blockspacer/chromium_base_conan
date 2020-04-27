@@ -44,7 +44,7 @@ if(BASE_NEED_GEN_BUILD_DATE)
 	if(NOT PYTHON_EXECUTABLE)
     MESSAGE(FATAL_ERROR "Python not found! Aborting...")
   endif(NOT PYTHON_EXECUTABLE)
-  
+
   # PRE-GENERATION GENERATED_BUILD_DATE.H (NEEDED BY "build_time.cc")
   # generates "base/generated_build_date.h"
   execute_process(
@@ -63,10 +63,19 @@ if(BASE_NEED_GEN_BUILDFLAGS)
   configure_file(${BUILDFLAGS_GENERATORS_PATH}/buildflags/cfi_buildflags.h.inc
     ${BASE_SOURCES_PATH}cfi_buildflags.h COPYONLY)
 
+  if(NOT DEFINED USE_ALLOC_SHIM)
+    message(FATAL_ERROR "define USE_ALLOC_SHIM")
+  endif()
+
+  set(USE_ALLOCATOR_SHIM_FLAG "(0)")
+  if(USE_ALLOC_SHIM)
+    set(USE_ALLOCATOR_SHIM_FLAG "(1)")
+  endif(USE_ALLOC_SHIM)
+
   # https://github.com/chromium/chromium/blob/master/base/allocator/BUILD.gn#L291
   # https://github.com/ruslanch/quic-cmake/blob/master/base/CMakeLists.txt#L35
   configure_file(${BUILDFLAGS_GENERATORS_PATH}/buildflags/allocator_buildflags.h.inc
-    ${BASE_SOURCES_PATH}allocator/buildflags.h COPYONLY)
+    ${BASE_SOURCES_PATH}allocator/buildflags.h @ONLY)
 
   if(TARGET_WINDOWS)
     configure_file(${BUILDFLAGS_GENERATORS_PATH}/buildflags/base_win_buildflags.h.inc

@@ -2,7 +2,8 @@
 
 #include "build/buildflag.h"
 
-#define BUILDFLAG_INTERNAL_USE_ALLOCATOR_SHIM() (0)
+// requires TCMALLOC_DONT_REPLACE_SYSTEM_ALLOC
+#define BUILDFLAG_INTERNAL_USE_ALLOCATOR_SHIM() (@USE_ALLOCATOR_SHIM_FLAG@)
 
 #if defined(__linux__) || defined(__unix__ ) || defined(__EMSCRIPTEN__)
 #define BUILDFLAG_INTERNAL_USE_NEW_TCMALLOC() (1)
