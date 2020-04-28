@@ -87,10 +87,10 @@ if(USE_TEST_SUPPORT)
     ${BASE_SOURCES_PATH}test/gtest_util.cc
     ${BASE_SOURCES_PATH}test/gtest_util.h
     #
-    #${BASE_SOURCES_PATH}test/gtest_xml_unittest_result_printer.cc
-    #${BASE_SOURCES_PATH}test/gtest_xml_unittest_result_printer.h
-    #${BASE_SOURCES_PATH}test/gtest_xml_util.cc
-    #${BASE_SOURCES_PATH}test/gtest_xml_util.h
+    ${BASE_SOURCES_PATH}test/gtest_xml_unittest_result_printer.cc
+    ${BASE_SOURCES_PATH}test/gtest_xml_unittest_result_printer.h
+    ${BASE_SOURCES_PATH}test/gtest_xml_util.cc
+    ${BASE_SOURCES_PATH}test/gtest_xml_util.h
     #
     ${BASE_SOURCES_PATH}test/icu_test_util.cc
     ${BASE_SOURCES_PATH}test/icu_test_util.h
@@ -207,14 +207,31 @@ if(USE_TEST_SUPPORT)
     #${BASE_SOURCES_PATH}test/values_test_util.cc
     #${BASE_SOURCES_PATH}test/values_test_util.h
     #
-    # is_posix || is_fuchsia
-    #"scoped_locale.cc
-    #"scoped_locale.h
-    #"test_file_util_posix.cc
-    #"fontconfig_util_linux.cc
-    #"fontconfig_util_linux.h
-    #"malloc_wrapper.cc
+    #
+    ${BASE_SOURCES_PATH}test/launcher/test_launcher.cc
+    ${BASE_SOURCES_PATH}test/launcher/test_launcher.h
+    ${BASE_SOURCES_PATH}test/launcher/test_launcher_tracer.cc
+    ${BASE_SOURCES_PATH}test/launcher/test_launcher_tracer.h
+    ${BASE_SOURCES_PATH}test/launcher/test_results_tracker.cc
+    ${BASE_SOURCES_PATH}test/launcher/unit_test_launcher.cc
+    ${BASE_SOURCES_PATH}test/multiprocess_test.cc
   )
+
+  if(TARGET_LINUX)
+    list(APPEND BASE_SOURCES
+      # is_posix || is_fuchsia
+      ${BASE_SOURCES_PATH}test/scoped_locale.cc
+      ${BASE_SOURCES_PATH}test/scoped_locale.h
+      ${BASE_SOURCES_PATH}test/test_file_util_posix.cc
+      ${BASE_SOURCES_PATH}test/fontconfig_util_linux.cc
+      ${BASE_SOURCES_PATH}test/fontconfig_util_linux.h
+      ${BASE_SOURCES_PATH}test/malloc_wrapper.cc
+    )
+  endif(TARGET_LINUX)
+
+  if(TARGET_EMSCRIPTEN)
+    message(FATAL_ERROR "compile without embedded test suite for wasm platform! see USE_TEST_SUPPORT")
+  endif(TARGET_EMSCRIPTEN)
 endif(USE_TEST_SUPPORT)
 
 list(APPEND BASE_SOURCES

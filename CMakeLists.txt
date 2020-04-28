@@ -423,6 +423,26 @@ if(NOT DEFINED build_util_LIB)
   message(FATAL_ERROR "NOT DEFINED: build_util_LIB")
 endif(NOT DEFINED build_util_LIB)
 
+if(USE_TEST_SUPPORT)
+  # chromium_libxml
+  find_package(chromium_libxml MODULE REQUIRED)
+  if(TARGET chromium_libxml::chromium_libxml-static)
+    set(libxml_LIB chromium_libxml::chromium_libxml-static)
+  else()
+    message(FATAL_ERROR "not supported: using system provided chromium_libxml library")
+  endif()
+
+  target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+    ${libxml_LIB}
+    CONAN_PKG::gtest
+  )
+
+  target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
+    IS_BASE_TEST_IMPL=1
+    #PERF_TEST=1
+  )
+endif(USE_TEST_SUPPORT)
+
 target_link_libraries(${STATIC_LIB_NAME} PUBLIC
   ${build_util_LIB}
 )
@@ -468,14 +488,6 @@ endif(ENABLE_COBALT)
 # TODO: COBALT_COMMON_INCLUDES
 # add_relative_include_dir(${STATIC_LIB_NAME} PRIVATE PRIVATE "")
 
-target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
-  ${BASE_DEFINES}
-  #${WTF_EMCC_DEFINITIONS}
-  #${WTF_COMMON_DEFINITIONS}
-  ${EXTRA_DEFINES}
-  # _HAS_ITERATOR_DEBUGGING=0 # https://github.com/blockspacer/skia-opengl-emscripten/blob/7c423190544c8da1bf8ae79b800c9c0c83dd3c6e/src/chromium/build/config/BUILD.gn#L164
-)
-
 if(TARGET_LINUX)
   list(APPEND BASE_EXTRA_DEFINITIONS
     HAVE_MMAP=1
@@ -499,13 +511,21 @@ target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
 )
 
 target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
-  _USE_MATH_DEFINES=1 # https://stackoverflow.com/a/58379321
-  BASE_IMPLEMENTATION=1
-  BASE_I18N_IMPLEMENTATION=1
   # was #include "testing/gtest/include/gtest/gtest.h"
   GTEST_HEADER_INCLUDE="gtest/gtest.h"
   # was #include "testing/gmock/include/gmock/gmock.h"
   GMOCK_HEADER_INCLUDE="gmock/gmock.h"
+)
+
+target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
+  ${BASE_DEFINES}
+  #${WTF_EMCC_DEFINITIONS}
+  #${WTF_COMMON_DEFINITIONS}
+  ${EXTRA_DEFINES}
+  # _HAS_ITERATOR_DEBUGGING=0 # https://github.com/blockspacer/skia-opengl-emscripten/blob/7c423190544c8da1bf8ae79b800c9c0c83dd3c6e/src/chromium/build/config/BUILD.gn#L164
+  _USE_MATH_DEFINES=1 # https://stackoverflow.com/a/58379321
+  BASE_IMPLEMENTATION=1
+  BASE_I18N_IMPLEMENTATION=1
   ${BASE_EXTRA_DEFINITIONS}
   # TODO
   #${COBALT_COMMON_DEFINES}

@@ -17,6 +17,12 @@ find_package(cobalt_starboard_headers_only QUIET)
 find_package(cobalt_starboard QUIET)
 find_package(Threads QUIET)
 
+# see use_test_support option in base
+find_package(chromium_libxml QUIET)
+
+# see use_test_support option in base
+# find_package(gtest QUIET) # TODO: CONAN_PKG::gtest
+
 list(REMOVE_AT CMAKE_MODULE_PATH -1)
 
 # uses Config.cmake or a -config.cmake file

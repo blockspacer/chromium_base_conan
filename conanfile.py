@@ -89,14 +89,17 @@ class chromium_base_conan_project(ConanFile):
         self.build_requires("cmake_platform_detection/master@conan/stable")
         self.build_requires("cmake_build_options/master@conan/stable")
 
-        if self.options.enable_tests or self.options.use_test_support:
-            self.build_requires("catch2/[>=2.1.0]@bincrafters/stable")
-            self.build_requires("gtest/[>=1.8.0]@bincrafters/stable")
-            self.build_requires("FakeIt/[>=2.0.5]@gasuketsu/stable")
-            self.build_requires("doctest/2.3.4@bincrafters/stable")
+        #if self.options.enable_tests or self.options.use_test_support:
+            #self.build_requires("catch2/[>=2.1.0]@bincrafters/stable")
+            #self.build_requires("FakeIt/[>=2.0.5]@gasuketsu/stable")
+            #self.build_requires("doctest/2.3.4@bincrafters/stable")
 
     def requirements(self):
         self.requires("chromium_build_util/master@conan/stable")
+
+        if self.options.enable_tests or self.options.use_test_support:
+            self.requires("chromium_libxml/master@conan/stable")
+            self.requires("gtest/[>=1.8.0]@bincrafters/stable")
 
         if self.settings.os == "Linux":
             self.requires("chromium_libevent/master@conan/stable")
