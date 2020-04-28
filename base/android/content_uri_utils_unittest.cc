@@ -6,7 +6,7 @@
 #include "base/files/file_util.h"
 #include "base/path_service.h"
 #include "base/test/test_file_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace android {

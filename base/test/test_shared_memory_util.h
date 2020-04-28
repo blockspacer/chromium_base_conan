@@ -9,7 +9,7 @@
 #include "base/memory/read_only_shared_memory_region.h"
 #include "base/memory/shared_memory_handle.h"
 #include "base/memory/shared_memory_mapping.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

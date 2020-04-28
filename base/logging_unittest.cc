@@ -12,8 +12,8 @@
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 #if defined(OS_POSIX)
 #include <signal.h>

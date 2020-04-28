@@ -18,8 +18,8 @@
 #include "base/pickle.h"
 #include "base/stl_util.h"
 #include "base/strings/stringprintf.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

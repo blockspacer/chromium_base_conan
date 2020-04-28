@@ -5,7 +5,7 @@
 #include "base/barrier_closure.h"
 
 #include "base/bind.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace {
 

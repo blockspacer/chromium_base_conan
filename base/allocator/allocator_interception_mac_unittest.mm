@@ -7,7 +7,7 @@
 #include "base/allocator/allocator_interception_mac.h"
 #include "base/allocator/allocator_shim.h"
 #include "base/allocator/malloc_zone_functions_mac.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace allocator {

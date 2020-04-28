@@ -17,8 +17,8 @@
 #include "base/test/bind_test_util.h"
 #include "base/test/gtest_util.h"
 #include "build/build_config.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 using ::testing::AnyNumber;
 using ::testing::ByMove;

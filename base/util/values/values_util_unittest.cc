@@ -6,7 +6,7 @@
 
 #include "base/util/values/values_util.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace util {
 

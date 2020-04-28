@@ -10,7 +10,7 @@
 
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

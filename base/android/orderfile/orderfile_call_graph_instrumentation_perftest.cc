@@ -9,7 +9,7 @@
 #include "base/android/library_loader/anchor_functions.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "testing/perf/perf_test.h"
 
 namespace base {

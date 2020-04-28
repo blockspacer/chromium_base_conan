@@ -13,7 +13,7 @@
 
 #include "base/stl_util.h"
 #include "base/strings/string_piece.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 // Define BASE_I18N_UTF8_VALIDATOR_THOROUGH_TEST to verify that this class
 // accepts exactly the same set of 4-byte strings as ICU-based validation. This

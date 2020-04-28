@@ -12,7 +12,7 @@
 #include "base/test/launcher/test_result.h"
 #include "base/test/launcher/test_results_tracker.h"
 #include "base/values.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace {

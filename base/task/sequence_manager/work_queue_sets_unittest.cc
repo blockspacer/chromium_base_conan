@@ -9,7 +9,7 @@
 #include "base/bind.h"
 #include "base/memory/ptr_util.h"
 #include "base/task/sequence_manager/work_queue.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 namespace base {
 namespace sequence_manager {

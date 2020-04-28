@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

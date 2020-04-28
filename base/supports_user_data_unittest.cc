@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "base/memory/ptr_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace {

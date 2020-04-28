@@ -10,7 +10,7 @@
 #include "base/process/process_metrics.h"
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(USE_TCMALLOC)
 namespace {

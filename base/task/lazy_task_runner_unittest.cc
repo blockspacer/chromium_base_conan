@@ -11,7 +11,7 @@
 #include "base/test/scoped_task_environment.h"
 #include "base/threading/thread_checker_impl.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(OS_WIN)
 #include "base/win/com_init_util.h"

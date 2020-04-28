@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 #include "base/util/type-safety/id_type.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace util {
 

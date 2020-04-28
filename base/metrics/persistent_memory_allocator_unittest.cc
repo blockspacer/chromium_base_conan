@@ -20,7 +20,7 @@
 #include "base/synchronization/condition_variable.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/simple_thread.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 namespace base {
 

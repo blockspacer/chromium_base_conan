@@ -13,8 +13,8 @@
 
 #include "base/containers/checked_iterators.h"
 #include "base/stl_util.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 using ::testing::ElementsAre;
 using ::testing::Eq;

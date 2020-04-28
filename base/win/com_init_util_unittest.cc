@@ -6,7 +6,7 @@
 
 #include "base/test/gtest_util.h"
 #include "base/win/scoped_com_initializer.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

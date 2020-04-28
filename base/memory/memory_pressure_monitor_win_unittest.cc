@@ -9,8 +9,8 @@
 #include "base/memory/memory_pressure_listener.h"
 #include "base/message_loop/message_loop.h"
 #include "base/run_loop.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

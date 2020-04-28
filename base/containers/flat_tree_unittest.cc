@@ -38,8 +38,8 @@
 #include "base/macros.h"
 #include "base/template_util.h"
 #include "base/test/move_only_int.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace internal {

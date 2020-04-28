@@ -9,7 +9,7 @@
 #include "base/mac/scoped_cftyperef.h"
 #include "base/macros.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace mac {

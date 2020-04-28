@@ -502,6 +502,10 @@ target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
   _USE_MATH_DEFINES=1 # https://stackoverflow.com/a/58379321
   BASE_IMPLEMENTATION=1
   BASE_I18N_IMPLEMENTATION=1
+  # was #include "testing/gtest/include/gtest/gtest.h"
+  GTEST_HEADER_INCLUDE="gtest/gtest.h"
+  # was #include "testing/gmock/include/gmock/gmock.h"
+  GMOCK_HEADER_INCLUDE="gmock/gmock.h"
   ${BASE_EXTRA_DEFINITIONS}
   # TODO
   #${COBALT_COMMON_DEFINES}

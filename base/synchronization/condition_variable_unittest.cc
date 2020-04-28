@@ -23,7 +23,7 @@
 #include "base/threading/thread_collision_warner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "testing/platform_test.h"
 
 namespace base {

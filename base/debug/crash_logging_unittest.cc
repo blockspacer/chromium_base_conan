@@ -4,7 +4,7 @@
 
 #include "base/debug/crash_logging.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 TEST(CrashLoggingTest, UninitializedCrashKeyStringSupport) {
   auto* crash_key = base::debug::AllocateCrashKeyString(

@@ -13,8 +13,8 @@
 #include "base/threading/platform_thread.h"
 #include "base/trace_event/trace_buffer.h"
 #include "base/trace_event/traced_value.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace trace_analyzer {
 

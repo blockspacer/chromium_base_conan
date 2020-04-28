@@ -8,7 +8,7 @@
 #include "base/files/file_util.h"
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "third_party/libxml/chromium/libxml_utils.h"
 
 namespace base {

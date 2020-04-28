@@ -12,7 +12,7 @@
 #include "base/task/thread_pool/pooled_sequenced_task_runner.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "base/threading/thread_restrictions.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace internal {

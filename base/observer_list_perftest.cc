@@ -10,7 +10,7 @@
 #include "base/observer_list.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "testing/perf/perf_test.h"
 
 // Ask the compiler not to use a register for this counter, in case it decides

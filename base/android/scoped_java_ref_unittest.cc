@@ -9,7 +9,7 @@
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #define EXPECT_SAME_OBJECT(a, b) \
   EXPECT_TRUE(env->IsSameObject((a).obj(), (b).obj()))

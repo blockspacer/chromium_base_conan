@@ -4,7 +4,7 @@
 
 // This file contains unit tests for Windows internationalization funcs.
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #include <stddef.h>
 

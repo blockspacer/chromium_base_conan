@@ -14,7 +14,7 @@
 #include "base/trace_event/category_registry.h"
 #include "base/trace_event/trace_category.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace trace_event {

@@ -5,7 +5,7 @@
 #include "base/profiler/sample_metadata.h"
 
 #include "base/metrics/metrics_hashes.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

@@ -10,7 +10,7 @@
 #include "base/android/library_loader/anchor_functions_buildflags.h"
 #include "base/memory/writable_shared_memory_region.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if BUILDFLAG(SUPPORTS_CODE_ORDERING)
 namespace base {

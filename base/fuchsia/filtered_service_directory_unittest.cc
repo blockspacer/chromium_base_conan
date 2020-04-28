@@ -8,7 +8,7 @@
 
 #include "base/fuchsia/service_directory_client.h"
 #include "base/fuchsia/service_directory_test_base.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace fuchsia {

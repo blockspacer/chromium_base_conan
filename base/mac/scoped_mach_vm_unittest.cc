@@ -7,7 +7,7 @@
 #include <mach/mach.h>
 
 #include "base/test/gtest_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 // Note: This test CANNOT be run multiple times within the same process (e.g.
 // with --gtest_repeat). Allocating and deallocating in quick succession, even

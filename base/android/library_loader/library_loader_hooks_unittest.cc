@@ -5,7 +5,7 @@
 #include "base/android/library_loader/library_loader_hooks.h"
 
 #include "base/command_line.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace android {

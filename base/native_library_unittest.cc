@@ -8,7 +8,7 @@
 #include "base/path_service.h"
 #include "base/test/native_library_test_utils.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

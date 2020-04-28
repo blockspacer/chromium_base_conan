@@ -12,7 +12,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_locale.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #ifdef WCHAR_T_IS_UTF32
 static const std::wstring kSysWideOldItalicLetterA = L"\x10300";
@@ -141,14 +141,14 @@ static const wchar_t* const kConvertRoundtripCases[] = {
   L"Google Video",
   // "网页 图片 资讯更多 »"
   L"\x7f51\x9875\x0020\x56fe\x7247\x0020\x8d44\x8baf\x66f4\x591a\x0020\x00bb",
-  //  "Παγκόσμιος Ιστός"
+  //  "� αγκόσμιος Ιστός"
   L"\x03a0\x03b1\x03b3\x03ba\x03cc\x03c3\x03bc\x03b9"
   L"\x03bf\x03c2\x0020\x0399\x03c3\x03c4\x03cc\x03c2",
   // "Поиск страниц на русском"
   L"\x041f\x043e\x0438\x0441\x043a\x0020\x0441\x0442"
   L"\x0440\x0430\x043d\x0438\x0446\x0020\x043d\x0430"
   L"\x0020\x0440\x0443\x0441\x0441\x043a\x043e\x043c",
-  // "전체서비스"
+  // "� �체서비스"
   L"\xc804\xccb4\xc11c\xbe44\xc2a4",
 
   // Test characters that take more than 16 bits. This will depend on whether

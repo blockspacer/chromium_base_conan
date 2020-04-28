@@ -7,8 +7,8 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/time/time.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

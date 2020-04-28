@@ -20,7 +20,7 @@
 #include "base/win/event_trace_provider.h"
 #include "base/win/scoped_handle.h"
 #include "base/win/windows_version.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace {
 

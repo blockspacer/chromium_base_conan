@@ -6,7 +6,7 @@
 #include "base/macros.h"
 #include "base/test/power_monitor_test_base.h"
 #include "base/test/scoped_task_environment.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

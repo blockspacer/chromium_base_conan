@@ -112,7 +112,7 @@ class HistogramTester {
   // should pass the result of this function directly to EXPECT_THAT.
   //
   // Example usage, using gmock (which produces better failure messages):
-  //   #include "testing/gmock/include/gmock/gmock.h"
+  //   #include GMOCK_HEADER_INCLUDE
   // ...
   //   base::HistogramTester::CountsMap expected_counts;
   //   expected_counts["MyMetric.A"] = 1;

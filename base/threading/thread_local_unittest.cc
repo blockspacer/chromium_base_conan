@@ -11,7 +11,7 @@
 #include "base/test/gtest_util.h"
 #include "base/threading/simple_thread.h"
 #include "base/threading/thread.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

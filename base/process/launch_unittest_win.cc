@@ -6,7 +6,7 @@
 
 #include "base/command_line.h"
 #include "base/files/file_path.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

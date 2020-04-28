@@ -4,7 +4,7 @@
 
 #include "base/strings/string_tokenizer.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 using std::string;
 

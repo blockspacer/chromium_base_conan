@@ -6,7 +6,7 @@
 
 #include "base/at_exit.h"
 #include "base/memory/singleton.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace {

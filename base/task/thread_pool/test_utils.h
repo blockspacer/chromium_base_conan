@@ -16,7 +16,7 @@
 #include "base/task_runner.h"
 #include "base/thread_annotations.h"
 #include "build/build_config.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 namespace base {
 namespace internal {

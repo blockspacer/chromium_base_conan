@@ -11,7 +11,7 @@
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "testing/platform_test.h"
 
 namespace base {

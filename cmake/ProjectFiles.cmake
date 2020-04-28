@@ -45,6 +45,173 @@ if(USE_ALLOC_SHIM)
   endif()
 endif(USE_ALLOC_SHIM)
 
+if(USE_TEST_SUPPORT)
+  list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}test/test_switches.cc
+    ${BASE_SOURCES_PATH}test/test_switches.h
+    ${BASE_SOURCES_PATH}test/test_timeouts.cc
+    ${BASE_SOURCES_PATH}test/test_timeouts.h
+    #
+    ${BASE_SOURCES_PATH}test/../memory/fake_memory_pressure_monitor.cc
+    ${BASE_SOURCES_PATH}test/../memory/fake_memory_pressure_monitor.h
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/fake_task.cc
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/fake_task.h
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/mock_time_domain.cc
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/mock_time_domain.h
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/mock_time_message_pump.cc
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/mock_time_message_pump.h
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/sequence_manager_for_test.cc
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/sequence_manager_for_test.h
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/test_task_queue.cc
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/test_task_queue.h
+    ${BASE_SOURCES_PATH}test/../task/sequence_manager/test/test_task_time_observer.h
+    ${BASE_SOURCES_PATH}test/../timer/mock_timer.cc
+    ${BASE_SOURCES_PATH}test/../timer/mock_timer.h
+    ${BASE_SOURCES_PATH}test/../trace_event/trace_config_memory_test_util.h
+    #${BASE_SOURCES_PATH}test/android/java_handler_thread_helpers.cc
+    #${BASE_SOURCES_PATH}test/android/java_handler_thread_helpers.h
+    #${BASE_SOURCES_PATH}test/android/url_utils.cc
+    #${BASE_SOURCES_PATH}test/android/url_utils.h
+    #
+    ${BASE_SOURCES_PATH}test/bind_test_util.cc
+    ${BASE_SOURCES_PATH}test/bind_test_util.h
+    #
+    ${BASE_SOURCES_PATH}test/copy_only_int.cc
+    ${BASE_SOURCES_PATH}test/copy_only_int.h
+    ${BASE_SOURCES_PATH}test/fuzzed_data_provider.h
+    ${BASE_SOURCES_PATH}test/gtest_util.cc
+    ${BASE_SOURCES_PATH}test/gtest_util.h
+    #
+    #${BASE_SOURCES_PATH}test/gtest_xml_unittest_result_printer.cc
+    #${BASE_SOURCES_PATH}test/gtest_xml_unittest_result_printer.h
+    #${BASE_SOURCES_PATH}test/gtest_xml_util.cc
+    #${BASE_SOURCES_PATH}test/gtest_xml_util.h
+    #
+    ${BASE_SOURCES_PATH}test/icu_test_util.cc
+    ${BASE_SOURCES_PATH}test/icu_test_util.h
+    #${BASE_SOURCES_PATH}test/ios/wait_util.h
+    #${BASE_SOURCES_PATH}test/ios/wait_util.mm",
+    ${BASE_SOURCES_PATH}test/launcher/test_result.cc
+    ${BASE_SOURCES_PATH}test/launcher/test_result.h
+    ${BASE_SOURCES_PATH}test/launcher/test_results_tracker.h
+    ${BASE_SOURCES_PATH}test/launcher/unit_test_launcher.h
+    #
+    #${BASE_SOURCES_PATH}test/metrics/histogram_enum_reader.cc
+    #${BASE_SOURCES_PATH}test/metrics/histogram_enum_reader.h
+    #${BASE_SOURCES_PATH}test/metrics/histogram_tester.cc
+    #${BASE_SOURCES_PATH}test/metrics/histogram_tester.h
+    #
+    ${BASE_SOURCES_PATH}test/metrics/user_action_tester.cc
+    ${BASE_SOURCES_PATH}test/metrics/user_action_tester.h
+    ${BASE_SOURCES_PATH}test/mock_callback.h
+    ${BASE_SOURCES_PATH}test/mock_chrome_application_mac.h
+    #${BASE_SOURCES_PATH}test/mock_chrome_application_mac.mm",
+    ${BASE_SOURCES_PATH}test/mock_devices_changed_observer.cc
+    ${BASE_SOURCES_PATH}test/mock_devices_changed_observer.h
+    ${BASE_SOURCES_PATH}test/mock_entropy_provider.cc
+    ${BASE_SOURCES_PATH}test/mock_entropy_provider.h
+    ${BASE_SOURCES_PATH}test/mock_log.cc
+    ${BASE_SOURCES_PATH}test/mock_log.h
+    ${BASE_SOURCES_PATH}test/move_only_int.h
+    #${BASE_SOURCES_PATH}test/multiprocess_test.h
+    #${BASE_SOURCES_PATH}test/multiprocess_test_android.cc
+    ${BASE_SOURCES_PATH}test/null_task_runner.cc
+    ${BASE_SOURCES_PATH}test/null_task_runner.h
+    #
+    #${BASE_SOURCES_PATH}test/perf_log.cc
+    #${BASE_SOURCES_PATH}test/perf_log.h
+    #${BASE_SOURCES_PATH}test/perf_test_suite.cc
+    #${BASE_SOURCES_PATH}test/perf_test_suite.h
+    #${BASE_SOURCES_PATH}test/perf_time_logger.cc
+    #${BASE_SOURCES_PATH}test/perf_time_logger.h
+    #${BASE_SOURCES_PATH}test/power_monitor_test_base.cc
+    #${BASE_SOURCES_PATH}test/power_monitor_test_base.h
+    #
+    #${BASE_SOURCES_PATH}test/reached_code_profiler_android.cc
+    ${BASE_SOURCES_PATH}test/scoped_command_line.cc
+    ${BASE_SOURCES_PATH}test/scoped_command_line.h
+    ${BASE_SOURCES_PATH}test/scoped_environment_variable_override.cc
+    ${BASE_SOURCES_PATH}test/scoped_environment_variable_override.h
+    ${BASE_SOURCES_PATH}test/scoped_feature_list.cc
+    ${BASE_SOURCES_PATH}test/scoped_feature_list.h
+    ${BASE_SOURCES_PATH}test/scoped_mock_clock_override.cc
+    ${BASE_SOURCES_PATH}test/scoped_mock_clock_override.h
+    ${BASE_SOURCES_PATH}test/scoped_mock_time_message_loop_task_runner.cc
+    ${BASE_SOURCES_PATH}test/scoped_mock_time_message_loop_task_runner.h
+    #${BASE_SOURCES_PATH}test/scoped_os_info_override_win.cc
+    #${BASE_SOURCES_PATH}test/scoped_os_info_override_win.h
+    ${BASE_SOURCES_PATH}test/scoped_path_override.cc
+    ${BASE_SOURCES_PATH}test/scoped_path_override.h
+    ${BASE_SOURCES_PATH}test/scoped_task_environment.cc
+    ${BASE_SOURCES_PATH}test/scoped_task_environment.h
+    #
+    #${BASE_SOURCES_PATH}test/sequenced_task_runner_test_template.cc
+    #${BASE_SOURCES_PATH}test/sequenced_task_runner_test_template.h
+    #
+    ${BASE_SOURCES_PATH}test/simple_test_clock.cc
+    ${BASE_SOURCES_PATH}test/simple_test_clock.h
+    ${BASE_SOURCES_PATH}test/simple_test_tick_clock.cc
+    ${BASE_SOURCES_PATH}test/simple_test_tick_clock.h
+    #
+    #${BASE_SOURCES_PATH}test/task_runner_test_template.cc
+    #${BASE_SOURCES_PATH}test/task_runner_test_template.h
+    #
+    ${BASE_SOURCES_PATH}test/test_discardable_memory_allocator.cc
+    ${BASE_SOURCES_PATH}test/test_discardable_memory_allocator.h
+    ${BASE_SOURCES_PATH}test/test_file_util.cc
+    ${BASE_SOURCES_PATH}test/test_file_util.h
+    #${BASE_SOURCES_PATH}test/test_file_util_android.cc
+    ${BASE_SOURCES_PATH}test/test_file_util_linux.cc
+    ${BASE_SOURCES_PATH}test/test_file_util_mac.cc
+    #${BASE_SOURCES_PATH}test/test_file_util_win.cc
+    ${BASE_SOURCES_PATH}test/test_io_thread.cc
+    ${BASE_SOURCES_PATH}test/test_io_thread.h
+    #${BASE_SOURCES_PATH}test/test_listener_ios.h
+    #${BASE_SOURCES_PATH}test/test_listener_ios.mm",
+    ${BASE_SOURCES_PATH}test/test_message_loop.cc
+    ${BASE_SOURCES_PATH}test/test_message_loop.h
+    #
+    ${BASE_SOURCES_PATH}test/test_mock_time_task_runner.cc
+    ${BASE_SOURCES_PATH}test/test_mock_time_task_runner.h
+    #
+    ${BASE_SOURCES_PATH}test/test_pending_task.cc
+    ${BASE_SOURCES_PATH}test/test_pending_task.h
+    #${BASE_SOURCES_PATH}test/test_reg_util_win.cc
+    #${BASE_SOURCES_PATH}test/test_reg_util_win.h
+    ${BASE_SOURCES_PATH}test/test_shared_memory_util.cc
+    ${BASE_SOURCES_PATH}test/test_shared_memory_util.h
+    #${BASE_SOURCES_PATH}test/test_shortcut_win.cc
+    #${BASE_SOURCES_PATH}test/test_shortcut_win.h
+    ${BASE_SOURCES_PATH}test/test_simple_task_runner.cc
+    ${BASE_SOURCES_PATH}test/test_simple_task_runner.h
+    #
+    #${BASE_SOURCES_PATH}test/test_suite.cc
+    #${BASE_SOURCES_PATH}test/test_suite.h
+    #
+    #${BASE_SOURCES_PATH}test/test_support_android.cc
+    #${BASE_SOURCES_PATH}test/test_support_android.h
+    #${BASE_SOURCES_PATH}test/test_support_ios.h
+    #${BASE_SOURCES_PATH}test/test_support_ios.mm",
+    #${BASE_SOURCES_PATH}test/thread_pool_test_helpers_android.cc
+    ${BASE_SOURCES_PATH}test/thread_test_helper.cc
+    ${BASE_SOURCES_PATH}test/thread_test_helper.h
+    ${BASE_SOURCES_PATH}test/trace_event_analyzer.cc
+    ${BASE_SOURCES_PATH}test/trace_event_analyzer.h
+    ${BASE_SOURCES_PATH}test/trace_to_file.cc
+    ${BASE_SOURCES_PATH}test/trace_to_file.h
+    #${BASE_SOURCES_PATH}test/values_test_util.cc
+    #${BASE_SOURCES_PATH}test/values_test_util.h
+    #
+    # is_posix || is_fuchsia
+    #"scoped_locale.cc
+    #"scoped_locale.h
+    #"test_file_util_posix.cc
+    #"fontconfig_util_linux.cc
+    #"fontconfig_util_linux.h
+    #"malloc_wrapper.cc
+  )
+endif(USE_TEST_SUPPORT)
+
 list(APPEND BASE_SOURCES
   # sources = [
   #${BASE_SOURCES_PATH}critical_closure_internal_ios.mm
@@ -1384,9 +1551,9 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}base_paths.cc
   #if (is_linux) {
   #  sources += [
-  #    "base_paths_posix.cc",
-  #    "debug/elf_reader_linux.cc",
-  #    "debug/elf_reader_linux.h",
+  #    "base_paths_posix.cc
+  #    "debug/elf_reader_linux.cc
+  #    "debug/elf_reader_linux.h
   #  ]
   #}
 )
@@ -1395,17 +1562,17 @@ if(TARGET_LINUX)
   list(APPEND BASE_SOURCES
     #if (!is_nacl) {
     #  sources += [
-    #    "base_paths.cc",
-    #    "base_paths.h",
-    #    "base_paths_android.cc",
-    #    "base_paths_android.h",
-    #    "base_paths_mac.h",
+    #    "base_paths.cc
+    #    "base_paths.h
+    #    "base_paths_android.cc
+    #    "base_paths_android.h
+    #    "base_paths_mac.h
     #    "base_paths_mac.mm",
-    #    "base_paths_posix.h",
-    #    "base_paths_win.cc",
-    #    "base_paths_win.h",
-    #    "metrics/persistent_histogram_storage.cc",
-    #    "metrics/persistent_histogram_storage.h",
+    #    "base_paths_posix.h
+    #    "base_paths_win.cc
+    #    "base_paths_win.h
+    #    "metrics/persistent_histogram_storage.cc
+    #    "metrics/persistent_histogram_storage.h
     #  ]
     ##${BASE_SOURCES_PATH}process/process_metrics_posix.cc
     ## TODO ##

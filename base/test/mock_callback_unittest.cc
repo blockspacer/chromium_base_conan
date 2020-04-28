@@ -5,7 +5,7 @@
 #include "base/test/mock_callback.h"
 
 #include "base/callback.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 using testing::InSequence;
 using testing::Return;

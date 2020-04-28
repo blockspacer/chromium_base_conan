@@ -12,7 +12,7 @@
 #include "base/memory/ref_counted.h"
 #include "base/test/test_timeouts.h"
 #include "base/threading/thread.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

@@ -5,8 +5,8 @@
 #include "base/nix/xdg_util.h"
 
 #include "base/environment.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 using ::testing::_;
 using ::testing::Eq;

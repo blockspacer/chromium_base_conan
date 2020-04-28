@@ -12,7 +12,7 @@
 #include "base/test/copy_only_int.h"
 #include "base/test/gtest_util.h"
 #include "base/test/move_only_int.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 // The first section of tests are imported from absl::any with modifications for
 // move only type support. Note tests dealing with exception have been omitted

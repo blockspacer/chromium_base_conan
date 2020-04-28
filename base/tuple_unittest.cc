@@ -5,7 +5,7 @@
 #include "base/tuple.h"
 
 #include "base/compiler_specific.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

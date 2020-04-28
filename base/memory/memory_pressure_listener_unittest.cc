@@ -7,7 +7,7 @@
 #include "base/bind.h"
 #include "base/run_loop.h"
 #include "base/test/scoped_task_environment.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 namespace base {
 

@@ -24,7 +24,7 @@
 #include "base/test/null_task_runner.h"
 #include "base/threading/thread.h"
 #include "base/time/time.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace internal {

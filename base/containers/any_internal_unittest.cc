@@ -4,7 +4,7 @@
 
 #include "base/containers/any_internal.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace internal {

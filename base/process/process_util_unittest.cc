@@ -36,7 +36,7 @@
 #include "base/threading/simple_thread.h"
 #include "base/threading/thread.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "testing/multiprocess_func_list.h"
 
 #if defined(OS_LINUX)

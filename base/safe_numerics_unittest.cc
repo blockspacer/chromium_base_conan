@@ -30,7 +30,7 @@
 #include "base/numerics/safe_math.h"
 #include "base/test/gtest_util.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(COMPILER_MSVC) && defined(ARCH_CPU_32_BITS)
 #include <mmintrin.h>

@@ -39,7 +39,7 @@
 #include "base/time/time.h"
 #include "base/updateable_sequenced_task_runner.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(OS_POSIX)
 #include <unistd.h>

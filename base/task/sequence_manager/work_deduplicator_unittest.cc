@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/task/sequence_manager/work_deduplicator.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace sequence_manager {

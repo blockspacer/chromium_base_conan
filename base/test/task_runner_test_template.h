@@ -66,7 +66,7 @@
 #include "base/synchronization/lock.h"
 #include "base/task_runner.h"
 #include "base/threading/thread.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

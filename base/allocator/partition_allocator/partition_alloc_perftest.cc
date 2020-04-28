@@ -9,7 +9,7 @@
 
 #include "build/build_config.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "testing/perf/perf_test.h"
 
 namespace base {

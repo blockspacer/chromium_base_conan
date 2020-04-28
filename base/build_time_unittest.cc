@@ -6,7 +6,7 @@
 #include "base/generated_build_date.h"
 #include "base/time/time.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 TEST(BuildTime, DateLooksValid) {
   char build_date[] = BUILD_DATE;

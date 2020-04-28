@@ -4,7 +4,7 @@
 
 #include "base/metrics/histogram_macros.h"
 #include "base/time/time.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

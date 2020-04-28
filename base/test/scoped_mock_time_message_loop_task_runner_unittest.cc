@@ -18,7 +18,7 @@
 #include "base/test/test_mock_time_task_runner.h"
 #include "base/test/test_pending_task.h"
 #include "base/time/time.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace {

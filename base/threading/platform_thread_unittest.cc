@@ -10,7 +10,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/threading/platform_thread.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(OS_POSIX)
 #include "base/threading/platform_thread_internal_posix.h"

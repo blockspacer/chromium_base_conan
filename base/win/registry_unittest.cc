@@ -16,7 +16,7 @@
 #include "base/stl_util.h"
 #include "base/test/scoped_task_environment.h"
 #include "base/win/windows_version.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

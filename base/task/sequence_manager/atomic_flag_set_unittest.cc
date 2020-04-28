@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "base/test/bind_test_util.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 using testing::ElementsAre;
 using testing::IsNull;

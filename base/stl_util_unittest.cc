@@ -24,8 +24,8 @@
 #include "base/containers/queue.h"
 #include "base/strings/string16.h"
 #include "base/strings/utf_string_conversions.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace {
 

@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "base/trace_event/memory_usage_estimator.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

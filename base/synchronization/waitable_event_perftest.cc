@@ -7,7 +7,7 @@
 #include <numeric>
 
 #include "base/threading/simple_thread.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "testing/perf/perf_test.h"
 
 namespace base {

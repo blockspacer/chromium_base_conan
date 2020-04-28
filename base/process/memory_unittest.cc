@@ -17,7 +17,7 @@
 #include "base/memory/aligned_memory.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(OS_WIN)
 #include <windows.h>

@@ -9,7 +9,7 @@
 
 #include "base/android/build_info.h"
 #include "base/test/scoped_feature_list.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace android {

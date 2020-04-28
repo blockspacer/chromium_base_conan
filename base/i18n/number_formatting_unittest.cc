@@ -13,7 +13,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/icu_test_util.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "third_party/icu/source/i18n/unicode/usearch.h"
 
 namespace base {

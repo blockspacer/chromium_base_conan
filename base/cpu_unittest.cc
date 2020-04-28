@@ -5,7 +5,7 @@
 #include "base/cpu.h"
 #include "base/stl_util.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if _MSC_VER >= 1700
 // C4752: found Intel(R) Advanced Vector Extensions; consider using /arch:AVX.

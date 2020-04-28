@@ -11,7 +11,7 @@
 #include "base/synchronization/lock.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/simple_thread.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 // '' : local class member function does not have a body
 MSVC_PUSH_DISABLE_WARNING(4822)

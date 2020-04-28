@@ -5,7 +5,7 @@
 #include "base/task/scoped_set_task_priority_for_current_thread.h"
 
 #include "base/task/task_traits.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace internal {

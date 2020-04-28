@@ -12,7 +12,7 @@
 #include "base/test/gtest_util.h"
 #include "base/test/test_shared_memory_util.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(OS_MACOSX) && !defined(OS_IOS)
 #include <mach/mach_vm.h>

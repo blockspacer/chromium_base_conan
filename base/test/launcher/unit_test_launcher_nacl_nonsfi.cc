@@ -9,7 +9,7 @@
 #include "base/test/gtest_util.h"
 #include "base/test/gtest_xml_unittest_result_printer.h"
 #include "base/test/test_switches.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

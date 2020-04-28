@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/component_export.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace {

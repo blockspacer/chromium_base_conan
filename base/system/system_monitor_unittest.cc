@@ -8,8 +8,8 @@
 #include "base/run_loop.h"
 #include "base/test/mock_devices_changed_observer.h"
 #include "base/test/scoped_task_environment.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

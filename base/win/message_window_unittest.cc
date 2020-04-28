@@ -6,8 +6,8 @@
 #include "base/guid.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/message_window.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

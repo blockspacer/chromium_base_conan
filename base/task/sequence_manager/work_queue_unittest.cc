@@ -15,7 +15,7 @@
 #include "base/task/sequence_manager/work_queue_sets.h"
 #include "base/time/default_tick_clock.h"
 #include "base/time/time.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 namespace base {
 namespace sequence_manager {

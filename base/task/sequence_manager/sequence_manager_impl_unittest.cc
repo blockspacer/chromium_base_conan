@@ -51,7 +51,7 @@
 #include "base/time/time.h"
 #include "base/trace_event/blame_context.h"
 #include "build/build_config.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 using base::sequence_manager::internal::EnqueueOrder;
 using testing::_;

@@ -16,8 +16,8 @@
 #include "base/test/test_mock_time_task_runner.h"
 #include "base/threading/thread.h"
 #include "base/time/time.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace internal {

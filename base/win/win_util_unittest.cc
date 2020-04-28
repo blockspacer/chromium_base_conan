@@ -14,7 +14,7 @@
 #include "base/strings/string_util.h"
 #include "base/win/scoped_co_mem.h"
 #include "base/win/win_client_metrics.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

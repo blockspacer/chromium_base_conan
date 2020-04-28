@@ -14,8 +14,8 @@
 #include "base/trace_event/traced_value.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 using testing::ElementsAre;
 using testing::Eq;

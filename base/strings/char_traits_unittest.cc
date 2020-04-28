@@ -4,7 +4,7 @@
 
 #include "base/strings/char_traits.h"
 #include "base/strings/string16.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

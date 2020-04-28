@@ -11,7 +11,7 @@
 #include "base/logging.h"
 #include "base/mac/scoped_mach_port.h"
 #include "base/test/test_timeouts.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

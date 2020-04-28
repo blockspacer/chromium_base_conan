@@ -4,7 +4,7 @@
 
 #include "base/traits_bag.h"
 
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 namespace base {
 namespace trait_helpers {

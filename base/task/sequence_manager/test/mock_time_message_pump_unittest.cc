@@ -6,8 +6,8 @@
 
 #include "base/message_loop/message_pump.h"
 #include "base/test/simple_test_tick_clock.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace sequence_manager {

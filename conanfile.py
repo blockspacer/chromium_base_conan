@@ -40,6 +40,7 @@ class chromium_base_conan_project(ConanFile):
         "enable_cobalt": [True, False],
         "use_alloc_shim": [True, False],
         "use_deb_alloc": [True, False],
+        "use_test_support": [True, False],
         "enable_web_pthreads": [True, False]
     }
 
@@ -52,6 +53,7 @@ class chromium_base_conan_project(ConanFile):
         # requires to build tcmalloc with same `use_alloc_shim` flag
         "use_alloc_shim=False",
         "use_deb_alloc=False",
+        "use_test_support=True",
         "enable_web_pthreads=True"
         # build
         #"*:shared=False"
@@ -87,10 +89,11 @@ class chromium_base_conan_project(ConanFile):
         self.build_requires("cmake_platform_detection/master@conan/stable")
         self.build_requires("cmake_build_options/master@conan/stable")
 
-        if self.options.enable_tests:
+        if self.options.enable_tests or self.options.use_test_support:
             self.build_requires("catch2/[>=2.1.0]@bincrafters/stable")
             self.build_requires("gtest/[>=1.8.0]@bincrafters/stable")
-            self.build_requires("FakeIt/[>=2.0.4]@gasuketsu/stable")
+            self.build_requires("FakeIt/[>=2.0.5]@gasuketsu/stable")
+            self.build_requires("doctest/2.3.4@bincrafters/stable")
 
     def requirements(self):
         self.requires("chromium_build_util/master@conan/stable")
@@ -134,6 +137,8 @@ class chromium_base_conan_project(ConanFile):
 
         add_cmake_option("USE_ALLOC_SHIM", self.options.use_alloc_shim)
 
+        add_cmake_option("USE_TEST_SUPPORT", self.options.use_test_support)
+
         add_cmake_option("USE_DEB_ALLOC", self.options.use_deb_alloc)
 
         cmake.configure(build_folder=self._build_subfolder)
@@ -166,8 +171,9 @@ class chromium_base_conan_project(ConanFile):
 
         if self.options.enable_tests:
           self.output.info('Running tests')
-          self.run('ctest --parallel %s' % (cpu_count))
           # TODO: use cmake.test()
+          self.output.info('TODO: add test runner like ctest')
+          #self.run('ctest --parallel %s' % (cpu_count))
 
     # Importing files copies files from the local store to your project.
     def imports(self):

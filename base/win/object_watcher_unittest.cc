@@ -9,7 +9,7 @@
 
 #include "base/run_loop.h"
 #include "base/test/scoped_task_environment.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

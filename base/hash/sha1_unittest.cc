@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 TEST(SHA1Test, Test1) {
   // Example A.1 from FIPS 180-2: one-block message.

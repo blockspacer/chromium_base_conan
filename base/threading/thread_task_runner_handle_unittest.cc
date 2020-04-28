@@ -7,7 +7,7 @@
 #include "base/memory/ref_counted.h"
 #include "base/test/gtest_util.h"
 #include "base/test/test_simple_task_runner.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

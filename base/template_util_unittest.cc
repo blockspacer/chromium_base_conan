@@ -8,7 +8,7 @@
 
 #include "base/containers/flat_tree.h"
 #include "base/test/move_only_int.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace {

@@ -9,8 +9,8 @@
 
 #include "base/macros.h"
 #include "base/test/move_only_int.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 // A flat_map is basically a interface to flat_tree. So several basic
 // operations are tested to make sure things are set up properly, but the bulk

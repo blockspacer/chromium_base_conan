@@ -9,7 +9,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/strings/string16.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(ARCH_CPU_64_BITS)
 #define EXPECT_EQ_32_64(_, e, a) EXPECT_EQ(e, a)

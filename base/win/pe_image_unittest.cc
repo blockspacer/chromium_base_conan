@@ -11,7 +11,7 @@
 #include "base/scoped_native_library.h"
 #include "base/win/pe_image.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

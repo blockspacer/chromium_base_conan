@@ -14,8 +14,8 @@
 #include "base/test/launcher/unit_test_launcher.h"
 #include "base/test/scoped_task_environment.h"
 #include "base/test/test_switches.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GMOCK_HEADER_INCLUDE
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace {

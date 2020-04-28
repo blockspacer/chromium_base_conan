@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "base/test/gtest_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace WRL = Microsoft::WRL;
 

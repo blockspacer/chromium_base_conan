@@ -5,7 +5,7 @@
 #include "base/win/windows_version.h"
 
 #include "base/logging.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

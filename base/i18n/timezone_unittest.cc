@@ -4,7 +4,7 @@
 
 #include "base/i18n/timezone.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 #include "third_party/icu/source/common/unicode/strenum.h"
 #include "third_party/icu/source/common/unicode/unistr.h"
 #include "third_party/icu/source/i18n/unicode/timezone.h"

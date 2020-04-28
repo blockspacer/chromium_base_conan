@@ -9,7 +9,7 @@
 
 #include "base/allocator/partition_allocator/address_space_randomization.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 #if defined(OS_POSIX)
 #include <setjmp.h>

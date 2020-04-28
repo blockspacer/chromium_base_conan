@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/win/wrapped_window_proc.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace {
 

@@ -7,7 +7,7 @@
 #include <windows.foundation.h>
 
 #include "base/test/bind_test_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 namespace win {

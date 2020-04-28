@@ -5,7 +5,7 @@
 #include "base/os_compat_android.h"
 
 #include "base/files/file_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 

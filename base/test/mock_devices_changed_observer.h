@@ -9,7 +9,7 @@
 
 #include "base/macros.h"
 #include "base/system/system_monitor.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include GMOCK_HEADER_INCLUDE
 
 namespace base {
 

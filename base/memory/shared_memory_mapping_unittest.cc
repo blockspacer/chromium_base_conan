@@ -11,7 +11,7 @@
 
 #include "base/containers/span.h"
 #include "base/memory/read_only_shared_memory_region.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include GTEST_HEADER_INCLUDE
 
 namespace base {
 
