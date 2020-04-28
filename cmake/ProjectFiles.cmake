@@ -46,6 +46,11 @@ if(USE_ALLOC_SHIM)
 endif(USE_ALLOC_SHIM)
 
 if(USE_TEST_SUPPORT)
+  # NOTE: `testing` dir not from `base`!
+  list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}test/testing/multiprocess_func_list.cc
+  )
+
   list(APPEND BASE_SOURCES
     ${BASE_SOURCES_PATH}test/test_switches.cc
     ${BASE_SOURCES_PATH}test/test_switches.h
@@ -185,8 +190,8 @@ if(USE_TEST_SUPPORT)
     ${BASE_SOURCES_PATH}test/test_simple_task_runner.cc
     ${BASE_SOURCES_PATH}test/test_simple_task_runner.h
     #
-    #${BASE_SOURCES_PATH}test/test_suite.cc
-    #${BASE_SOURCES_PATH}test/test_suite.h
+    ${BASE_SOURCES_PATH}test/test_suite.cc
+    ${BASE_SOURCES_PATH}test/test_suite.h
     #
     #${BASE_SOURCES_PATH}test/test_support_android.cc
     #${BASE_SOURCES_PATH}test/test_support_android.h
