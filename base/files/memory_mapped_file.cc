@@ -32,10 +32,8 @@ MemoryMappedFile::~MemoryMappedFile() {
 
 #if !defined(OS_NACL)
 bool MemoryMappedFile::Initialize(const FilePath& file_name, Access access) {
-  printf("MemoryMappedFile::Initialize 1\n");
   if (IsValid())
     return false;
-  printf("MemoryMappedFile::Initialize 2\n");
   uint32_t flags = 0;
   switch (access) {
     case READ_ONLY:
@@ -55,27 +53,20 @@ bool MemoryMappedFile::Initialize(const FilePath& file_name, Access access) {
       break;
 #endif
   }
-  printf("MemoryMappedFile::Initialize 3\n");
   file_.Initialize(file_name, flags);
-  printf("MemoryMappedFile::Initialize 4\n");
   if (!file_.IsValid()) {
-    printf("MemoryMappedFile::Initialize 4.1\n");
     DLOG(ERROR) << "Couldn't open " << file_name.AsUTF8Unsafe();
     return false;
   }
-  printf("MemoryMappedFile::Initialize 5\n");
   if (!MapFileRegionToMemory(Region::kWholeFile, access)) {
-    printf("MemoryMappedFile::Initialize 5.1\n");
     CloseHandles();
     return false;
   }
-  printf("MemoryMappedFile::Initialize 6\n");
 
   DCHECK(length()>0);
   DCHECK(data());
   DCHECK(IsValid());
 
-  printf("MemoryMappedFile::Initialize 7\n");
   return true;
 }
 

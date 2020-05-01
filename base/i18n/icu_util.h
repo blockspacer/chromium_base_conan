@@ -10,6 +10,7 @@
 #include "base/files/memory_mapped_file.h"
 #include "base/i18n/base_i18n_export.h"
 #include "build/build_config.h"
+#include "base/files/file_path.h"
 
 #define ICU_UTIL_DATA_FILE   0
 #define ICU_UTIL_DATA_SHARED 1
@@ -23,6 +24,8 @@ namespace i18n {
 // function should be called before ICU is used.
 BASE_I18N_EXPORT bool InitializeICU();
 
+BASE_I18N_EXPORT bool InitializeICUWithPath(base::FilePath icuDataFileName);
+
 #if ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_FILE
 #if defined(OS_ANDROID)
 // Returns the PlatformFile and Region that was initialized by InitializeICU().
@@ -33,6 +36,11 @@ BASE_I18N_EXPORT PlatformFile GetIcuDataFileHandle(
 // Android uses a file descriptor passed by browser process to initialize ICU
 // in render processes.
 BASE_I18N_EXPORT bool InitializeICUWithFileDescriptor(
+    PlatformFile data_fd,
+    const MemoryMappedFile::Region& data_region);
+
+BASE_I18N_EXPORT bool InitializeICUWithFileDescriptorWithPath(
+    base::FilePath icuDataFileName,
     PlatformFile data_fd,
     const MemoryMappedFile::Region& data_region);
 #endif
