@@ -3,6 +3,9 @@ import traceback
 import os
 import shutil
 
+# if you using python less than 3 use from distutils import strtobool
+from distutils.util import strtobool
+
 # conan runs the methods in this order:
 # config_options(),
 # configure(),
@@ -35,7 +38,6 @@ class chromium_base_conan_project(ConanFile):
     options = {
         "shared": [True, False],
         "debug": [True, False],
-        "enable_tests": [True, False],
         "enable_sanitizers": [True, False],
         "enable_cobalt": [True, False],
         "use_alloc_shim": [True, False],
@@ -47,7 +49,6 @@ class chromium_base_conan_project(ConanFile):
     default_options = (
         "shared=False",
         "debug=False",
-        "enable_tests=False",
         "enable_sanitizers=False",
         "enable_cobalt=True",
         # requires to build tcmalloc with same `use_alloc_shim` flag
@@ -81,6 +82,27 @@ class chromium_base_conan_project(ConanFile):
 
     settings = "os", "compiler", "build_type", "arch"
 
+    # build-only option
+    # see https://github.com/conan-io/conan/issues/6967
+    # conan ignores changes in environ, so
+    # use `conan remove` if you want to rebuild package
+    def _environ_option(self, name, default = 'true'):
+      env_val = default.lower() # default, must be lowercase!
+      # allow both lowercase and uppercase
+      if name.upper() in os.environ:
+        env_val = os.getenv(name.upper())
+      elif name.lower() in os.environ:
+        env_val = os.getenv(name.lower())
+      # strtobool:
+      #   True values are y, yes, t, true, on and 1;
+      #   False values are n, no, f, false, off and 0.
+      #   Raises ValueError if val is anything else.
+      #   see https://docs.python.org/3/distutils/apiref.html#distutils.util.strtobool
+      return bool(strtobool(env_val))
+
+    def _is_tests_enabled(self):
+      return self._environ_option("ENABLE_TESTS", default = 'true')
+
     #def source(self):
     #  url = "https://github.com/....."
     #  self.run("git clone %s ......." % url)
@@ -89,7 +111,7 @@ class chromium_base_conan_project(ConanFile):
         self.build_requires("cmake_platform_detection/master@conan/stable")
         self.build_requires("cmake_build_options/master@conan/stable")
 
-        #if self.options.enable_tests or self.options.use_test_support:
+        #if self._is_tests_enabled() or self.options.use_test_support:
             #self.build_requires("catch2/[>=2.1.0]@bincrafters/stable")
             #self.build_requires("FakeIt/[>=2.0.5]@gasuketsu/stable")
             #self.build_requires("doctest/2.3.4@bincrafters/stable")
@@ -97,7 +119,7 @@ class chromium_base_conan_project(ConanFile):
     def requirements(self):
         self.requires("chromium_build_util/master@conan/stable")
 
-        if self.options.enable_tests or self.options.use_test_support:
+        if self._is_tests_enabled() or self.options.use_test_support:
             self.requires("chromium_libxml/master@conan/stable")
             self.requires("gtest/[>=1.8.0]@bincrafters/stable")
 
@@ -127,12 +149,13 @@ class chromium_base_conan_project(ConanFile):
 
         def add_cmake_option(var_name, value):
             value_str = "{}".format(value)
-            var_value = "ON" if value_str == 'True' else "OFF" if value_str == 'False' else value_str
+            var_value = "ON" if bool(strtobool(value_str)) else "OFF"
+            self.output.info('added cmake definition %s = %s' % (var_name, var_value))
             cmake.definitions[var_name] = var_value
 
-        add_cmake_option("ENABLE_SANITIZERS", self.options.enable_sanitizers)
+        add_cmake_option("ENABLE_TESTS", self._is_tests_enabled())
 
-        add_cmake_option("ENABLE_TESTS", self.options.enable_tests)
+        add_cmake_option("ENABLE_SANITIZERS", self.options.enable_sanitizers)
 
         add_cmake_option("ENABLE_COBALT", self.options.enable_cobalt)
 
@@ -172,7 +195,7 @@ class chromium_base_conan_project(ConanFile):
         # -j flag for parallel builds
         cmake.build(args=["--", "-j%s" % cpu_count])
 
-        if self.options.enable_tests:
+        if self._is_tests_enabled():
           self.output.info('Running tests')
           # TODO: use cmake.test()
           self.output.info('TODO: add test runner like ctest')

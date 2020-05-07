@@ -19,16 +19,26 @@ Chromium docs https://chromium.googlesource.com/chromium/src/+/master/docs
 
 ## HOW TO BUILD FROM SOURCE
 
-TODO
-```
-conan create . conan/stable -o *:use_alloc_shim=True --profile clang
+```bash
+# NOTE: change `build_type=Debug` to `build_type=Release` in production
+CONAN_REVISIONS_ENABLED=1 \
+    CONAN_VERBOSE_TRACEBACK=1 \
+    CONAN_PRINT_RUN_COMMANDS=1 \
+    CONAN_LOGGING_LEVEL=10 \
+    GIT_SSL_NO_VERIFY=true \
+    conan create . \
+        conan/stable \
+        -s build_type=Debug \
+        --profile clang \
+        --build missing \
+        -e chromium_base:enable_tests=True \
+        -o openssl:shared=True
 ```
 
 ## HOW TO INSTALL FROM CONAN
 
-TODO
 ```
-# conan install --build=missing --profile clang -o enable_tests=False -o *:use_alloc_shim=True ..
+conan install --build=missing --profile clang ..
 ```
 
 ## USAGE EXAMPLES
