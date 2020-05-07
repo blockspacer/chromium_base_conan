@@ -149,7 +149,7 @@ class chromium_base_conan_project(ConanFile):
 
         def add_cmake_option(var_name, value):
             value_str = "{}".format(value)
-            var_value = "ON" if bool(strtobool(value_str)) else "OFF"
+            var_value = "ON" if bool(strtobool(value_str.lower())) else "OFF"
             self.output.info('added cmake definition %s = %s' % (var_name, var_value))
             cmake.definitions[var_name] = var_value
 
