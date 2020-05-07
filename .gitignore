@@ -46,3 +46,4 @@ tmp/
 # emacs
 *~
 /base/allocator/buildflags.h
+*.txt.user
