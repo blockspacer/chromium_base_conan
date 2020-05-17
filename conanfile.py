@@ -1,4 +1,4 @@
-from conans import ConanFile, CMake, tools
+from conans import ConanFile, CMake, tools, python_requires
 import traceback
 import os
 import shutil
@@ -20,7 +20,9 @@ from distutils.util import strtobool
 # package(),
 # package_info()
 
-class chromium_base_conan_project(ConanFile):
+conan_build_helper = python_requires("conan_build_helper/[~=0.0]@conan/stable")
+
+class chromium_base_conan_project(conan_build_helper.CMakePackage):
     name = "chromium_base"
 
     # Indicates License type of the packaged library
@@ -82,27 +84,6 @@ class chromium_base_conan_project(ConanFile):
 
     settings = "os", "compiler", "build_type", "arch"
 
-    # build-only option
-    # see https://github.com/conan-io/conan/issues/6967
-    # conan ignores changes in environ, so
-    # use `conan remove` if you want to rebuild package
-    def _environ_option(self, name, default = 'true'):
-      env_val = default.lower() # default, must be lowercase!
-      # allow both lowercase and uppercase
-      if name.upper() in os.environ:
-        env_val = os.getenv(name.upper())
-      elif name.lower() in os.environ:
-        env_val = os.getenv(name.lower())
-      # strtobool:
-      #   True values are y, yes, t, true, on and 1;
-      #   False values are n, no, f, false, off and 0.
-      #   Raises ValueError if val is anything else.
-      #   see https://docs.python.org/3/distutils/apiref.html#distutils.util.strtobool
-      return bool(strtobool(env_val))
-
-    def _is_tests_enabled(self):
-      return self._environ_option("ENABLE_TESTS", default = 'true')
-
     #def source(self):
     #  url = "https://github.com/....."
     #  self.run("git clone %s ......." % url)
@@ -147,25 +128,19 @@ class chromium_base_conan_project(ConanFile):
         if self.options.shared:
             cmake.definitions["BUILD_SHARED_LIBS"] = "ON"
 
-        def add_cmake_option(var_name, value):
-            value_str = "{}".format(value)
-            var_value = "ON" if bool(strtobool(value_str.lower())) else "OFF"
-            self.output.info('added cmake definition %s = %s' % (var_name, var_value))
-            cmake.definitions[var_name] = var_value
+        self.add_cmake_option(cmake, "ENABLE_TESTS", self._is_tests_enabled())
 
-        add_cmake_option("ENABLE_TESTS", self._is_tests_enabled())
+        self.add_cmake_option(cmake, "ENABLE_SANITIZERS", self.options.enable_sanitizers)
 
-        add_cmake_option("ENABLE_SANITIZERS", self.options.enable_sanitizers)
+        self.add_cmake_option(cmake, "ENABLE_COBALT", self.options.enable_cobalt)
 
-        add_cmake_option("ENABLE_COBALT", self.options.enable_cobalt)
+        self.add_cmake_option(cmake, "ENABLE_WEB_PTHREADS", self.options.enable_web_pthreads)
 
-        add_cmake_option("ENABLE_WEB_PTHREADS", self.options.enable_web_pthreads)
+        self.add_cmake_option(cmake, "USE_ALLOC_SHIM", self.options.use_alloc_shim)
 
-        add_cmake_option("USE_ALLOC_SHIM", self.options.use_alloc_shim)
+        self.add_cmake_option(cmake, "USE_TEST_SUPPORT", self.options.use_test_support)
 
-        add_cmake_option("USE_TEST_SUPPORT", self.options.use_test_support)
-
-        add_cmake_option("USE_DEB_ALLOC", self.options.use_deb_alloc)
+        self.add_cmake_option(cmake, "USE_DEB_ALLOC", self.options.use_deb_alloc)
 
         cmake.configure(build_folder=self._build_subfolder)
 
