@@ -11,6 +11,12 @@ project(${PROJECT_NAME}
 
 set(STATIC_LIB_NAME ${PROJECT_NAME}-static)
 
+# Hack to depend NOT on CONAN_PKG::libname, but on libname directly
+# See for details
+# https://docs.conan.io/en/latest/developing_packages/workspaces.html
+set(LOCAL_BUILD FALSE CACHE BOOL "LOCAL_BUILD")
+message(STATUS "LOCAL_BUILD=${LOCAL_BUILD}")
+
 set(COBALT_DIR cobalt)
 set(LOCAL_COBALT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${COBALT_DIR}/)
 
@@ -18,7 +24,9 @@ set(LOCAL_COBALT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${COBALT_DIR}/)
 
 # Conan package manager List of packages used by the project is container in
 # conanfile.py
-option(CONAN_AUTO_INSTALL "Let CMake call conan install automatically" OFF)
+option(CONAN_AUTO_INSTALL "Let CMake call conan install automatically"
+  OFF
+)
 if (CONAN_AUTO_INSTALL)
   set(CONAN_PROFILE
       "default"

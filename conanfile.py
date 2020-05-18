@@ -150,6 +150,10 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.copy(pattern="LICENSE", dst="licenses", src=self._source_subfolder)
         cmake = self._configure_cmake()
         cmake.install()
+        # Local build
+        # see https://docs.conan.io/en/latest/developing_packages/editable_packages.html
+        if not self.in_local_cache:
+            self.copy("conanfile.py", dst=".", keep_path=False)
 
     def build(self):
         cmake = self._configure_cmake()
