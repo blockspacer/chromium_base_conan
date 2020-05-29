@@ -462,7 +462,8 @@ set_property(TARGET ${STATIC_LIB_NAME} PROPERTY CXX_STANDARD 17)
 # Position-independent code requires special support,
 # and therefore works only on certain machines.
 # see https://akkadia.org/drepper/dsohowto.pdf
-set_property(TARGET ${STATIC_LIB_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET ${STATIC_LIB_NAME}
+  PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 if(TARGET_LINUX)
   set(ENABLE_DYNAMIC_ANNOTATIONS TRUE) # required by tcmalloc
