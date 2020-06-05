@@ -34,7 +34,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
     # TODO (!!!)
     #url = "https://github.com/blockspacer/CXXCTP"
 
-    description = "modified `icu` library from chromium"
+    description = "modified `base` library from chromium"
     topics = ('c++')
 
     options = {
