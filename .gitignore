@@ -30,8 +30,8 @@
 
 # Cache
 __pycache__/*
-test_package/__pycache__/*
-test_package/build/*
+test_package*/__pycache__/*
+test_package*/build/*
 build/*
 local_build
 *.pyc

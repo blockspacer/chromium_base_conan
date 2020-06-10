@@ -31,7 +31,7 @@ if (CONAN_AUTO_INSTALL)
   set(CONAN_PROFILE
       "default"
       CACHE STRING "Conan profile to use during installation")
-  include(cmake/conan-auto-install.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/conan-auto-install.cmake)
   conan_auto_install(${CONAN_PROFILE})
 endif()
 
@@ -49,12 +49,20 @@ else()
   message (FATAL_ERROR "must use conan")
 endif()
 
+# Helper module for selecting option based on multiple values. Module help:
+# https://cmake.org/cmake/help/latest/module/CMakeDependentOption.html
+include(CMakeDependentOption)
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options.cmake)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CommonOptions.cmake)
 
 find_package(cmake_platform_detection REQUIRED)
 run_cmake_platform_detection()
 # NOTE: perform platform checks before everything else
-include(cmake/PlatformChecks)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/PlatformChecks.cmake)
 
 find_package(cmake_build_options REQUIRED)
 setup_default_build_type(RELEASE)
@@ -66,6 +74,33 @@ if(TARGET chromium_build_util::chromium_build_util-static)
 else()
   message(FATAL_ERROR "not supported: using system provided chromium_build_util library")
 endif()
+
+find_package(cmake_helper_utils REQUIRED)
+
+if(ENABLE_MSAN OR ENABLE_TSAN OR ENABLE_ASAN OR ENABLE_UBSAN)
+  find_package(cmake_sanitizers REQUIRED)
+endif()
+
+if(ENABLE_ASAN
+   OR ENABLE_TSAN
+   OR ENABLE_MSAN
+   OR ENABLE_UBSAN
+   OR ENABLE_VALGRIND
+   )
+  list(APPEND BASE_DEFINES MEMORY_TOOL_REPLACES_ALLOCATOR=1)
+
+  if(NOT ALLOCATOR_NONE OR ALLOCATOR_TCMALLOC)
+    message(FATAL_ERROR
+      "use ALLOCATOR_NONE with memory tools")
+  endif(NOT ALLOCATOR_NONE OR ALLOCATOR_TCMALLOC)
+endif()
+
+if(TARGET_LINUX)
+  if(ALLOCATOR_TCMALLOC AND ALLOCATOR_NONE)
+    message(FATAL_ERROR
+      "LINUX-ONLY: you must specify only one allocator")
+  endif(ALLOCATOR_TCMALLOC AND ALLOCATOR_NONE)
+endif(TARGET_LINUX)
 
 #
 # ICU
@@ -111,12 +146,14 @@ else()
 endif()
 
 if(TARGET_LINUX)
-  find_package(chromium_tcmalloc REQUIRED)
-  if(TARGET chromium_tcmalloc::chromium_tcmalloc-static)
-    set(tcmalloc_LIB chromium_tcmalloc::chromium_tcmalloc-static)
-  else()
-    message(FATAL_ERROR "not supported: using system provided chromium_tcmalloc library")
-  endif()
+  if(ALLOCATOR_TCMALLOC)
+    find_package(chromium_tcmalloc REQUIRED)
+    if(TARGET chromium_tcmalloc::chromium_tcmalloc-static)
+      set(tcmalloc_LIB chromium_tcmalloc::chromium_tcmalloc-static)
+    else()
+      message(FATAL_ERROR "not supported: using system provided chromium_tcmalloc library")
+    endif()
+  endif(ALLOCATOR_TCMALLOC)
 elseif(TARGET_WINDOWS OR TARGET_EMSCRIPTEN)
   # skip
 else()
@@ -219,13 +256,9 @@ endif(ENABLE_COBALT)
 #  set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/base/)
 #endif(BASE_STANDALONE)
 
-include(cmake/Options)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenBuildFlags.cmake)
 
-include(cmake/CommonOptions)
-
-include(cmake/GenBuildFlags)
-
-include(cmake/ProjectFiles)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProjectFiles.cmake)
 
 if(TARGET_EMSCRIPTEN)
   # skip
@@ -247,7 +280,7 @@ macro(add_relative_include_dir TARGET VISIBILITY_BUILD VISIBILITY_INSTALL NEW_EL
 endmacro(add_relative_include_dir)
 
 if(TARGET_LINUX)
-  include(cmake/detect_atomic32_support)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect_atomic32_support.cmake)
 endif(TARGET_LINUX)
 
 add_library(${STATIC_LIB_NAME} STATIC
@@ -274,36 +307,34 @@ elseif(TARGET_LINUX)
     message(FATAL_ERROR "NOT DEFINED libevent_LIB")
   endif(NOT DEFINED libevent_LIB)
 
-  if(NOT DEFINED tcmalloc_LIB)
+  if(ALLOCATOR_TCMALLOC AND NOT DEFINED tcmalloc_LIB)
     message(FATAL_ERROR "NOT DEFINED tcmalloc_LIB")
-  endif(NOT DEFINED tcmalloc_LIB)
+  endif(ALLOCATOR_TCMALLOC AND NOT DEFINED tcmalloc_LIB)
 
   if(NOT DEFINED modp_b64_LIB)
     message(FATAL_ERROR "NOT DEFINED modp_b64_LIB")
   endif(NOT DEFINED modp_b64_LIB)
 
   list(APPEND EXTRA_CHROMIUM_BASE_LIBS
-    ${tcmalloc_LIB}
+    ${tcmalloc_LIB} # if ALLOCATOR_TCMALLOC
     ${ced_LIB}
     # libevent only for posix/linux/e.t.c.
     ${libevent_LIB}
     ${modp_b64_LIB}
   )
   add_dependencies(${STATIC_LIB_NAME}
-    ${tcmalloc_LIB}
+    ${tcmalloc_LIB} # if ALLOCATOR_TCMALLOC
     ${ced_LIB}
     ${modp_b64_LIB}
   )
 elseif(TARGET_WINDOWS)
   list(APPEND EXTRA_CHROMIUM_BASE_LIBS
-    #tcmalloc
     ${ced_LIB}
     # libevent only for posix/linux/e.t.c.
     #${libevent_LIB}
     ${modp_b64_LIB}
   )
   add_dependencies(${STATIC_LIB_NAME}
-    #tcmalloc
     ${ced_LIB}
     ${CUSTOM_ICU_LIB}
     ${modp_b64_LIB}
@@ -486,6 +517,12 @@ list(APPEND BASE_DEFINES
   BASE_PORT=1
 )
 
+if(NOT ALLOCATOR_TCMALLOC)
+  list(APPEND BASE_DEFINES
+    NO_TCMALLOC=1
+  )
+endif(NOT ALLOCATOR_TCMALLOC)
+
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "")
 
 if(ENABLE_COBALT)
@@ -573,6 +610,61 @@ set_target_properties(${STATIC_LIB_NAME}
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" # TODO: /bin
     OUTPUT_NAME "${STATIC_LIB_NAME}$<$<CONFIG:Debug>:${DEBUG_LIBRARY_SUFFIX}>"
 )
+
+## ---------------------------- valgrind -------------------------------- ##
+
+if(ENABLE_VALGRIND)
+  check_valgrind_config()
+endif()
+
+## ---------------------------- sanitizers -------------------------------- ##
+
+if(ENABLE_MSAN OR ENABLE_TSAN OR ENABLE_ASAN OR ENABLE_UBSAN)
+  # use llvm_tools from conan
+  find_program_helper(llvm-symbolizer
+    PATHS
+      #${CONAN_BIN_DIRS}
+      ${CONAN_BIN_DIRS_LLVM_TOOLS}
+    NO_SYSTEM_ENVIRONMENT_PATH
+    NO_CMAKE_SYSTEM_PATH
+    ${ARGUMENTS_UNPARSED_ARGUMENTS}
+    REQUIRED
+    OUT_VAR LLVM_SYMBOLIZER_PROGRAM
+    VERBOSE TRUE
+  )
+
+  check_sanitizer_options(
+    ENABLE_TSAN ${ENABLE_TSAN}
+    ENABLE_ASAN ${ENABLE_ASAN}
+    ENABLE_MSAN ${ENABLE_MSAN}
+    ENABLE_UBSAN ${ENABLE_UBSAN}
+    LLVM_SYMBOLIZER_PROGRAM ${LLVM_SYMBOLIZER_PROGRAM}
+  )
+endif()
+
+if(ENABLE_MSAN)
+  message(STATUS "enabling MSAN on ${STATIC_LIB_NAME}")
+  add_msan_static_link(${STATIC_LIB_NAME})
+  add_msan_flags(${STATIC_LIB_NAME})
+endif(ENABLE_MSAN)
+
+if(ENABLE_TSAN)
+  message(STATUS "enabling TSAN on ${STATIC_LIB_NAME}")
+  add_tsan_static_link(${STATIC_LIB_NAME})
+  add_tsan_flags(${STATIC_LIB_NAME})
+endif(ENABLE_TSAN)
+
+if(ENABLE_ASAN)
+  message(STATUS "enabling ASAN on ${STATIC_LIB_NAME}")
+  add_asan_static_link(${STATIC_LIB_NAME})
+  add_asan_flags(${STATIC_LIB_NAME})
+endif(ENABLE_ASAN)
+
+if(ENABLE_UBSAN)
+  message(STATUS "enabling UBSAN on ${STATIC_LIB_NAME}")
+  add_ubsan_static_link(${STATIC_LIB_NAME})
+  add_ubsan_flags(${STATIC_LIB_NAME})
+endif(ENABLE_UBSAN)
 
 # install and export steps
 include(cmake/Exports)

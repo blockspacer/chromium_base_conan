@@ -29,9 +29,36 @@ CONAN_REVISIONS_ENABLED=1 \
     conan create . \
         conan/stable \
         -s build_type=Debug \
+        -s llvm_tools:build_type=Release \
         --profile clang \
         --build missing \
         -e chromium_base:enable_tests=True \
+        -o openssl:shared=True
+```
+
+## HOW TO BUILD WITH SANITIZERS ENABLED
+
+Use `enable_asan` or `enable_ubsan`, etc.
+
+```bash
+# NOTE: change `build_type=Debug` to `build_type=Release` in production
+CONAN_REVISIONS_ENABLED=1 \
+    CONAN_VERBOSE_TRACEBACK=1 \
+    CONAN_PRINT_RUN_COMMANDS=1 \
+    CONAN_LOGGING_LEVEL=10 \
+    GIT_SSL_NO_VERIFY=true \
+    conan create . \
+        conan/stable \
+        -s build_type=Debug \
+        -s llvm_tools:build_type=Release \
+        --profile clang \
+        --build missing \
+        -s llvm_tools:build_type=Release \
+        -e chromium_base:enable_tests=True \
+        -o chromium_base:enable_tsan=True \
+        -e chromium_base:enable_llvm_tools=True \
+        -o chromium_base:use_alloc_shim=False \
+        -o chromium_tcmalloc:use_alloc_shim=False \
         -o openssl:shared=True
 ```
 

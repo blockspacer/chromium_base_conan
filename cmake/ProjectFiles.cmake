@@ -37,11 +37,18 @@ if(USE_ALLOC_SHIM)
       ${BASE_SOURCES_PATH}allocator/winheap_stubs_win.cc
     )
   elseif(TARGET_LINUX)
-    # TODO: ONLY TCMALLOC on linux for now
-    list(APPEND BASE_SOURCES
-      ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_tcmalloc.cc
-      ${BASE_SOURCES_PATH}allocator/allocator_shim_override_glibc_weak_symbols.h
-    )
+    if(ALLOCATOR_TCMALLOC)
+      list(APPEND BASE_SOURCES
+        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_tcmalloc.cc
+        ${BASE_SOURCES_PATH}allocator/allocator_shim_override_glibc_weak_symbols.h
+      )
+    elseif(ALLOCATOR_NONE)
+      list(APPEND BASE_SOURCES
+        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_glibc.cc
+      )
+    else()
+      message(FATAL_ERROR "You must specify allocator")
+    endif()
   endif()
 endif(USE_ALLOC_SHIM)
 
