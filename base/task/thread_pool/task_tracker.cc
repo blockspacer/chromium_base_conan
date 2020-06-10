@@ -295,10 +295,12 @@ TaskTracker::TaskTracker(StringPiece histogram_label)
                              histogram_label,
                              "UserBlockingTaskPriority_MayBlock")}},
       tracked_ref_factory_(this) {
+
+  /// \todo runtime error: index 3 out of bounds for type 'base::HistogramBase *const [3][2]'
   // Confirm that all |task_latency_histograms_| have been initialized above.
-  DCHECK(*(&task_latency_histograms_[static_cast<int>(TaskPriority::HIGHEST) +
-                                     1][0] -
-           1));
+  //DCHECK(*(&task_latency_histograms_[static_cast<int>(TaskPriority::HIGHEST) +
+  //                                   1][0] -
+  //         1));
 }
 
 TaskTracker::~TaskTracker() = default;
