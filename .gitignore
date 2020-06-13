@@ -48,3 +48,4 @@ tmp/
 *~
 /base/allocator/buildflags.h
 *.txt.user
+/typescript

@@ -22,17 +22,91 @@ set(LOCAL_COBALT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${COBALT_DIR}/)
 
 # --------------------------- conan configuration ------------------------------
 
-# Conan package manager List of packages used by the project is container in
-# conanfile.py
+# Note: FetchContent is available since CMake 3.11
+# see https://cmake.org/cmake/help/git-master/module/FetchContent.html
+# By default, everything is downloaded into your build directory
+# Once CMake successfully downloads our external content, it sets two variables that can be used in CMakeLists.txt to locate the new data:
+# 1 <resource_name>_SOURCE_DIR
+#   specifies the location of the downloaded sources,
+# 2 <resource_name>_BINARY_DIR
+#   specifies where is the default build directory for the downloaded sources.
+include(FetchContent)
+
+set(FetchContent_cmake_utils "cmake_utils")
+FetchContent_Declare(
+  ${FetchContent_cmake_utils}
+  PREFIX external_dependencies/${FetchContent_cmake_utils}
+  GIT_REPOSITORY https://github.com/blockspacer/cmake_utils.git
+  GIT_TAG origin/master
+  # Disable warning about detached HEAD https://stackoverflow.com/a/36794768
+  GIT_CONFIG        advice.detachedHead=false
+  SOURCE_DIR        "${CMAKE_BINARY_DIR}/${FetchContent_cmake_utils}"
+  BINARY_DIR        "${CMAKE_BINARY_DIR}/${FetchContent_cmake_utils}-build"
+  CMAKE_ARGS        "-Wno-dev"
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND     ""
+  INSTALL_COMMAND   ""
+  TEST_COMMAND      ""
+)
+FetchContent_GetProperties(${FetchContent_cmake_utils})
+if (NOT ${FetchContent_cmake_utils}_POPULATED)
+  # Populate command can be used only once for every resource
+  # during cmake configuration, which explains the conditional above.
+  FetchContent_Populate(${FetchContent_cmake_utils})
+endif()
+message(STATUS "${FetchContent_cmake_utils}_SOURCE_DIR = ${${FetchContent_cmake_utils}_SOURCE_DIR}")
+message(STATUS "${FetchContent_cmake_utils}_BINARY_DIR = ${${FetchContent_cmake_utils}_BINARY_DIR}")
+include(${${FetchContent_cmake_utils}_SOURCE_DIR}/Utils.cmake)
+
+set(FetchContent_conan_auto_install "conan_auto_install")
+FetchContent_Declare(
+  ${FetchContent_conan_auto_install}
+  PREFIX external_dependencies/${FetchContent_conan_auto_install}
+  GIT_REPOSITORY https://github.com/blockspacer/conan_auto_install.git
+  GIT_TAG origin/master
+  # Disable warning about detached HEAD https://stackoverflow.com/a/36794768
+  GIT_CONFIG        advice.detachedHead=false
+  SOURCE_DIR        "${CMAKE_BINARY_DIR}/${FetchContent_conan_auto_install}"
+  BINARY_DIR        "${CMAKE_BINARY_DIR}/${FetchContent_conan_auto_install}-build"
+  CMAKE_ARGS        "-Wno-dev"
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND     ""
+  INSTALL_COMMAND   ""
+  TEST_COMMAND      ""
+)
+FetchContent_GetProperties(${FetchContent_conan_auto_install})
+if (NOT ${FetchContent_conan_auto_install}_POPULATED)
+  # Populate command can be used only once for every resource
+  # during cmake configuration, which explains the conditional above.
+  FetchContent_Populate(${FetchContent_conan_auto_install})
+  # The second argument passed to add_subdirectory() is optional
+  # and tells CMake, that we don’t want to build that directory in a
+  # place basing on our repository structure (${CMAKE_CURRENT_BINARY_DIR})
+  # but in a place specified by FetchContent.
+  # This nicely separates out compilation products from the external ones.
+  #add_subdirectory(
+  #  ${${FetchContent_conan_auto_install}_SOURCE_DIR}
+  #  ${${FetchContent_conan_auto_install}_BINARY_DIR})
+endif()
+message(STATUS "${FetchContent_conan_auto_install}_SOURCE_DIR = ${${FetchContent_conan_auto_install}_SOURCE_DIR}")
+message(STATUS "${FetchContent_conan_auto_install}_BINARY_DIR = ${${FetchContent_conan_auto_install}_BINARY_DIR}")
+include(${${FetchContent_conan_auto_install}_SOURCE_DIR}/conan-auto-install.cmake)
 option(CONAN_AUTO_INSTALL "Let CMake call conan install automatically"
   OFF
 )
 if (CONAN_AUTO_INSTALL)
   set(CONAN_PROFILE
-      "default"
+      "clang"
       CACHE STRING "Conan profile to use during installation")
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/conan-auto-install.cmake)
-  conan_auto_install(${CONAN_PROFILE})
+  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug" )
+    set(conan_build_type "Release")
+  else()
+    set(conan_build_type "Debug")
+  endif()
+  conan_auto_install(
+    CONAN_OPTIONS "--profile=${CONAN_PROFILE} -s build_type=${conan_build_type} -s llvm_tools:build_type=Release --build=missing -o openssl:shared=True"
+    #FORCE
+  )
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake")
@@ -44,7 +118,8 @@ if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake")
     TARGETS
     KEEP_RPATHS
     # see https://github.com/conan-io/conan/issues/6012
-    NO_OUTPUT_DIRS)
+    NO_OUTPUT_DIRS
+    )
 else()
   message (FATAL_ERROR "must use conan")
 endif()
@@ -75,7 +150,19 @@ else()
   message(FATAL_ERROR "not supported: using system provided chromium_build_util library")
 endif()
 
+check_cmake_build_type_selected() # from Utils.cmake
+
+enable_colored_diagnostics() # from Utils.cmake
+
+print_cmake_system_info() # from Utils.cmake
+
+check_supported_os() # from Utils.cmake
+
 find_package(cmake_helper_utils REQUIRED)
+
+force_latin_paths() # from cmake_helper_utils (conan package)
+
+validate_out_dirs() # from cmake_helper_utils (conan package)
 
 if(ENABLE_MSAN OR ENABLE_TSAN OR ENABLE_ASAN OR ENABLE_UBSAN)
   find_package(cmake_sanitizers REQUIRED)
@@ -667,4 +754,4 @@ if(ENABLE_UBSAN)
 endif(ENABLE_UBSAN)
 
 # install and export steps
-include(cmake/Exports)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Exports.cmake)
