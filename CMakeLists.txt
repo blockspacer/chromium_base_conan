@@ -48,7 +48,7 @@ if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake")
     KEEP_RPATHS
     # see https://github.com/conan-io/conan/issues/6012
     NO_OUTPUT_DIRS
-    )
+  )
 else()
   message (FATAL_ERROR "must use conan")
 endif()

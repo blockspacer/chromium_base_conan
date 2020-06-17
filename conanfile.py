@@ -108,8 +108,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
     def configure(self):
         lower_build_type = str(self.settings.build_type).lower()
-        if lower_build_type != "debug" and self._is_llvm_tools_enabled():
-            raise ConanInvalidConfiguration("llvm_tools is compatible only with Debug builds")
+
         if lower_build_type != "release" and not self._is_llvm_tools_enabled():
             self.output.warn('enable llvm_tools for Debug builds')
 
