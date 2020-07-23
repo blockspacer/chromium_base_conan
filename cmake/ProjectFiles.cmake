@@ -849,8 +849,6 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}task/lazy_task_runner.h
   ${BASE_SOURCES_PATH}task/post_task.cc
   ${BASE_SOURCES_PATH}task/post_task.h
-  ${BASE_SOURCES_PATH}task/promise/dependent_list.cc
-  ${BASE_SOURCES_PATH}task/promise/dependent_list.h
   ${BASE_SOURCES_PATH}task/scoped_set_task_priority_for_current_thread.cc
   ${BASE_SOURCES_PATH}task/scoped_set_task_priority_for_current_thread.h
   ${BASE_SOURCES_PATH}task/sequence_manager/associated_thread_id.cc
