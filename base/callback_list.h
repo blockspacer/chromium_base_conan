@@ -213,7 +213,8 @@ class CallbackList<void(Args...)>
     auto it = this->GetIterator();
     CallbackType* cb;
     while ((cb = it.GetNext()) != nullptr) {
-      cb->Run(args...);
+      /// \note patched with std::forward
+      cb->Run(std::forward<RunArgs>(args)...);
     }
   }
 
