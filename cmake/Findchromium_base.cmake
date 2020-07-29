@@ -21,7 +21,7 @@ find_package(Threads QUIET)
 find_package(chromium_libxml QUIET)
 
 # see use_test_support option in base
-# find_package(gtest QUIET) # TODO: CONAN_PKG::gtest
+# find_package(conan_gtest QUIET) # TODO: CONAN_PKG::conan_gtest
 
 list(REMOVE_AT CMAKE_MODULE_PATH -1)
 

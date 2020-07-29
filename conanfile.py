@@ -95,6 +95,10 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
     settings = "os", "compiler", "build_type", "arch"
 
+    # sets cmake variables required to use clang 10 from conan
+    def _is_compile_with_llvm_tools_enabled(self):
+      return self._environ_option("COMPILE_WITH_LLVM_TOOLS", default = 'false')
+
     # installs clang 10 from conan
     def _is_llvm_tools_enabled(self):
       return self._environ_option("ENABLE_LLVM_TOOLS", default = 'false')
@@ -112,12 +116,71 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         if lower_build_type != "release" and not self._is_llvm_tools_enabled():
             self.output.warn('enable llvm_tools for Debug builds')
 
+        if self._is_compile_with_llvm_tools_enabled() and not self._is_llvm_tools_enabled():
+            raise ConanInvalidConfiguration("llvm_tools must be enabled")
+
         if self.options.enable_ubsan \
            or self.options.enable_asan \
            or self.options.enable_msan \
            or self.options.enable_tsan:
             if not self._is_llvm_tools_enabled():
                 raise ConanInvalidConfiguration("sanitizers require llvm_tools")
+
+        if self.options.enable_ubsan:
+            if self.options.enable_tests:
+              self.options["conan_gtest"].enable_ubsan = True
+            if self._is_tests_enabled() or self.options.use_test_support:
+              self.options["chromium_libxml"].enable_ubsan = True
+            if self.settings.os == "Linux":
+              self.options["chromium_libevent"].enable_ubsan = True
+              self.options["chromium_xdg_user_dirs"].enable_ubsan = True
+              self.options["chromium_xdg_mime"].enable_ubsan = True
+            self.options["chromium_icu"].enable_ubsan = True
+            self.options["chromium_dynamic_annotations"].enable_ubsan = True
+            self.options["chromium_modp_b64"].enable_ubsan = True
+            self.options["chromium_compact_enc_det"].enable_ubsan = True
+
+        if self.options.enable_asan:
+            if self.options.enable_tests:
+              self.options["conan_gtest"].enable_asan = True
+            if self._is_tests_enabled() or self.options.use_test_support:
+              self.options["chromium_libxml"].enable_asan = True
+            if self.settings.os == "Linux":
+              self.options["chromium_libevent"].enable_asan = True
+              self.options["chromium_xdg_user_dirs"].enable_asan = True
+              self.options["chromium_xdg_mime"].enable_asan = True
+            self.options["chromium_icu"].enable_asan = True
+            self.options["chromium_dynamic_annotations"].enable_asan = True
+            self.options["chromium_modp_b64"].enable_asan = True
+            self.options["chromium_compact_enc_det"].enable_asan = True
+
+        if self.options.enable_msan:
+            if self.options.enable_tests:
+              self.options["conan_gtest"].enable_msan = True
+            if self._is_tests_enabled() or self.options.use_test_support:
+              self.options["chromium_libxml"].enable_msan = True
+            if self.settings.os == "Linux":
+              self.options["chromium_libevent"].enable_msan = True
+              self.options["chromium_xdg_user_dirs"].enable_msan = True
+              self.options["chromium_xdg_mime"].enable_msan = True
+            self.options["chromium_icu"].enable_msan = True
+            self.options["chromium_dynamic_annotations"].enable_msan = True
+            self.options["chromium_modp_b64"].enable_msan = True
+            self.options["chromium_compact_enc_det"].enable_msan = True
+
+        if self.options.enable_tsan:
+            if self.options.enable_tests:
+              self.options["conan_gtest"].enable_tsan = True
+            if self._is_tests_enabled() or self.options.use_test_support:
+              self.options["chromium_libxml"].enable_tsan = True
+            if self.settings.os == "Linux":
+              self.options["chromium_libevent"].enable_tsan = True
+              self.options["chromium_xdg_user_dirs"].enable_tsan = True
+              self.options["chromium_xdg_mime"].enable_tsan = True
+            self.options["chromium_icu"].enable_tsan = True
+            self.options["chromium_dynamic_annotations"].enable_tsan = True
+            self.options["chromium_modp_b64"].enable_tsan = True
+            self.options["chromium_compact_enc_det"].enable_tsan = True
 
     def build_requirements(self):
         self.build_requires("cmake_platform_detection/master@conan/stable")
@@ -147,7 +210,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         if self._is_tests_enabled() or self.options.use_test_support:
             self.requires("chromium_libxml/master@conan/stable")
-            self.requires("gtest/[>=1.8.0]@bincrafters/stable")
+            self.requires("conan_gtest/release-1.10.0@conan/stable")
 
         if self.settings.os == "Linux":
             self.requires("chromium_libevent/master@conan/stable")
@@ -212,6 +275,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.add_cmake_option(cmake, "USE_TEST_SUPPORT", self.options.use_test_support)
 
         self.add_cmake_option(cmake, "USE_DEB_ALLOC", self.options.use_deb_alloc)
+
+        self.add_cmake_option(cmake, "COMPILE_WITH_LLVM_TOOLS", self._is_compile_with_llvm_tools_enabled())
 
         cmake.configure(build_folder=self._build_subfolder)
 

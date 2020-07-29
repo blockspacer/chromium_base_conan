@@ -32,6 +32,7 @@ CONAN_REVISIONS_ENABLED=1 \
         -s llvm_tools:build_type=Release \
         --profile clang \
         --build missing \
+        --build cascade \
         -e chromium_base:enable_tests=True \
         -o openssl:shared=True
 ```
@@ -52,8 +53,10 @@ CONAN_REVISIONS_ENABLED=1 \
         -s build_type=Debug \
         -s llvm_tools:build_type=Release \
         --profile clang \
-        --build missing \
+        --build chromium_tcmalloc \
         -s llvm_tools:build_type=Release \
+        -o llvm_tools:enable_tsan=True \
+        -o llvm_tools:include_what_you_use=False \
         -e chromium_base:enable_tests=True \
         -o chromium_base:enable_tsan=True \
         -e chromium_base:enable_llvm_tools=True \

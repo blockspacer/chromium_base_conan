@@ -29,6 +29,9 @@ set(BUILDFLAGS_GENERATORS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/codegen/)
 option(ENABLE_VALGRIND
   "Enable valgrind" OFF)
 
+option(COMPILE_WITH_LLVM_TOOLS
+  "Enable clang from llvm_tools (conan package)" OFF)
+
 # see https://github.com/Ericsson/codechecker/blob/master/tools/report-converter/README.md#undefined-behaviour-sanitizer
 # NOTE: Compile with -g and -fno-omit-frame-pointer
 # to get proper debug information in your binary.
