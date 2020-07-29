@@ -87,7 +87,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
     # there is no need to define a `source` method. The source folder can be
     # defined like this
     exports_sources = ("LICENSE", "VERSION", "*.md", "include/*", "src/*",
-                       "cmake/*", "CMakeLists.txt", "tests/*", "benchmarks/*",
+                       "cmake/*", "examples/*", "CMakeLists.txt", "tests/*", "benchmarks/*",
                        "scripts/*", "tools/*", "codegen/*", "assets/*",
                        "docs/*", "licenses/*", "patches/*", "resources/*",
                        "submodules/*", "thirdparty/*", "third-party/*",
@@ -127,7 +127,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
                 raise ConanInvalidConfiguration("sanitizers require llvm_tools")
 
         if self.options.enable_ubsan:
-            if self.options.enable_tests:
+            if self._is_tests_enabled():
               self.options["conan_gtest"].enable_ubsan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_ubsan = True
@@ -141,7 +141,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             self.options["chromium_compact_enc_det"].enable_ubsan = True
 
         if self.options.enable_asan:
-            if self.options.enable_tests:
+            if self._is_tests_enabled():
               self.options["conan_gtest"].enable_asan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_asan = True
@@ -155,7 +155,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             self.options["chromium_compact_enc_det"].enable_asan = True
 
         if self.options.enable_msan:
-            if self.options.enable_tests:
+            if self._is_tests_enabled():
               self.options["conan_gtest"].enable_msan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_msan = True
@@ -169,7 +169,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             self.options["chromium_compact_enc_det"].enable_msan = True
 
         if self.options.enable_tsan:
-            if self.options.enable_tests:
+            if self._is_tests_enabled():
               self.options["conan_gtest"].enable_tsan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_tsan = True
