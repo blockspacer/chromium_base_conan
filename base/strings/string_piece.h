@@ -531,10 +531,15 @@ BASE_EXPORT std::ostream& operator<<(std::ostream& o,
 
 template <typename StringPieceType>
 struct StringPieceHashImpl {
+  UBSAN_IGNORE_UNSIGNED_OVERFLOW
+  UBSAN_IGNORE_UNDEF
+  NO_SANITIZE_ADDRESS
   std::size_t operator()(StringPieceType sp) const {
     std::size_t result = 0;
-    for (auto c : sp)
-      result = (result * 131) + c;
+    for (auto c : sp) {
+      result
+        = (result * 131) + c;
+    }
     return result;
   }
 };

@@ -25,8 +25,27 @@ find_package(chromium_libxml QUIET)
 
 list(REMOVE_AT CMAKE_MODULE_PATH -1)
 
-# uses Config.cmake or a -config.cmake file
-# see https://gitlab.kitware.com/cmake/community/wikis/doc/tutorials/How-to-create-a-ProjectConfig.cmake-file
-# BELOW MUST BE EQUAL TO find_package(... CONFIG QUIET)
-# NOTE: find_package(CONFIG) not supported with EMSCRIPTEN, so use include()
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/chromium_base-config.cmake)
+if(NOT TARGET CONAN_PKG::chromium_base)
+  message(FATAL_ERROR "Use chromium_base from conan")
+endif()
+set(chromium_base_LIB chromium_base::chromium_base-static)
+# conan package has '/include' dir
+set(chromium_base_HEADER_DIR
+  ${CONAN_CHROMIUM_BASE_ROOT}/include
+)
+if(chromium_base_LOCAL_BUILD)
+  # name of created target
+  set(chromium_base_LIB chromium_base-static)
+  # no '/include' dir on local build
+  set(chromium_base_HEADER_DIR
+    ${CONAN_CHROMIUM_BASE_ROOT}
+  )
+else()
+  # uses Config.cmake or a -config.cmake file
+  # see https://gitlab.kitware.com/cmake/community/wikis/doc/tutorials/How-to-create-a-ProjectConfig.cmake-file
+  # BELOW MUST BE EQUAL TO find_package(... CONFIG REQUIRED)
+  # NOTE: find_package(CONFIG) not supported with EMSCRIPTEN, so use include()
+  include(${CMAKE_CURRENT_LIST_DIR}/cmake/chromium_base-config.cmake)
+endif(chromium_base_LOCAL_BUILD)
+set(base_LIB ${chromium_base_LIB})
+message(STATUS "chromium_base_HEADER_DIR=${chromium_base_HEADER_DIR}")

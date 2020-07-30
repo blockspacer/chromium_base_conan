@@ -314,6 +314,9 @@ FilePath FilePath::DirName() const {
   // support drive letters, letter will be npos, or -1, so the comparisons and
   // resizes below using letter will still be valid.
   StringType::size_type letter = FindDriveLetter(new_path.path_);
+  if (letter == StringType::npos) {
+    letter = (StringType::size_type) -1;
+  }
 
   StringType::size_type last_separator =
       new_path.path_.find_last_of(kSeparators, StringType::npos,
@@ -517,7 +520,11 @@ FilePath FilePath::Append(StringPieceType component) const {
     // separator after stripping (indicating the root directory).
     if (!IsSeparator(new_path.path_.back())) {
       // Don't append a separator if the path is just a drive letter.
-      if (FindDriveLetter(new_path.path_) + 1 != new_path.path_.length()) {
+      StringType::size_type letter = FindDriveLetter(new_path.path_);
+      if (letter == StringType::npos) {
+        letter = (StringType::size_type) -1;
+      }
+      if (letter + 1 != new_path.path_.length()) {
         new_path.path_.append(1, kSeparators[0]);
       }
     }
@@ -1309,7 +1316,12 @@ void FilePath::StripTrailingSeparatorsInternal() {
   // letter, start will be set appropriately to prevent stripping the first
   // separator following the drive letter, if a separator immediately follows
   // the drive letter.
-  StringType::size_type start = FindDriveLetter(path_) + 2;
+  StringType::size_type driveLetter
+    = FindDriveLetter(path_);
+  StringType::size_type start =
+     driveLetter == StringType::npos
+     ? 1
+     : driveLetter + 2;
 
   StringType::size_type last_stripped = StringType::npos;
   for (StringType::size_type pos = path_.length();
