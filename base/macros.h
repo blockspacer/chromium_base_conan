@@ -7,8 +7,7 @@
 // that are closely related to things that are commonly used that belong in this
 // file.)
 
-#ifndef BASE_MACROS_H_
-#define BASE_MACROS_H_
+#pragma once
 
 // Put this in the declarations for a class to be uncopyable.
 #define DISALLOW_COPY(TypeName) \
@@ -37,6 +36,43 @@
   static void* operator new(size_t) = delete;   \
   static void* operator new[](size_t) = delete
 
+#define DEFAULT_CONSTRUCTOR(ClassName) \
+  ClassName() = default;
+
+#define DEFAULT_COPY(ClassName)                                 \
+  ClassName(const ClassName &rhs) = default;                    \
+  ClassName &operator=(const ClassName &rhs) = default;         \
+  /* Fails during compile-time if default-copy can not work. */ \
+  static void COPYABLE_DEMAND_COPY_CAN_COMPILE() {              \
+    (void) static_cast<ClassName& (ClassName::*)(               \
+        const ClassName&)>(&ClassName::operator=);              \
+  }
+
+#define DEFAULT_MOVE(ClassName)                             \
+  ClassName(ClassName &&rhs) = default;            \
+  ClassName &operator=(ClassName &&rhs) = default;
+
+#define DEFAULT_COPY_AND_MOVE(ClassName)                \
+  DEFAULT_COPY(ClassName)                               \
+  DEFAULT_MOVE(ClassName)
+
+// whether or not use c++11 support
+#ifndef SUPPORTS_CXX11
+#define SUPPORTS_CXX11 (defined(__GXX_EXPERIMENTAL_CXX0X__) ||\
+                        __cplusplus >= 201103L || defined(_MSC_VER))
+#endif // SUPPORTS_CXX11
+
+// check if g++ is before 4.6
+#if SUPPORTS_CXX11 && defined(__GNUC__) && !defined(__clang_version__)
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 6
+#pragma message("Will need g++-4.6 or higher to compile all"           \
+                "the features in dmlc-core, "                           \
+                "compile without c++0x, some features may be disabled")
+#undef SUPPORTS_CXX11
+#define SUPPORTS_CXX11 0
+#endif
+#endif
+
 // Used to explicitly mark the return value of a function as unused. If you are
 // really sure you don't want to do anything with the return value of a function
 // that has been marked WARN_UNUSED_RESULT, wrap it with this. Example:
@@ -48,6 +84,22 @@
 template<typename T>
 inline void ignore_result(const T&) {
 }
+
+// HAVE_FEATURE
+//
+// A function-like feature checking macro that is a wrapper around
+// `__has_feature`, which is defined by GCC 5+ and Clang and evaluates to a
+// nonzero constant integer if the feature is supported or 0 if not.
+//
+// It evaluates to zero if `__has_feature` is not defined by the compiler.
+//
+// GCC: https://gcc.gnu.org/gcc-5/changes.html
+// Clang: https://clang.llvm.org/docs/LanguageExtensions.html
+#ifdef __has_feature
+#define HAVE_FEATURE(x) __has_feature(x)
+#else
+#define HAVE_FEATURE(x) 0
+#endif // __has_feature
 
 // HAVE_ATTRIBUTE
 //
@@ -79,7 +131,10 @@ inline void ignore_result(const T&) {
 #define HAVE_CPP_ATTRIBUTE(x) 0
 #endif // defined(__cplusplus) && defined(__has_cpp_attribute)
 
-#if defined(UNDEFINED_BEHAVIOR_SANITIZER)
+#if defined(UNDEFINED_BEHAVIOR_SANITIZER) \
+  || HAVE_FEATURE(undefined_sanitizer) \
+  || HAVE_FEATURE(undefined_behavior_sanitizer) \
+  || defined(__SANITIZE_UNDEFINED_BEHAVIOR__)
 
 // This macro prevents the undefined behavior sanitizer from reporting
 // failures. This is only meant to silence unaligned loads on platforms that
@@ -130,7 +185,9 @@ inline void ignore_result(const T&) {
 
 #endif // UNDEFINED_BEHAVIOR_SANITIZER
 
-#if defined(THREAD_SANITIZER)
+#if defined(THREAD_SANITIZER) \
+  || HAVE_FEATURE(thread_sanitizer) \
+  || defined(__SANITIZE_THREAD__)
 
 #define NO_SANITIZE_THREAD \
   __attribute__((no_sanitize_thread))
@@ -141,7 +198,9 @@ inline void ignore_result(const T&) {
 
 #endif // THREAD_SANITIZER
 
-#if defined(MEMORY_SANITIZER)
+#if defined(MEMORY_SANITIZER) \
+  || HAVE_FEATURE(memory_sanitizer) \
+  || defined(__SANITIZE_MEMORY__)
 
 #define NO_SANITIZE_MEMORY \
   __attribute__((no_sanitize_memory))
@@ -152,7 +211,9 @@ inline void ignore_result(const T&) {
 
 #endif // MEMORY_SANITIZER
 
-#if defined(ADDRESS_SANITIZER)
+#if defined(ADDRESS_SANITIZER) \
+  || HAVE_FEATURE(address_sanitizer) \
+  || defined(__SANITIZE_ADDRESS__)
 
 #define NO_SANITIZE_ADDRESS \
   __attribute__((no_sanitize_address))
@@ -193,12 +254,28 @@ inline void ignore_result(const T&) {
 // ATTRIBUTE_UNUSED
 //
 // Prevents the compiler from complaining about variables that appear unused.
-#if HAVE_ATTRIBUTE(unused) || (defined(__GNUC__) && !defined(__clang__))
+//
+// Example:
+//
+// ATTRIBUTE_UNUSED void f(ATTRIBUTE_UNUSED bool thing1,
+//                         ATTRIBUTE_UNUSED bool thing2)
+// {
+//    ATTRIBUTE_UNUSED bool b = thing1 && thing2;
+//    assert(b); // in release mode, assert is compiled out, and b is unused
+//               // no warning because it is declared ATTRIBUTE_UNUSED
+// } // parameters thing1 and thing2 are not used, no warning
+#if __cplusplus >= 201703L
+#define ATTRIBUTE_UNUSED [[maybe_unused]]
+#elif HAVE_ATTRIBUTE(unused) || (defined(__GNUC__) && !defined(__clang__))
 #undef ATTRIBUTE_UNUSED
 #define ATTRIBUTE_UNUSED __attribute__((__unused__))
 #else
 #define ATTRIBUTE_UNUSED
 #endif
+
+#ifndef MAYBE_UNUSED
+#define MAYBE_UNUSED ATTRIBUTE_UNUSED
+#endif // MAYBE_UNUSED
 
 // ATTRIBUTE_INITIAL_EXEC
 //
@@ -258,8 +335,33 @@ inline void ignore_result(const T&) {
 /// [[nodisard]] static bool foo();
 /// [[nodisard]] static inline bool foo();
 /// [[nodisard]] virtual bool foo();
+#ifndef MUST_USE_RETURN_VALUE
 #define MUST_USE_RETURN_VALUE \
   [[nodiscard]] /* do not ignore return value */
+#endif // MUST_USE_RETURN_VALUE
+
+#ifndef WARN_UNUSED_RESULT
+#define WARN_UNUSED_RESULT MUST_USE_RETURN_VALUE
+#endif // WARN_UNUSED_RESULT
+
+#ifndef MUST_USE_RESULT
+#define MUST_USE_RESULT MUST_USE_RETURN_VALUE
+#endif // MUST_USE_RESULT
+
+/// \note Prefer |MUST_USE_RETURN_VALUE|
+/// \note Similar to [[nodiscard]] attribute,
+/// being implemented by Clang and GCC as __attribute__((warn_unused_result))
+///
+// Annotate a function indicating the caller must examine the return value.
+// Use like:
+//   ATTRIBUTE_DISCARDED_RESULT int foo();
+// To explicitly ignore a result, see |ignore_result()| in base/macros.h.
+#undef ATTRIBUTE_DISCARDED_RESULT
+#if defined(COMPILER_GCC) || defined(__clang__)
+#define ATTRIBUTE_DISCARDED_RESULT __attribute__((warn_unused_result))
+#else
+#define ATTRIBUTE_DISCARDED_RESULT
+#endif
 
 /// \usage
 /// NEW_NO_THROW(FROM_HERE,
@@ -590,10 +692,349 @@ inline void ignore_result(const T&) {
 //   #endif // BAD_CALL_IF
 
 #if defined(__clang__)
-# if __has_attribute(enable_if)
+# if HAVE_ATTRIBUTE(enable_if)
 #  define BAD_CALL_IF(expr, msg) \
     __attribute__((enable_if(expr, "Bad call trap"), unavailable(msg)))
 # endif
 #endif
 
-#endif  // BASE_MACROS_H_
+#if HAVE_ATTRIBUTE(uninitialized)
+// Attribute "uninitialized" disables -ftrivial-auto-var-init=pattern for
+// the specified variable.
+//
+// -ftrivial-auto-var-init is security risk mitigation feature, so attribute
+// should not be used "just in case", but only to fix real performance
+// bottlenecks when other approaches do not work. In general the compiler is
+// quite effective at eliminating unneeded initializations introduced by the
+// flag, e.g. when they are followed by actual initialization by a program.
+// However if compiler optimization fails and code refactoring is hard, the
+// attribute can be used as a workaround.
+#define ATTRIBUTE_UNINITIALIZED __attribute__((uninitialized))
+#else
+#define ATTRIBUTE_UNINITIALIZED
+#endif  // HAVE_ATTRIBUTE(uninitialized)
+
+#ifndef NO_EXCEPTION
+#define NO_EXCEPTION noexcept
+#endif // NO_EXCEPTION
+
+// ATTRIBUTE_COLD
+//
+// The cold attribute is used to inform the compiler
+// that a function is unlikely executed.
+// The function is optimized for size
+// rather than speed and on many targets
+// it is placed into special subsection of the text section
+// so all cold functions appears close together
+// improving code locality of non-cold parts of program.
+// The paths leading to call of cold functions within code
+// are marked as unlikely by the branch prediction mechanism.
+// It is thus useful to mark functions used to handle unlikely conditions,
+// such as perror, as cold to improve optimization of hot functions
+// that do call marked functions in rare occasions.
+// When profile feedback is available, via -fprofile-use,
+// hot functions are automatically detected and this attribute is ignored.
+// GCC >= 4.3.
+// https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Function-Attributes.html
+// https://clang.llvm.org/docs/AttributeReference.html
+#ifndef ATTRIBUTE_COLD
+#define ATTRIBUTE_COLD() __attribute__((cold))
+#endif // ATTRIBUTE_COLD
+
+// ATTRIBUTE_HOT
+//
+// Tells GCC that a function is hot or cold. GCC can use this information to
+// improve static analysis, i.e. a conditional branch to a cold function
+// is likely to be not-taken.
+// This annotation is used for function declarations.
+//
+// Example:
+//
+//   int foo() ATTRIBUTE_HOT;
+#ifndef ATTRIBUTE_HOT
+#define ATTRIBUTE_HOT() __attribute__((hot))
+#endif // ATTRIBUTE_HOT
+
+// ATTRIBUTE_REINITIALIZES
+//
+// Indicates that a member function reinitializes the entire object to a known
+// state, independent of the previous state of the object.
+//
+// The clang-tidy check bugprone-use-after-move allows member functions marked
+// with this attribute to be called on objects that have been moved from;
+// without the attribute, this would result in a use-after-move warning.
+#if HAVE_CPP_ATTRIBUTE(clang::reinitializes)
+#define ATTRIBUTE_REINITIALIZES [[clang::reinitializes]]
+#else
+#define ATTRIBUTE_REINITIALIZES
+#endif
+
+// ATTRIBUTE_NO_SANITIZE_CFI
+//
+// Tells the ControlFlowIntegrity sanitizer to not instrument a given function.
+// See https://clang.llvm.org/docs/ControlFlowIntegrity.html for details.
+#if defined(__GNUC__) && defined(CONTROL_FLOW_INTEGRITY)
+#define ATTRIBUTE_NO_SANITIZE_CFI __attribute__((no_sanitize("cfi")))
+#else
+#define ATTRIBUTE_NO_SANITIZE_CFI
+#endif
+
+// ATTRIBUTE_NO_SANITIZE_SAFESTACK
+//
+// Tells the SafeStack to not instrument a given function.
+// See https://clang.llvm.org/docs/SafeStack.html for details.
+#if defined(__GNUC__) && defined(SAFESTACK_SANITIZER)
+#define ATTRIBUTE_NO_SANITIZE_SAFESTACK \
+  __attribute__((no_sanitize("safe-stack")))
+#else
+#define ATTRIBUTE_NO_SANITIZE_SAFESTACK
+#endif
+
+// ATTRIBUTE_RETURNS_NONNULL
+//
+// Tells the compiler that a particular function never returns a null pointer.
+#if HAVE_ATTRIBUTE(returns_nonnull) || \
+    (defined(__GNUC__) && \
+     (__GNUC__ > 5 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 9)) && \
+     !defined(__clang__))
+#define ATTRIBUTE_RETURNS_NONNULL __attribute__((returns_nonnull))
+#else
+#define ATTRIBUTE_RETURNS_NONNULL
+#endif
+
+// ATTRIBUTE_NO_TAIL_CALL
+//
+// Prevents the compiler from optimizing away stack frames for functions which
+// end in a call to another function.
+#if HAVE_ATTRIBUTE(disable_tail_calls)
+#define HAVE_ATTRIBUTE_NO_TAIL_CALL 1
+#define ATTRIBUTE_NO_TAIL_CALL __attribute__((disable_tail_calls))
+#elif defined(__GNUC__) && !defined(__clang__)
+#define HAVE_ATTRIBUTE_NO_TAIL_CALL 1
+#define ATTRIBUTE_NO_TAIL_CALL \
+  __attribute__((optimize("no-optimize-sibling-calls")))
+#else
+#define ATTRIBUTE_NO_TAIL_CALL
+#define HAVE_ATTRIBUTE_NO_TAIL_CALL 0
+#endif
+
+// ATTRIBUTE_WEAK
+//
+// Tags a function as weak for the purposes of compilation and linking.
+// Weak attributes currently do not work properly in LLVM's Windows backend,
+// so disable them there. See https://bugs.llvm.org/show_bug.cgi?id=37598
+// for further information.
+// The MinGW compiler doesn't complain about the weak attribute until the link
+// step, presumably because Windows doesn't use ELF binaries.
+#if (HAVE_ATTRIBUTE(weak) ||                   \
+     (defined(__GNUC__) && !defined(__clang__))) && \
+    !(defined(__llvm__) && defined(_WIN32)) && !defined(__MINGW32__)
+#undef ATTRIBUTE_WEAK
+#define ATTRIBUTE_WEAK __attribute__((weak))
+#define HAVE_ATTRIBUTE_WEAK 1
+#else
+#define ATTRIBUTE_WEAK
+#define HAVE_ATTRIBUTE_WEAK 0
+#endif
+
+// ATTRIBUTE_NONNULL
+//
+// Tells the compiler either (a) that a particular function parameter
+// should be a non-null pointer, or (b) that all pointer arguments should
+// be non-null.
+//
+// Note: As the GCC manual states, "[s]ince non-static C++ methods
+// have an implicit 'this' argument, the arguments of such methods
+// should be counted from two, not one."
+//
+// Args are indexed starting at 1.
+//
+// For non-static class member functions, the implicit `this` argument
+// is arg 1, and the first explicit argument is arg 2. For static class member
+// functions, there is no implicit `this`, and the first explicit argument is
+// arg 1.
+//
+// Example:
+//
+//   /* arg_a cannot be null, but arg_b can */
+//   void Function(void* arg_a, void* arg_b) ATTRIBUTE_NONNULL(1);
+//
+//   class C {
+//     /* arg_a cannot be null, but arg_b can */
+//     void Method(void* arg_a, void* arg_b) ATTRIBUTE_NONNULL(2);
+//
+//     /* arg_a cannot be null, but arg_b can */
+//     static void StaticMethod(void* arg_a, void* arg_b)
+//     ATTRIBUTE_NONNULL(1);
+//   };
+//
+// If no arguments are provided, then all pointer arguments should be non-null.
+//
+//  /* No pointer arguments may be null. */
+//  void Function(void* arg_a, void* arg_b, int arg_c) ATTRIBUTE_NONNULL();
+//
+// NOTE: The GCC nonnull attribute actually accepts a list of arguments, but
+// ATTRIBUTE_NONNULL does not.
+#if HAVE_ATTRIBUTE(nonnull) || (defined(__GNUC__) && !defined(__clang__))
+#define ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
+#else
+#define ATTRIBUTE_NONNULL(...)
+#endif
+
+// PRINTF_ATTRIBUTE
+// SCANF_ATTRIBUTE
+//
+// Tells the compiler to perform `printf` format string checking if the
+// compiler supports it; see the 'format' attribute in
+// <https://gcc.gnu.org/onlinedocs/gcc-4.7.0/gcc/Function-Attributes.html>.
+//
+// Note: As the GCC manual states, "[s]ince non-static C++ methods
+// have an implicit 'this' argument, the arguments of such methods
+// should be counted from two, not one."
+#if HAVE_ATTRIBUTE(format) || (defined(__GNUC__) && !defined(__clang__))
+#define PRINTF_ATTRIBUTE(string_index, first_to_check) \
+  __attribute__((__format__(__printf__, string_index, first_to_check)))
+#define SCANF_ATTRIBUTE(string_index, first_to_check) \
+  __attribute__((__format__(__scanf__, string_index, first_to_check)))
+#else
+#define PRINTF_ATTRIBUTE(string_index, first_to_check)
+#define SCANF_ATTRIBUTE(string_index, first_to_check)
+#endif
+
+// ATTRIBUTE_ALWAYS_INLINE
+// ATTRIBUTE_NOINLINE
+//
+// Forces functions to either inline or not inline. Introduced in gcc 3.1.
+#if HAVE_ATTRIBUTE(always_inline) || \
+    (defined(__GNUC__) && !defined(__clang__))
+#define ATTRIBUTE_ALWAYS_INLINE __attribute__((always_inline))
+#define HAVE_ATTRIBUTE_ALWAYS_INLINE 1
+#else
+#define ATTRIBUTE_ALWAYS_INLINE
+#endif
+
+#if HAVE_ATTRIBUTE(noinline) || (defined(__GNUC__) && !defined(__clang__))
+#define ATTRIBUTE_NOINLINE __attribute__((noinline))
+#define HAVE_ATTRIBUTE_NOINLINE 1
+#else
+#define ATTRIBUTE_NOINLINE
+#endif
+
+// ATTRIBUTE_DEPRECATED()
+//
+// Marks a deprecated class, struct, enum, function, method and variable
+// declarations. The macro argument is used as a custom diagnostic message (e.g.
+// suggestion of a better alternative).
+//
+// Examples:
+//
+//   class ATTRIBUTE_DEPRECATED("Use Bar instead") Foo {...};
+//
+//   ATTRIBUTE_DEPRECATED("Use Baz() instead") void Bar() {...}
+//
+//   template <typename T>
+//   ATTRIBUTE_DEPRECATED("Use DoThat() instead")
+//   void DoThis();
+//
+// Every usage of a deprecated entity will trigger a warning when compiled with
+// clang's `-Wdeprecated-declarations` option. This option is turned off by
+// default, but the warnings will be reported by clang-tidy.
+#if defined(__clang__) && __cplusplus >= 201103L
+#define ATTRIBUTE_DEPRECATED(message) __attribute__((deprecated(message)))
+#else
+#define ATTRIBUTE_DEPRECATED(message)
+#endif
+
+// FALL_THROUGH_BREAK
+//
+// Annotates implicit fall-through between switch labels, allowing a case to
+// indicate intentional fallthrough and turn off warnings about any lack of a
+// `break` statement. The FALL_THROUGH_BREAK macro should be followed by
+// a semicolon and can be used in most places where `break` can, provided that
+// no statements exist between it and the next switch label.
+//
+// Example:
+//
+//  switch (x) {
+//    case 40:
+//    case 41:
+//      if (truth_is_out_there) {
+//        ++x;
+//        FALL_THROUGH_BREAK;  // Use instead of/along with annotations
+//                                    // in comments
+//      } else {
+//        return x;
+//      }
+//    case 42:
+//      ...
+//
+// Notes: when compiled with clang in C++11 mode, the FALL_THROUGH_BREAK
+// macro is expanded to the [[clang::fallthrough]] attribute, which is analysed
+// when  performing switch labels fall-through diagnostic
+// (`-Wimplicit-fallthrough`). See clang documentation on language extensions
+// for details:
+// https://clang.llvm.org/docs/AttributeReference.html#fallthrough-clang-fallthrough
+//
+// When used with unsupported compilers, the FALL_THROUGH_BREAK macro
+// has no effect on diagnostics. In any case this macro has no effect on runtime
+// behavior and performance of code.
+#if /* C++17 and above */ \
+    __cplusplus >= 201703L \
+    /* C++14 clang-5 */ \
+    || (__cplusplus >= 201402L && __clang_major__ >= 5)
+#define FALL_THROUGH_BREAK [[fallthrough]]
+#elif defined(__clang__) && defined(__has_warning)
+#if __has_feature(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
+#define FALL_THROUGH_BREAK [[clang::fallthrough]]
+#endif
+#elif (defined(__GNUC__) && __GNUC__ >= 7) \
+    /* C++11 gcc 7 */ \
+    || (__cplusplus >= 201103L && __GNUC__ >= 7)
+#define FALL_THROUGH_BREAK [[gnu::fallthrough]]
+#endif
+
+#ifndef FALL_THROUGH_BREAK
+#define FALL_THROUGH_BREAK \
+  do {                        \
+  } while (0)
+#endif
+
+// Friendly name for a pure virtual routine.
+#ifndef PURE_VIRTUAL_FUNCTION
+#define PURE_VIRTUAL_FUNCTION = 0
+#endif // PURE_ZEROED
+
+// return the size of a C array.
+#ifndef arraysize
+#define arraysize(a)            \
+  ((sizeof(a) / sizeof(*(a))) / \
+   static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
+#endif // arraysize
+
+// return the size of a C array.
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(X) arraysize(X)
+#endif // ARRAY_SIZE
+
+// the length of a static string literal,
+// e.g. STATIC_STRLEN("foo") == 3.
+#ifndef STATIC_STRLEN
+#define STATIC_STRLEN(X) (sizeof(X) - 1)
+#endif // STATIC_STRLEN
+
+#ifndef STRINGIFY
+#define STRINGIFY(X) #X
+#endif // STRINGIFY
+
+// similar to ignore_result
+//
+// Example:
+// void onReceiveError(IoErrorCode error_code) {
+//   config_->stats().downstream_rx_errors_.inc();
+//   UNREFERENCED_PARAMETER(error_code);
+// }
+#define UNREFERENCED_PARAMETER(X) ((void)(X))
+
+// Lazily-initialized boolean value.
+// Similar to BOOST_TRIBOOL.
+enum TriBool { kNotSet = -1, kFalse = 0, kTrue = 1 };
