@@ -250,8 +250,6 @@ class BASE_EXPORT FilePath {
   // returns a FilePath identifying the root directory. Please note that this
   // doesn't resolve directory navigation, e.g. the result for "../a" is "..".
   UBSAN_IGNORE_UNSIGNED_OVERFLOW
-  UBSAN_IGNORE_UNDEF
-  NO_SANITIZE_ADDRESS
   FilePath DirName() const WARN_UNUSED_RESULT;
 
   // Returns a FilePath corresponding to the last path component of this
@@ -327,13 +325,9 @@ class BASE_EXPORT FilePath {
   // only to |component| is returned.  |component| must be a relative path;
   // it is an error to pass an absolute path.
   UBSAN_IGNORE_UNSIGNED_OVERFLOW
-  UBSAN_IGNORE_UNDEF
-  NO_SANITIZE_ADDRESS
   FilePath Append(StringPieceType component) const WARN_UNUSED_RESULT;
 
   UBSAN_IGNORE_UNSIGNED_OVERFLOW
-  UBSAN_IGNORE_UNDEF
-  NO_SANITIZE_ADDRESS
   FilePath Append(const FilePath& component) const WARN_UNUSED_RESULT;
 
   // Although Windows StringType is std::wstring, since the encoding it uses for
@@ -343,8 +337,6 @@ class BASE_EXPORT FilePath {
   // ASCII is a valid subset, regardless of the encoding, since many operating
   // system paths will always be ASCII.
   UBSAN_IGNORE_UNSIGNED_OVERFLOW
-  UBSAN_IGNORE_UNDEF
-  NO_SANITIZE_ADDRESS
   FilePath AppendASCII(StringPiece component) const WARN_UNUSED_RESULT;
 
   // Returns true if this FilePath contains an absolute path.  On Windows, an

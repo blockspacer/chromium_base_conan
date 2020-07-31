@@ -224,6 +224,7 @@ void PrintToStderr(const char* output) {
   ignore_result(HANDLE_EINTR(write(STDERR_FILENO, output, strlen(output))));
 }
 
+UBSAN_IGNORE_IMPLICIT
 void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
   // NOTE: This code MUST be async-signal safe.
   // NO malloc or stdio is allowed here.
@@ -241,6 +242,7 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
     // installed. Thus, we reinstall ourselves before returning.
     struct sigaction action;
     memset(&action, 0, sizeof(action));
+    /// \todo IMPLICIT numeric conversion
     action.sa_flags = SA_RESETHAND | SA_SIGINFO;
     action.sa_sigaction = &StackDumpSignalHandler;
     sigemptyset(&action.sa_mask);
@@ -786,6 +788,7 @@ bool EnableInProcessStackDumping() {
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
+  /// \todo IMPLICIT numeric conversion
   action.sa_flags = SA_RESETHAND | SA_SIGINFO;
   action.sa_sigaction = &StackDumpSignalHandler;
   sigemptyset(&action.sa_mask);

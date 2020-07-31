@@ -65,8 +65,6 @@ void byteReverse(uint8_t* buf, unsigned longs) {
  * the data and converts bytes into longwords for this routine.
  */
 UBSAN_IGNORE_UNSIGNED_OVERFLOW
-UBSAN_IGNORE_UNDEF
-NO_SANITIZE_ADDRESS
 void MD5Transform(uint32_t buf[4], const uint32_t in[16]) {
   uint32_t a, b, c, d;
 

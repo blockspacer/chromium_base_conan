@@ -36,7 +36,9 @@ namespace debug {
 // contents. In non-official builds, this function also opens the object files
 // that are loaded in memory and caches their file descriptors (this cannot be
 // done in official builds because it has security implications).
-BASE_EXPORT bool EnableInProcessStackDumping();
+BASE_EXPORT
+UBSAN_IGNORE_IMPLICIT
+bool EnableInProcessStackDumping();
 
 #if defined(OS_POSIX)
 // Sets a first-chance callback for the stack dump signal handler. This callback

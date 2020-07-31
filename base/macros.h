@@ -87,6 +87,27 @@ inline void ignore_result(const T&) {
 #define UBSAN_IGNORE_UNDEF \
   __attribute__((no_sanitize("undefined")))
 
+/**
+  C and C++ perform implicit casts when,
+  for example, you pass an integer-typed variable
+  to a function that expects a different type.
+  When the target type is wider,
+  there’s no problem,
+  but when the target type is narrower
+  or when it is the same size and the other signedness,
+  integer values may silently change when the type changes.
+  For example, this program:
+    #include <iostream>
+    int main() {
+      int x = -3;
+      unsigned y = x;
+      std::cout << y << "\n";
+    }
+  prints 4294967293.
+**/
+#define UBSAN_IGNORE_IMPLICIT \
+  __attribute__((no_sanitize("implicit-conversion")))
+
 /// \note Unsigned integer overflow,
 /// where the result of an unsigned integer computation
 /// cannot be represented in its type.
@@ -100,6 +121,8 @@ inline void ignore_result(const T&) {
   __attribute__((no_sanitize("unsigned-integer-overflow")))
 
 #else
+
+#define UBSAN_IGNORE_IMPLICIT
 
 #define UBSAN_IGNORE_UNDEF
 
