@@ -68,7 +68,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         "use_alloc_shim=False",
         "use_deb_alloc=False",
         "use_test_support=True",
-        "enable_web_pthreads=True"
+        "enable_web_pthreads=False"
         # build
         #"*:shared=False"
     )

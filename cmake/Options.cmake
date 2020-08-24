@@ -4,13 +4,22 @@
 # https://cmake.org/cmake/help/latest/module/CMakeDependentOption.html
 include(CMakeDependentOption)
 
-# Hack to depend NOT on CONAN_PKG::libname, but on libname directly
-# See for details
-# https://docs.conan.io/en/latest/developing_packages/workspaces.html
-set(LOCAL_BUILD FALSE CACHE BOOL "LOCAL_BUILD")
-message(STATUS "LOCAL_BUILD=${LOCAL_BUILD}")
+# used by https://docs.conan.io/en/latest/developing_packages/workspaces.html
+get_filename_component(LOCAL_BUILD_ABSOLUTE_ROOT_PATH
+  "${PACKAGE_chromium_base_SRC}"
+  ABSOLUTE)
+if(EXISTS "${LOCAL_BUILD_ABSOLUTE_ROOT_PATH}")
+  # path to Find*.cmake file
+  list(PREPEND CMAKE_MODULE_PATH "${LOCAL_BUILD_ABSOLUTE_ROOT_PATH}/cmake")
+endif()
 
 set(BASE_USE_PARTITION_ALLOCATOR TRUE CACHE BOOL "BASE_USE_PARTITION_ALLOCATOR")
+
+option(ENABLE_TESTS "Enable tests" OFF)
+
+option(ENABLE_WEB_PTHREADS "ENABLE_WEB_PTHREADS" OFF)
+
+set(USE_TEST_SUPPORT TRUE CACHE BOOL "USE_TEST_SUPPORT")
 
 set(ENABLE_UKM FALSE CACHE BOOL "ENABLE_UKM")
 
@@ -28,6 +37,10 @@ set(BUILDFLAGS_GENERATORS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/codegen/)
 
 option(ENABLE_VALGRIND
   "Enable valgrind" OFF)
+
+# TODO: __do_global_dtors_aux, base::debug::CollectStackTrace
+option(ENABLE_VALGRIND_TESTS
+  "Enable valgrind for unit tests" OFF)
 
 option(COMPILE_WITH_LLVM_TOOLS
   "Enable clang from llvm_tools (conan package)" OFF)

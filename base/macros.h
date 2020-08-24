@@ -56,23 +56,6 @@
   DEFAULT_COPY(ClassName)                               \
   DEFAULT_MOVE(ClassName)
 
-// whether or not use c++11 support
-#ifndef SUPPORTS_CXX11
-#define SUPPORTS_CXX11 (defined(__GXX_EXPERIMENTAL_CXX0X__) ||\
-                        __cplusplus >= 201103L || defined(_MSC_VER))
-#endif // SUPPORTS_CXX11
-
-// check if g++ is before 4.6
-#if SUPPORTS_CXX11 && defined(__GNUC__) && !defined(__clang_version__)
-#if __GNUC__ == 4 && __GNUC_MINOR__ < 6
-#pragma message("Will need g++-4.6 or higher to compile all"           \
-                "the features in dmlc-core, "                           \
-                "compile without c++0x, some features may be disabled")
-#undef SUPPORTS_CXX11
-#define SUPPORTS_CXX11 0
-#endif
-#endif
-
 // Used to explicitly mark the return value of a function as unused. If you are
 // really sure you don't want to do anything with the return value of a function
 // that has been marked WARN_UNUSED_RESULT, wrap it with this. Example:
@@ -409,6 +392,8 @@ inline void ignore_result(const T&) {
 #define NOT_THREAD_SAFE_LIFETIME(x) x
 
 // Documents that function does not perform thread-safety checks.
+// Usually that means that funtion unable to have
+// checks like `running_in_this_thread` or `DCHECK_CALLED_ON_VALID_SEQUENCE`
 #define NOT_THREAD_SAFE_FUNCTION(x) x
 
 // Documents that value can be used from any thread.

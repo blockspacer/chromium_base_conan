@@ -326,6 +326,8 @@ else()
   message(FATAL_ERROR "platform not supported")
 endif()
 
+add_library(${STATIC_LIB_NAME}-test-includes INTERFACE)
+
 # $<INSTALL_INTERFACE:...> is exported using install(EXPORT)
 # $<BUILD_INTERFACE:...> is exported using export(), or when the target is used by another target in the same buildsystem
 macro(add_relative_include_dir TARGET VISIBILITY_BUILD VISIBILITY_INSTALL NEW_ELEM)
@@ -333,6 +335,8 @@ macro(add_relative_include_dir TARGET VISIBILITY_BUILD VISIBILITY_INSTALL NEW_EL
     ${VISIBILITY_BUILD} "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${NEW_ELEM}>"
     ${VISIBILITY_INSTALL} "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}/${NEW_ELEM}>"
   )
+  target_include_directories( ${STATIC_LIB_NAME}-test-includes SYSTEM INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/${NEW_ELEM} )
 endmacro(add_relative_include_dir)
 
 if(TARGET_LINUX)
@@ -478,7 +482,7 @@ if(ENABLE_COBALT)
     message(FATAL_ERROR "NOT DEFINED: cobalt_starboard_LIB")
   endif(NOT DEFINED cobalt_starboard_LIB)
 
-  target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+  list(APPEND USED_3DPARTY_LIBS
     ${cobalt_starboard_LIB}
     ${cobalt_starboard_headers_only_LIB}
   )
@@ -510,7 +514,7 @@ target_link_libraries(${STATIC_LIB_NAME} PRIVATE
   ${PTHREADS_LIBS} # note: not set for emscripten
 )
 
-target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+list(APPEND USED_3DPARTY_LIBS
   ${CUSTOM_ICU_LIB}
 )
 
@@ -519,6 +523,8 @@ if(NOT DEFINED build_util_LIB)
 endif(NOT DEFINED build_util_LIB)
 
 if(USE_TEST_SUPPORT)
+  message(STATUS "enabled USE_TEST_SUPPORT")
+
   # chromium_libxml
   find_package(chromium_libxml MODULE REQUIRED)
   if(TARGET chromium_libxml::chromium_libxml-static)
@@ -527,7 +533,7 @@ if(USE_TEST_SUPPORT)
     message(FATAL_ERROR "not supported: using system provided chromium_libxml library")
   endif()
 
-  target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+  list(APPEND USED_3DPARTY_LIBS
     ${libxml_LIB}
     CONAN_PKG::conan_gtest
   )
@@ -538,8 +544,12 @@ if(USE_TEST_SUPPORT)
   )
 endif(USE_TEST_SUPPORT)
 
-target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+list(APPEND USED_3DPARTY_LIBS
   ${build_util_LIB}
+)
+
+target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+  ${USED_3DPARTY_LIBS}
 )
 
 set_property(TARGET ${STATIC_LIB_NAME} PROPERTY CXX_STANDARD 17)
@@ -679,3 +689,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/setup_sanitizers.cmake)
 
 # install and export steps
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Exports.cmake)
+
+if(ENABLE_TESTS)
+  add_subdirectory( ${CMAKE_CURRENT_SOURCE_DIR}/tests )
+endif()
