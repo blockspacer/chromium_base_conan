@@ -662,6 +662,10 @@ if(NOT MSVC OR IS_CLANG_CL)
     -Wno-builtin-macro-redefined
     -fno-exceptions # disabling exceptions
   )
+  target_compile_options(${STATIC_LIB_NAME} PUBLIC
+    # fixes base/logging.h:406:65: warning: token pasting of ',' and __VA_ARGS__ is a GNU extension [-Wgnu-zero-variadic-macro-arguments]
+    -Wno-gnu-zero-variadic-macro-arguments
+  )
 elseif(MSVC)
   target_compile_options(${STATIC_LIB_NAME} PRIVATE
     /EHs-c- # disabling exceptions

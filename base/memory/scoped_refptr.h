@@ -347,11 +347,13 @@ bool operator==(const T* lhs, const scoped_refptr<U>& rhs) {
 
 template <typename T>
 bool operator==(const scoped_refptr<T>& lhs, std::nullptr_t null) {
+  ignore_result(null);
   return !static_cast<bool>(lhs);
 }
 
 template <typename T>
 bool operator==(std::nullptr_t null, const scoped_refptr<T>& rhs) {
+  ignore_result(null);
   return !static_cast<bool>(rhs);
 }
 

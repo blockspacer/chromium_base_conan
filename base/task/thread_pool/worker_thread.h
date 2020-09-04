@@ -95,7 +95,9 @@ class BASE_EXPORT WorkerThread : public RefCountedThreadSafe<WorkerThread>,
     // Delegate is free to release any associated resources in this call. It is
     // guaranteed that WorkerThread won't access the Delegate or the
     // TaskTracker after calling OnMainExit() on the Delegate.
-    virtual void OnMainExit(WorkerThread* worker) {}
+    virtual void OnMainExit(WorkerThread* worker) {
+      ignore_result(worker);
+    }
   };
 
   // Creates a WorkerThread that runs Tasks from TaskSources returned by

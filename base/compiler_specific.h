@@ -121,6 +121,9 @@
 #define NOINLINE
 #endif
 
+/// \note large `inline` functions cause Cache misses
+/// and affect efficiency negatively, so keep it small
+/* `inline` to eleminate function call overhead */
 #if defined(COMPILER_GCC) && defined(NDEBUG)
 #define ALWAYS_INLINE inline __attribute__((__always_inline__))
 #elif defined(COMPILER_MSVC) && defined(NDEBUG)

@@ -33,6 +33,7 @@ const FilePath::CharType kCgroupDirectory[] =
 
 FilePath ThreadPriorityToCgroupDirectory(const FilePath& cgroup_filepath,
                                          ThreadPriority priority) {
+  /// \todo enumeration values 'DEFAULT', 'LOWEST', and 'HIGHEST' not handled in switch
   switch (priority) {
     case ThreadPriority::NORMAL:
       return cgroup_filepath;

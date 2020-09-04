@@ -79,7 +79,9 @@ class BASE_EXPORT DelayedTaskManager {
     void SetScheduled();
 
     // Required by IntrusiveHeap.
-    void SetHeapHandle(const HeapHandle& handle) {}
+    void SetHeapHandle(const HeapHandle& handle) {
+      ignore_result(handle);
+    }
 
     // Required by IntrusiveHeap.
     void ClearHeapHandle() {}

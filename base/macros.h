@@ -306,10 +306,64 @@ inline void ignore_result(const T&) {
 /// i.e. it does not actually destroy |stream| by |move|
 #define COPY_ON_MOVE(x) x
 
+/// \note prefer basis::AccessVerifier to `LIVES_ON`
 // documents that value must be created/modified/used
-// only from one base::Sequence
+// only from one sequence i.e. must be thread-safe
 /// \todo integrate with thread-safety annotations
 #define LIVES_ON(sequenceChecker)
+
+// Can be used to check that value is accessed
+// only on sequence i.e. thread-safe
+//
+// USAGE
+//
+// BIND_UNRETAINED_RUN_ON_SEQUENCE_CHECK(&sequence_checker_)
+#define BIND_UNRETAINED_RUN_ON_SEQUENCE_CHECK(checker) \
+  base::BindRepeating( \
+    &base::SequenceChecker::CalledOnValidSequence \
+    , base::Unretained(checker) \
+  )
+
+// Can be used to check that object exists
+// (does extra lifetime checks when ASAN enabled)
+//
+// USAGE
+//
+// BIND_UNOWNED_PTR_VALIDATOR(ws::Listener, this)
+#define BIND_UNOWNED_PTR_VALIDATOR(StoredType, RawPtr) \
+  base::BindRepeating( \
+    [] \
+    (util::UnownedPtr<StoredType> ptr) \
+    -> bool \
+    { \
+      ptr.checkForLifetimeIssues(); \
+      return ptr.Get(); \
+    } \
+    , /* COPIED */ COPIED() util::UnownedPtr<StoredType>(RawPtr) \
+  )
+
+// Can be used to check that value is accessed
+// only on asio strand i.e. thread-safe
+//
+// USAGE
+//
+// BIND_UNRETAINED_RUN_ON_STRAND_CHECK(&strand_)
+#define BIND_UNRETAINED_RUN_ON_STRAND_CHECK(checker) \
+  base::BindRepeating( \
+    &::boost::asio::strand< \
+        ::boost::asio::io_context::executor_type \
+      >::running_in_this_thread \
+    , base::Unretained(checker) \
+  )
+
+// USAGE
+//
+// BIND_UNRETAINED_MEMBER(&ClassName::MemberFn)
+#define BIND_UNRETAINED_MEMBER(member) \
+  base::BindRepeating( \
+    member \
+    , base::Unretained(this) \
+  )
 
 // similar to __attribute__((warn_unused_result))
 /// \usage (note order restriction)
@@ -374,14 +428,16 @@ inline void ignore_result(const T&) {
       << "failed to deallocate " \
       << from_here.ToString();
 
+/// \note prefer basis::AccessVerifier to `GLOBAL_THREAD_SAFE_LIFETIME`
 // Documents that value may not be thread-safe in general,
 // but because it can be modified only during
 // `initialization` and `teardown` steps
 // it can be used by multiple threads during `running` step.
 /// \note It means that object must exist during `running` step,
 /// but it does NOT mean that internals of the object are thread-safe.
-#define GLOBAL_THREAD_SAFE_LIFETIME(x) x
+#define GLOBAL_THREAD_SAFE_LIFETIME(x)
 
+/// \note prefer basis::AccessVerifier to `NOT_THREAD_SAFE_LIFETIME`
 // Documents that value can NOT be used from
 // any thread without extra thread-safety checks.
 // i.e. take care of possible thread-safety bugs.
@@ -389,12 +445,12 @@ inline void ignore_result(const T&) {
 // OR modified only during `initialization` step.
 /// \note prefer sequence checkers or
 /// <base/thread_collision_warner.h> to it if possible
-#define NOT_THREAD_SAFE_LIFETIME(x) x
+#define NOT_THREAD_SAFE_LIFETIME(x)
 
 // Documents that function does not perform thread-safety checks.
 // Usually that means that funtion unable to have
 // checks like `running_in_this_thread` or `DCHECK_CALLED_ON_VALID_SEQUENCE`
-#define NOT_THREAD_SAFE_FUNCTION(x) x
+#define NOT_THREAD_SAFE_FUNCTION(x)
 
 // Documents that value can be used from any thread.
 // Usually it means that value is guarded by some mutex lock.
@@ -412,10 +468,34 @@ inline void ignore_result(const T&) {
 /// but assumed to be thread-safe at least here
 #define ASSUME_THREAD_SAFE_BECAUSE(x)
 
+// Documents that value will become invalid.
+// Usually it means that value is moved or freed.
+#define MAKES_INVALID(x)
+
+// Documents that value can become invalid.
+// Usually it means that value can be moved or freed.
+#define CAN_BECOME_INVALID(x)
+
 /// \note prefer |MoveOnly| to |COPIED|
 // Documents that value will be copied.
 /// \note use it to annotate arguments that are bound to function
 #define COPIED(x) x
+
+/// \note use `base::rvalue_cast` instead of `std::move`
+/// where possible.
+/// Document usage of `std::move` like below:
+/// CAN_COPY_ON_MOVE("moving const") std::move(ec)
+//
+// Documents that value may be NOT moved
+// while using `std::move` or cast to rvalue.
+// see https://stackoverflow.com/a/38917200
+//
+// EXAMPLE
+//
+// Calling `std::move` on a const object
+// may call the copy constructor
+// when passed to another object
+#define CAN_COPY_ON_MOVE(x)
 
 /// \note prefer `REFERENCED` to `RAW_REFERENCED`
 // Documents that value will be used as alias
@@ -429,12 +509,17 @@ inline void ignore_result(const T&) {
 
 #define CONST_REFERENCED(x) std::cref(x)
 
+/// \note if possible, use `Shared` in data type name
+/// instead of `SHARED_LIFETIME` comments everywhere
 // Documents that value has shared storage
 // like shaped_ptr, scoped_refptr, etc.
 // i.e. that object lifetime will be prolonged.
 /// \note use it to annotate arguments that are bound to function
 #define SHARED_LIFETIME(x) x
 
+/// \todo use clang libTooling to check
+/// if passed function returns pomise
+/// OR create `basis::PromiseThenOn`, `basis::PromiseThenHere` etc.
 // Documents that function returns promise,
 // so next ThenOn/ThenHere will `wait` (asynchronously) for NESTED promise
 #define NESTED_PROMISE(x) x
@@ -481,8 +566,10 @@ inline void ignore_result(const T&) {
     << ec.message()
 
 /**
+ * @brief Print current position in file and passed data
+ * into stream of provided logger.
  * @usage
-  LOG_CALL(VLOG(9));
+  LOG_CALL(VLOG(9)) << "Hello";
  **/
 #define LOG_CALL(LOG_STREAM) \
   LOG_STREAM \

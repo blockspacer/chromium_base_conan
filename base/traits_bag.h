@@ -121,6 +121,8 @@ constexpr TraitFilterType GetTraitFromArg(CallFirstTag, ArgType arg) {
 
 template <class TraitFilterType, class ArgType>
 constexpr InvalidTrait GetTraitFromArg(CallSecondTag, ArgType arg) {
+  /// \todo non-constexpr function 'ignore_result' cannot be used in a constant expression
+  /// ignore_result(arg);
   return InvalidTrait();
 }
 

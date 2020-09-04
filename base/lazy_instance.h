@@ -117,6 +117,7 @@ struct LeakyLazyInstanceTraits {
     return LazyInstanceTraitsBase<Type>::New(instance);
   }
   static void Delete(Type* instance) {
+    ignore_result(instance);
   }
 };
 

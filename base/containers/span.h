@@ -106,9 +106,13 @@ using EnableIfSpanCompatibleContainerAndSpanIsStatic =
 template <size_t Extent>
 class ExtentStorage {
  public:
-  constexpr explicit ExtentStorage(size_t size) noexcept {}
+  constexpr explicit ExtentStorage(size_t size) noexcept {
+    ignore_result(size);
+  }
   constexpr size_t size() const noexcept { return Extent; }
-  constexpr void swap(ExtentStorage& other) noexcept {}
+  constexpr void swap(ExtentStorage& other) noexcept {
+    ignore_result(other);
+  }
 };
 
 // Specialization of ExtentStorage for dynamic extents, which do require

@@ -290,6 +290,8 @@ class BASE_EXPORT BuiltinCategories {
   static constexpr bool IsAllowedCategory(const char* category) {
     // custom BASE_PORT allows to use any tracing category
 #if (defined(OS_WIN) && defined(COMPONENT_BUILD)) || defined(BASE_PORT)
+    /// \todo Winvalid-constexpr
+    /// ignore_result(category);
     return true;
 #else
     return IsBuiltinCategory(category) ||

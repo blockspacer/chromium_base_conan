@@ -6,27 +6,35 @@
 
 namespace base {
 
-// Thanks Scott M.
+// Thanks Scott Meyers (Effective Modern C++)
 // See http://yacoder.guru/blog/2015/05/06/cpp-curiosities-one-does-not-simply-move-a-const-object/
-// and https://groups.google.com/a/isocpp.org/forum/#!topic/std-proposals/ArfVLmJJ_Y4
+// See https://groups.google.com/a/isocpp.org/forum/#!topic/std-proposals/ArfVLmJJ_Y4
+// See `6. std::move() does not move, it casts.` on https://www.chromium.org/rvalue-references
 //
-// Example:
+// MOTIVATION
 //
-// m_queue.push(std::move(value));
+// Unlike `std::move` can detect attempts to move const values
+// (moving of const value fallbacks to copy of const value without any `move`).
+//
+// EXAMPLE
+//
 // m_queue.push(rvalue_cast(value));
+// // If you can not use rvalue_cast,
+// // than add some comments why (i.e. use `CAN_COPY_ON_MOVE` etc.)
+// m_queue.push(CAN_COPY_ON_MOVE("moving const") std::move(const_value));
 //
-// If push throws, is the value moved-from?
+// If `m_queue.push` throws, is the value moved-from?
 // No. std::move is just an rvalue_cast
 // i.e. object will NOT be destroyed if
 // the move-assignment never happens.
-// To understand why it is actually okay to use x afterward,
+// To understand why it is actually okay to use `x` after `m_queue.push(x)`,
 // remember that std::move is just a typecast that
 // provides an rvalue reference
 // that enables use of a move constructor or operator.
 // std::move does not actually move anything.
 // It could  more accurately be called rvalue_cast.
 template <typename T>
-constexpr std::remove_reference<T>::type&&
+constexpr typename std::remove_reference<T>::type&&
   rvalue_cast(T&& t) noexcept
 {
   static_assert(
@@ -40,5 +48,3 @@ constexpr std::remove_reference<T>::type&&
 }
 
 }  // namespace base
-
-#endif  // BASE_BIG_ENDIAN_H_
