@@ -11,6 +11,7 @@
 #include "base/base_export.h"
 #include "base/compiler_specific.h"
 #include "base/macros.h"
+#include "base/thread_annotations.h"
 
 // A helper class alongside macros to be used to verify assumptions about thread
 // safety of a class.
@@ -142,7 +143,7 @@ struct BASE_EXPORT DCheckAsserter : public AsserterBase {
   void warn() override;
 };
 
-class BASE_EXPORT ThreadCollisionWarner {
+class BASE_EXPORT LOCKABLE ThreadCollisionWarner {
  public:
   // The parameter asserter is there only for test purpose
   explicit ThreadCollisionWarner(AsserterBase* asserter = new DCheckAsserter())
@@ -159,7 +160,7 @@ class BASE_EXPORT ThreadCollisionWarner {
   // it doesn't leave the critical section, as opposed to ScopedCheck,
   // because the critical section being pinned is allowed to be used only
   // from one thread
-  class BASE_EXPORT Check {
+  class BASE_EXPORT LOCKABLE Check {
    public:
     explicit Check(ThreadCollisionWarner* warner)
         : warner_(warner) {
@@ -176,7 +177,7 @@ class BASE_EXPORT ThreadCollisionWarner {
 
   // This class is meant to be used through the macro
   // DFAKE_SCOPED_LOCK
-  class BASE_EXPORT ScopedCheck {
+  class BASE_EXPORT LOCKABLE ScopedCheck {
    public:
     explicit ScopedCheck(ThreadCollisionWarner* warner)
         : warner_(warner) {
@@ -195,7 +196,7 @@ class BASE_EXPORT ThreadCollisionWarner {
 
   // This class is meant to be used through the macro
   // DFAKE_SCOPED_RECURSIVE_LOCK
-  class BASE_EXPORT ScopedRecursiveCheck {
+  class BASE_EXPORT LOCKABLE ScopedRecursiveCheck {
    public:
     explicit ScopedRecursiveCheck(ThreadCollisionWarner* warner)
         : warner_(warner) {

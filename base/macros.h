@@ -306,18 +306,25 @@ inline void ignore_result(const T&) {
 /// i.e. it does not actually destroy |stream| by |move|
 #define COPY_ON_MOVE(x) x
 
-/// \note prefer basis::AccessVerifier to `LIVES_ON`
+/// \note prefer basis::AccessVerifier or `RUN_ON` to `LIVES_ON`
 // documents that value must be created/modified/used
 // only from one sequence i.e. must be thread-safe
 /// \todo integrate with thread-safety annotations
 #define LIVES_ON(sequenceChecker)
 
+/// \note prefer `DCHECK_RUN_ON`
+/// to `BIND_UNRETAINED_RUN_ON_SEQUENCE_CHECK` where possible.
 // Can be used to check that value is accessed
 // only on sequence i.e. thread-safe
 //
 // USAGE
 //
-// BIND_UNRETAINED_RUN_ON_SEQUENCE_CHECK(&sequence_checker_)
+//  /// \note It is not real lock, only annotated as lock.
+//  /// It just calls callback on scope entry AND exit.
+//  basis::FakeLockWithCheck<FakeLockRunType>
+//    fakeLockToSequence_ {
+//      BIND_UNRETAINED_RUN_ON_SEQUENCE_CHECK(&sequence_checker_)
+//    };
 #define BIND_UNRETAINED_RUN_ON_SEQUENCE_CHECK(checker) \
   base::BindRepeating( \
     &base::SequenceChecker::CalledOnValidSequence \
@@ -329,7 +336,19 @@ inline void ignore_result(const T&) {
 //
 // USAGE
 //
-// BIND_UNOWNED_PTR_VALIDATOR(ws::Listener, this)
+//  /// \note It is not real lock, only annotated as lock.
+//  /// It just calls callback on scope entry AND exit.
+//  basis::FakeLockWithCheck<FakeLockRunType>
+//    fakeLockToUnownedPointer_ {
+//      BIND_UNOWNED_PTR_VALIDATOR(ExampleServer, this)
+//    };
+//
+//  // The io_context is required for all I/O
+//  boost::asio::io_context ioc_
+//    // It safe to read value from any thread
+//    // because its storage expected to be not modified,
+//    // we just need to check storage validity.
+//    GUARDED_BY(fakeLockToUnownedPointer_);
 #define BIND_UNOWNED_PTR_VALIDATOR(StoredType, RawPtr) \
   base::BindRepeating( \
     [] \
@@ -500,11 +519,15 @@ inline void ignore_result(const T&) {
 /// \note prefer `REFERENCED` to `RAW_REFERENCED`
 // Documents that value will be used as alias
 // i.e. another name for an already existing variable.
+// For example, you may want to notice
+// that value passed to function will NOT be copied.
 #define RAW_REFERENCED(x) x
 
 // Documents that value will be used as alias
 // i.e. another name for an already existing variable.
-/// \note use it to annotate arguments that are bound to function
+// For example, you may want to notice
+// that value passed to function will NOT be copied.
+/// \note Prefer to use it to annotate arguments that are bound to function.
 #define REFERENCED(x) std::ref(x)
 
 #define CONST_REFERENCED(x) std::cref(x)
@@ -516,13 +539,6 @@ inline void ignore_result(const T&) {
 // i.e. that object lifetime will be prolonged.
 /// \note use it to annotate arguments that are bound to function
 #define SHARED_LIFETIME(x) x
-
-/// \todo use clang libTooling to check
-/// if passed function returns pomise
-/// OR create `basis::PromiseThenOn`, `basis::PromiseThenHere` etc.
-// Documents that function returns promise,
-// so next ThenOn/ThenHere will `wait` (asynchronously) for NESTED promise
-#define NESTED_PROMISE(x) x
 
 // Documents that value has external storage
 // i.e. that object lifetime not conrolled.
@@ -569,7 +585,7 @@ inline void ignore_result(const T&) {
  * @brief Print current position in file and passed data
  * into stream of provided logger.
  * @usage
-  LOG_CALL(VLOG(9)) << "Hello";
+  LOG_CALL(DVLOG(99)) << "Hello";
  **/
 #define LOG_CALL(LOG_STREAM) \
   LOG_STREAM \

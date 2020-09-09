@@ -8,6 +8,7 @@
 #include "base/compiler_specific.h"
 #include "base/logging.h"
 #include "base/sequence_checker_impl.h"
+#include "base/thread_annotations.h"
 #include "build/build_config.h"
 
 // SequenceChecker is a helper class used to help verify that some methods of a
@@ -82,10 +83,10 @@ class SequenceCheckerDoNothing {
 };
 
 #if DCHECK_IS_ON()
-class SequenceChecker : public SequenceCheckerImpl {
+class LOCKABLE SequenceChecker : public SequenceCheckerImpl {
 };
 #else
-class SequenceChecker : public SequenceCheckerDoNothing {
+class LOCKABLE SequenceChecker : public SequenceCheckerDoNothing {
 };
 #endif  // DCHECK_IS_ON()
 
