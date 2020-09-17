@@ -466,10 +466,42 @@ inline void ignore_result(const T&) {
 /// <base/thread_collision_warner.h> to it if possible
 #define NOT_THREAD_SAFE_LIFETIME(x)
 
+/// \note prefer `RUN_ON_ANY_THREAD` where possible
 // Documents that function does not perform thread-safety checks.
 // Usually that means that funtion unable to have
 // checks like `running_in_this_thread` or `DCHECK_CALLED_ON_VALID_SEQUENCE`
 #define NOT_THREAD_SAFE_FUNCTION(x)
+
+// base::WeakPtr can be used to ensure that any callback bound
+// to an object is canceled when that object is destroyed
+// (guarantees that |this| will not be used-after-free).
+//
+// After constructing |weak_ptr_factory_|
+// we immediately construct a WeakPtr
+// in order to bind the WeakPtr object to its thread.
+// When we need a WeakPtr, we copy construct this,
+// which is safe to do from any
+// thread according to weak_ptr.h (versus calling
+// |weak_ptr_factory_.GetWeakPtr() which is not).
+#define SET_WEAK_POINTERS(Name) \
+  base::WeakPtrFactory<Name> weak_ptr_factory_ \
+    SET_STORAGE_THREAD_GUARD(MEMBER_GUARD(weak_ptr_factory_)); \
+  const base::WeakPtr<Name> weak_this_ \
+    SET_STORAGE_THREAD_GUARD(MEMBER_GUARD(weak_this_))
+
+/// \note requires `#include <basis/lock_with_check.hpp>`
+/// sue to usage of `DCHECK_THREAD_GUARD_SCOPE`
+// It is thread-safe to copy |base::WeakPtr|.
+// Weak pointers may be passed safely between sequences, but must always be
+// dereferenced and invalidated on the same SequencedTaskRunner otherwise
+// checking the pointer would be racey.
+#define SET_WEAK_SELF(Name) \
+  MUST_USE_RETURN_VALUE \
+  base::WeakPtr<Name> weakSelf() const NO_EXCEPTION \
+  { \
+    DCHECK_THREAD_GUARD_SCOPE(MEMBER_GUARD(weak_this_)); \
+    return weak_this_; \
+  }
 
 // Documents that value can be used from any thread.
 // Usually it means that value is guarded by some mutex lock.
