@@ -7,6 +7,10 @@
 // that are closely related to things that are commonly used that belong in this
 // file.)
 
+/// \note Do NOT include other files here, even if some macros
+/// depend on that files
+/// (i.e. user must include all required files manually).
+
 #pragma once
 
 // Put this in the declarations for a class to be uncopyable.
@@ -472,6 +476,9 @@ inline void ignore_result(const T&) {
 // checks like `running_in_this_thread` or `DCHECK_CALLED_ON_VALID_SEQUENCE`
 #define NOT_THREAD_SAFE_FUNCTION(x)
 
+/// \note requires `#include <basis/lock_with_check.hpp>`
+/// due to usage of `GUARD_MEMBER_OF_UNKNOWN_THREAD`
+// Creates `weak_ptr_factory_` and `weak_this_`.
 // base::WeakPtr can be used to ensure that any callback bound
 // to an object is canceled when that object is destroyed
 // (guarantees that |this| will not be used-after-free).
@@ -485,12 +492,13 @@ inline void ignore_result(const T&) {
 // |weak_ptr_factory_.GetWeakPtr() which is not).
 #define SET_WEAK_POINTERS(Name) \
   base::WeakPtrFactory<Name> weak_ptr_factory_ \
-    SET_STORAGE_THREAD_GUARD(MEMBER_GUARD(weak_ptr_factory_)); \
+    GUARD_MEMBER_OF_UNKNOWN_THREAD(weak_ptr_factory_); \
   const base::WeakPtr<Name> weak_this_ \
-    SET_STORAGE_THREAD_GUARD(MEMBER_GUARD(weak_this_))
+    GUARD_MEMBER_OF_UNKNOWN_THREAD(weak_this_)
 
+// Creates `weakSelf()` function.
 /// \note requires `#include <basis/lock_with_check.hpp>`
-/// sue to usage of `DCHECK_THREAD_GUARD_SCOPE`
+/// due to usage of `DCHECK_MEMBER_OF_UNKNOWN_THREAD`
 // It is thread-safe to copy |base::WeakPtr|.
 // Weak pointers may be passed safely between sequences, but must always be
 // dereferenced and invalidated on the same SequencedTaskRunner otherwise
@@ -499,7 +507,7 @@ inline void ignore_result(const T&) {
   MUST_USE_RETURN_VALUE \
   base::WeakPtr<Name> weakSelf() const NO_EXCEPTION \
   { \
-    DCHECK_THREAD_GUARD_SCOPE(MEMBER_GUARD(weak_this_)); \
+    DCHECK_MEMBER_OF_UNKNOWN_THREAD(weak_this_); \
     return weak_this_; \
   }
 
@@ -621,8 +629,9 @@ inline void ignore_result(const T&) {
  **/
 #define LOG_CALL(LOG_STREAM) \
   LOG_STREAM \
-    << "called " \
-    << FROM_HERE.ToString()
+    << "called from location: " \
+    << FROM_HERE.ToString() \
+    << " \n "
 
 #if defined(COMPILER_MSVC)
 
