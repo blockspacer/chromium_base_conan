@@ -21,10 +21,11 @@
 *.lai
 *.la
 *.a
+base/generated_build_date.h
+
 *.lib
 
 /*build*
-
 # Executables
 *.exe
 *.out
