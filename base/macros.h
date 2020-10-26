@@ -205,9 +205,26 @@ inline void ignore_result(const T&) {
 #define NO_SANITIZE_ADDRESS \
   __attribute__((no_sanitize_address))
 
+// Describe the current state of a contiguous container such as e.g.
+// std::vector or std::string. For more details see
+// sanitizer/common_interface_defs.h, which is provided by the compiler.
+#include <sanitizer/common_interface_defs.h>
+
+#define ANNOTATE_CONTIGUOUS_CONTAINER(beg, end, old_mid, new_mid) \
+  __sanitizer_annotate_contiguous_container(beg, end, old_mid, new_mid)
+
+#define ADDRESS_SANITIZER_REDZONE(name) \
+  struct {                                   \
+    char x[8] __attribute__((aligned(8)));   \
+  } name
+
 #else
 
 #define NO_SANITIZE_ADDRESS
+
+#define ANNOTATE_CONTIGUOUS_CONTAINER(beg, end, old_mid, new_mid)  // empty
+
+#define ADDRESS_SANITIZER_REDZONE(name) static_assert(true, "")
 
 #endif // ADDRESS_SANITIZER
 
@@ -1155,6 +1172,7 @@ inline void ignore_result(const T&) {
 #define STRINGIFY(X) #X
 #endif // STRINGIFY
 
+/// \note Use `ignore_result(x)` instead.
 // similar to ignore_result
 //
 // Example:
@@ -1162,7 +1180,11 @@ inline void ignore_result(const T&) {
 //   config_->stats().downstream_rx_errors_.inc();
 //   UNREFERENCED_PARAMETER(error_code);
 // }
+// windows.h defines UNREFERENCED_PARAMETER:
+// #define UNREFERENCED_PARAMETER(P) {(P) = (P);}
+#ifndef WIN32
 #define UNREFERENCED_PARAMETER(X) ((void)(X))
+#endif
 
 // Lazily-initialized boolean value.
 // Similar to BOOST_TRIBOOL.
