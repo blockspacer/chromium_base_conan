@@ -14,8 +14,8 @@
     CHECKER_NAME
 
 // A helper to check recursion limit.
-/// \note Use `FUNCTION_RECURSION_CHECKER_TIMES` instead.
-#define RECURSION_CHECKER_TIMES(CHECKER_NAME, count) \
+/// \note Use `FUNCTION_RECURSION_CHECKER_LIMIT` instead.
+#define RECURSION_CHECKER_LIMIT(CHECKER_NAME, count) \
   base::RecursionChecker \
     CHECKER_NAME \
       {count}
@@ -39,14 +39,14 @@
 
 // A helper to check recursion limit.
 /// \note Can be used to detect infinite or redundant recursion.
-#define FUNCTION_RECURSION_CHECKER_TIMES(CHECKER_NAME, count) \
-  RECURSION_CHECKER_TIMES( \
+#define FUNCTION_RECURSION_CHECKER_LIMIT(CHECKER_NAME, count) \
+  RECURSION_CHECKER_LIMIT( \
     FUNCTION_RECURSION_CHECKER_NAME( \
       CHECKER_NAME), count)
 
 /// \note Can be used to detect infinite or redundant recursion.
-#define FUNCTION_RECURSION_CHECKER_999(CHECKER_NAME) \
-  FUNCTION_RECURSION_CHECKER_TIMES( \
+#define FUNCTION_RECURSION_CHECKER_LIMIT_999(CHECKER_NAME) \
+  FUNCTION_RECURSION_CHECKER_LIMIT( \
     CHECKER_NAME, 999)
 
 // A helper to assert that a call is not recursive.

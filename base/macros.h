@@ -268,11 +268,11 @@ inline void ignore_result(const T&) {
 //    assert(b); // in release mode, assert is compiled out, and b is unused
 //               // no warning because it is declared ATTRIBUTE_UNUSED
 // } // parameters thing1 and thing2 are not used, no warning
-#if __cplusplus >= 201703L
-#define ATTRIBUTE_UNUSED [[maybe_unused]]
-#elif HAVE_ATTRIBUTE(unused) || (defined(__GNUC__) && !defined(__clang__))
+#if HAVE_ATTRIBUTE(unused) || (defined(__GNUC__) && !defined(__clang__))
 #undef ATTRIBUTE_UNUSED
 #define ATTRIBUTE_UNUSED __attribute__((__unused__))
+#elif __cplusplus >= 201703L
+#define ATTRIBUTE_UNUSED [[maybe_unused]]
 #else
 #define ATTRIBUTE_UNUSED
 #endif
@@ -317,6 +317,8 @@ inline void ignore_result(const T&) {
 #define ATTRIBUTE_NORETURN __attribute__((noreturn))
 #elif defined(_MSC_VER)
 #define ATTRIBUTE_NORETURN __declspec(noreturn)
+#elif defined(__clang__) && __cplusplus >= 201103L
+#define ATTRIBUTE_NORETURN [[ noreturn ]]
 #else
 #define ATTRIBUTE_NORETURN
 #endif
@@ -1085,11 +1087,21 @@ inline void ignore_result(const T&) {
 // Every usage of a deprecated entity will trigger a warning when compiled with
 // clang's `-Wdeprecated-declarations` option. This option is turned off by
 // default, but the warnings will be reported by clang-tidy.
-#if defined(__clang__) && __cplusplus >= 201103L
+#if HAVE_ATTRIBUTE(unused) || defined(__clang__) && __cplusplus >= 201103L
 #define ATTRIBUTE_DEPRECATED(message) __attribute__((deprecated(message)))
+#elif __cplusplus >= 201703L
+#define ATTRIBUTE_DEPRECATED(message) [[deprecated]]
 #else
 #define ATTRIBUTE_DEPRECATED(message)
 #endif
+
+// USAGE
+//
+// using MyType = deprecated_type<int>::type;
+template <typename T>
+struct ATTRIBUTE_DEPRECATED("deprecated_type") deprecated_type {
+  using type = T;
+};
 
 // FALL_THROUGH_BREAK
 //
@@ -1168,9 +1180,40 @@ inline void ignore_result(const T&) {
 #define STATIC_STRLEN(X) (sizeof(X) - 1)
 #endif // STATIC_STRLEN
 
+// MOTIVATION
+//
+// Macro expansion proceeds recursively in "layers."
+// Stringization prevents the preprocessor from performing macro expansion,
+// therefore it is often necessary to delay stringization.
+//
+// EXAMPLE
+//
+// // prints "person.address().zip_code()":
+// LOG(INFO) << STRINGIFY(person.address().zip_code());
+//
+// EXAMPLE
+//
+// #define NOTE(str) \
+//   message(__FILE__ "(" BOOST_PP_STRINGIZE(__LINE__) ") : " str) \
+//   /**/
 #ifndef STRINGIFY
 #define STRINGIFY(X) #X
 #endif // STRINGIFY
+
+#ifndef STRINGIFY_VA_ARGS
+#define STRINGIFY_VA_ARGS(...) , ##__VA_ARGS__
+#endif // STRINGIFY_VA_ARGS
+
+// Use PP_CONCAT instead of ## when necessary.
+//
+// MOTIVATION
+//
+// Macro expansion proceeds recursively in "layers."
+// Token pasting prevents the preprocessor from performing macro expansion,
+// therefore it is often necessary to delay token concatenation.
+#ifndef PP_CONCAT
+#define PP_CONCAT(X, ...) X##__VA_ARGS__
+#endif // STRINGIFY_VA_ARGS
 
 /// \note Use `ignore_result(x)` instead.
 // similar to ignore_result
@@ -1184,6 +1227,22 @@ inline void ignore_result(const T&) {
 // #define UNREFERENCED_PARAMETER(P) {(P) = (P);}
 #ifndef WIN32
 #define UNREFERENCED_PARAMETER(X) ((void)(X))
+#endif
+
+#ifndef GEN_CAT
+#define GEN_CAT(a, b) GEN_CAT_I(a, b)
+#endif
+
+#ifndef GEN_CAT_I
+#define GEN_CAT_I(a, b) GEN_CAT_II(~, a ## b)
+#endif
+
+#ifndef GEN_CAT_II
+#define GEN_CAT_II(p, res) res
+#endif
+
+#ifndef GEN_UNIQUE_NAME
+#define GEN_UNIQUE_NAME(base) GEN_CAT(base, __COUNTER__)
 #endif
 
 // Lazily-initialized boolean value.
