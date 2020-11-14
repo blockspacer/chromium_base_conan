@@ -7,18 +7,29 @@
 // that are closely related to things that are commonly used that belong in this
 // file.)
 
-/// \note Do NOT include other files here, even if some macros
-/// depend on that files
-/// (i.e. user must include all required files manually).
+// Related files that contain macros:
+// cobalt/base/basictypes.h
+// base/logging.h
+// base/compiler_specific.h
 
 #pragma once
 
+/// \note Do NOT include other files here, even if some macros
+/// depend on that files
+/// (i.e. user must include all required files manually).
+/// \note `<cstddef>` is exception to rule above
+#include <cstddef>  // For size_t.
+
+#define DELETE_FUNCTION(decl) \
+  decl = delete
+
 // Put this in the declarations for a class to be uncopyable.
 #define DISALLOW_COPY(TypeName) \
-  TypeName(const TypeName&) = delete
+  DELETE_FUNCTION(TypeName(const TypeName&))
 
 // Put this in the declarations for a class to be unassignable.
-#define DISALLOW_ASSIGN(TypeName) TypeName& operator=(const TypeName&) = delete
+#define DISALLOW_ASSIGN(TypeName) \
+  DELETE_FUNCTION(TypeName& operator=(const TypeName&))
 
 // Put this in the declarations for a class to be uncopyable and unassignable.
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
@@ -29,7 +40,7 @@
 // default constructor, copy constructor and operator= functions.
 // This is especially useful for classes containing only static methods.
 #define DISALLOW_IMPLICIT_CONSTRUCTORS(TypeName) \
-  TypeName() = delete;                           \
+  DELETE_FUNCTION(TypeName());                   \
   DISALLOW_COPY_AND_ASSIGN(TypeName)
 
 // Macro used to simplify the task of deleting the new and new[]
@@ -37,8 +48,8 @@
 /// \note accepts |ClassName| argument
 /// for documentation purposes and to avoid copy-n-paste errors
 #define DISALLOW_NEW_OPERATOR(ClassName)                         \
-  static void* operator new(size_t) = delete;   \
-  static void* operator new[](size_t) = delete
+  DELETE_FUNCTION(static void* operator new(size_t));            \
+  DELETE_FUNCTION(static void* operator new[](size_t))
 
 #define DEFAULT_CONSTRUCTOR(ClassName) \
   ClassName() = default;
@@ -71,6 +82,14 @@
 template<typename T>
 inline void ignore_result(const T&) {
 }
+
+// C++11 supports compile-time assertion directly
+//
+// USAGE
+//
+// CT_ASSERT(sizeof(T) > 0, T_is_empty);
+//
+#define CT_ASSERT(expr, msg) static_assert(expr, #msg)
 
 // HAVE_FEATURE
 //
@@ -134,7 +153,7 @@ inline void ignore_result(const T&) {
   for example, you pass an integer-typed variable
   to a function that expects a different type.
   When the target type is wider,
-  there’s no problem,
+  there is no problem,
   but when the target type is narrower
   or when it is the same size and the other signedness,
   integer values may silently change when the type changes.
@@ -1162,17 +1181,87 @@ struct ATTRIBUTE_DEPRECATED("deprecated_type") deprecated_type {
 #define PURE_VIRTUAL_FUNCTION = 0
 #endif // PURE_ZEROED
 
-// return the size of a C array.
-#ifndef arraysize
-#define arraysize(a)            \
-  ((sizeof(a) / sizeof(*(a))) / \
-   static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
-#endif // arraysize
+#undef arraysize
+// The arraysize(arr) macro returns the # of elements in an array arr.
+// The expression is a compile-time constant, and therefore can be
+// used in defining new arrays, for example.  If you use arraysize on
+// a pointer by mistake, you will get a compile-time error.
+//
+// One caveat is that arraysize() doesn't accept any array of an
+// anonymous type or a type defined inside a function.  In these rare
+// cases, you have to use the unsafe ARRAY_SIZE_UNSAFE() macro below.  This is
+// due to a limitation in C++'s template system.  The limitation might
+// eventually be removed, but it hasn't happened yet.
+
+// This template function declaration is used in defining arraysize.
+// Note that the function doesn't need an implementation, as we only
+// use its type.
+namespace internal {
+template <typename T, size_t N>
+char (&ArraySizeHelper(T (&array)[N]))[N];
+} // namespace internal
+
+// That gcc wants both of these prototypes seems mysterious. VC, for
+// its part, can't decide which to use (another mystery). Matching of
+// template overloads: the final frontier.
+#ifndef _MSC_VER
+namespace internal {
+template <typename T, size_t N>
+char (&ArraySizeHelper(const T (&array)[N]))[N];
+} // namespace internal
+#endif // _MSC_VER
+
+#define arraysize(array) (sizeof(::internal::ArraySizeHelper(array)))
+
+// gejun: Following macro was used in other modules.
+#undef ARRAY_SIZE
+#define ARRAY_SIZE(array) arraysize(array)
 
 // return the size of a C array.
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(X) arraysize(X)
-#endif // ARRAY_SIZE
+#ifndef arraysize_unsafe
+#define arraysize_unsafe(a)     \
+  ((sizeof(a) / sizeof(*(a))) / \
+   static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
+#endif // arraysize_unsafe
+
+// ARRAY_SIZE_UNSAFE performs essentially the same calculation as arraysize,
+// but can be used on anonymous types or types defined inside
+// functions.  It's less safe than arraysize as it accepts some
+// (although not all) pointers.  Therefore, you should use arraysize
+// whenever possible.
+//
+// The expression ARRAY_SIZE_UNSAFE(a) is a compile-time constant of type
+// size_t.
+//
+// ARRAY_SIZE_UNSAFE catches a few type errors.  If you see a compiler error
+//
+//   "warning: division by zero in ..."
+//
+// when using ARRAY_SIZE_UNSAFE, you are (wrongfully) giving it a pointer.
+// You should only use ARRAY_SIZE_UNSAFE on statically allocated arrays.
+//
+// The following comments are on the implementation details, and can
+// be ignored by the users.
+//
+// ARRAY_SIZE_UNSAFE(arr) works by inspecting sizeof(arr) (the # of bytes in
+// the array) and sizeof(*(arr)) (the # of bytes in one array
+// element).  If the former is divisible by the latter, perhaps arr is
+// indeed an array, in which case the division result is the # of
+// elements in the array.  Otherwise, arr cannot possibly be an array,
+// and we generate a compiler error to prevent the code from
+// compiling.
+//
+// Since the size of bool is implementation-defined, we need to cast
+// !(sizeof(a) & sizeof(*(a))) to size_t in order to ensure the final
+// result has type size_t.
+//
+// This macro is not perfect as it wrongfully accepts certain
+// pointers, namely where the pointer size is divisible by the pointee
+// size.  Since all our code has to go through a 32-bit compiler,
+// where a pointer is 4 bytes, this means all pointers to a type whose
+// size is 3 or greater than 4 will be (righteously) rejected.
+#undef ARRAY_SIZE_UNSAFE
+#define ARRAY_SIZE_UNSAFE(a) arraysize_unsafe(a)
 
 // the length of a static string literal,
 // e.g. STATIC_STRLEN("foo") == 3.
@@ -1214,6 +1303,11 @@ struct ATTRIBUTE_DEPRECATED("deprecated_type") deprecated_type {
 #ifndef PP_CONCAT
 #define PP_CONCAT(X, ...) X##__VA_ARGS__
 #endif // STRINGIFY_VA_ARGS
+
+#ifndef STR_CONCAT
+# define STR_CONCAT(a, b) STR_CONCAT_HELPER(a, b)
+# define STR_CONCAT_HELPER(a, b) a##b
+#endif
 
 /// \note Use `ignore_result(x)` instead.
 // similar to ignore_result

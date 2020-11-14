@@ -85,6 +85,7 @@ typedef pthread_mutex_t* MutexHandle;
 #include <ostream>
 #include <string>
 #include <utility>
+#include <array>
 
 #include "base/base_switches.h"
 #include "base/callback.h"
@@ -96,6 +97,17 @@ typedef pthread_mutex_t* MutexHandle;
 #include "base/debug/stack_trace.h"
 #include "base/debug/task_trace.h"
 #include "base/lazy_instance.h"
+#include "base/memory/ptr_util.h"
+#include "base/memory/weak_ptr.h"
+#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
+#include "base/location.h"
+#include "base/no_destructor.h"
+#include "base/sequenced_task_runner.h"
+#include "base/synchronization/lock.h"
+#include "base/threading/sequenced_task_runner_handle.h"
+#include "base/threading/sequence_local_storage_slot.h"
+#include "base/threading/thread_local.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
@@ -106,6 +118,8 @@ typedef pthread_mutex_t* MutexHandle;
 #include "base/synchronization/lock_impl.h"
 #include "base/threading/platform_thread.h"
 #include "base/vlog.h"
+
+#include <memory>
 
 #if defined(OS_WIN)
 #include "base/win/win_util.h"
@@ -126,7 +140,7 @@ namespace {
 VlogInfo* g_vlog_info = nullptr;
 VlogInfo* g_vlog_info_prev = nullptr;
 
-const char* const log_severity_names[] = {"INFO", "WARNING", "ERROR", "FATAL"};
+const char* const log_severity_names[] = {"INFO", "NOTICE", "WARNING", "ERROR", "FATAL"};
 static_assert(LOG_NUM_SEVERITIES == base::size(log_severity_names),
               "Incorrect number of log_severity_names");
 
@@ -581,58 +595,83 @@ void DisplayDebugMessageInDialog(const std::string& str) {
 
 LogMessage::LogMessage(const char* file, int line, LogSeverity severity)
     : severity_(severity), file_(file), line_(line) {
-  Init(file, line);
+  Init(file, line, severity_);
 }
 
 LogMessage::LogMessage(const char* file, int line, const char* condition)
     : severity_(LOG_FATAL), file_(file), line_(line) {
-  Init(file, line);
-  stream_ << "Check failed: " << condition << ". ";
+  Init(file, line, severity_);
+  logStream_ << "Check failed: " << condition << ". ";
 }
 
 LogMessage::LogMessage(const char* file, int line, std::string* result)
     : severity_(LOG_FATAL), file_(file), line_(line) {
-  Init(file, line);
-  stream_ << "Check failed: " << *result;
+  Init(file, line, severity_);
+  logStream_ << "Check failed: " << *result;
   delete result;
 }
 
 LogMessage::LogMessage(const char* file, int line, LogSeverity severity,
                        std::string* result)
     : severity_(severity), file_(file), line_(line) {
-  Init(file, line);
-  stream_ << "Check failed: " << *result;
+  Init(file, line, severity_);
+  logStream_ << "Check failed: " << *result;
   delete result;
 }
 
-LogMessage::~LogMessage() {
-  size_t stack_start = stream_.tellp();
+/// \todo support custom log sinks
+/// TEST_F(StreamingLogTest, log_at) {
+///   ::logging::StringSink log_str;
+///   ::logging::LogSink* old_sink = ::logging::SetLogSink(&log_str);
+///   LOG_AT(FATAL, "specified_file.cc", 12345) << "file/line is specified";
+///   // the file:line part should be using the argument given by us.
+///   ASSERT_NE(std::string::npos, log_str.find("specified_file.cc:12345"));
+///   // restore the old sink.
+///   ::logging::SetLogSink(old_sink);
+/// }
+LogMessage::~LogMessage()
+{
+  size_t stack_start = logStream_.tellp();
 #if !defined(OFFICIAL_BUILD) && !defined(OS_NACL) && !defined(__UCLIBC__) && \
     !defined(OS_AIX) && !defined(OS_EMSCRIPTEN)
   if (severity_ == LOG_FATAL && !base::debug::BeingDebugged()) {
     // Include a stack trace on a fatal, unless a debugger is attached.
     base::debug::StackTrace stack_trace;
-    stream_ << std::endl;  // Newline to separate from log message.
-    stack_trace.OutputToStream(&stream_);
+    logStream_ << std::endl;  // Newline to separate from log message.
+    stack_trace.OutputToStream(&logStream_);
     base::debug::TaskTrace task_trace;
     if (!task_trace.empty())
-      task_trace.OutputToStream(&stream_);
+      task_trace.OutputToStream(&logStream_);
 
     // Include the IPC context, if any. This is output as a stack trace with a
     // single frame.
     const auto* task = base::TaskAnnotator::CurrentTaskForThread();
     if (task && task->ipc_program_counter) {
-      stream_ << "IPC message handler context:" << std::endl;
+      logStream_ << "IPC message handler context:" << std::endl;
       base::debug::StackTrace ipc_trace(&task->ipc_program_counter, 1);
-      ipc_trace.OutputToStream(&stream_);
+      ipc_trace.OutputToStream(&logStream_);
     }
   }
 #endif
-  stream_ << std::endl;
-  std::string str_newline(stream_.str());
 
+  if(logStream_.needEndl())
+  {
+    logStream_ << std::endl;
+  }
+
+  std::string str_newline(logStream_.contentStr());
+
+  if(!logStream_.needFormat())
+  {
+    // Remove prefix that looks similar to:
+    // [25583:25583:1113/185640.856387:39412343570:INFO:main.cc(375)]
+    str_newline
+      = str_newline.substr(message_start_, str_newline.size());
+  }
+
+  /// \todo
 #if defined(OS_EMSCRIPTEN)
-  printf("LOG: %s\n", str_newline.c_str()); // TODO
+  printf("LOG: %s\n", str_newline.c_str());
 #endif
 
   // Give any log message handler first dibs on the message.
@@ -911,7 +950,7 @@ LogMessage::~LogMessage() {
       if (!base::debug::BeingDebugged()) {
         // Displaying a dialog is unnecessary when debugging and can complicate
         // debugging.
-        DisplayDebugMessageInDialog(stream_.str());
+        DisplayDebugMessageInDialog(logStream_.contentStr());
       }
 #endif // NDEBUG
       // Crash the process to generate a dump.
@@ -926,7 +965,7 @@ LogMessage::~LogMessage() {
 }
 
 // writes the common header info to the stream
-void LogMessage::Init(const char* file, int line) {
+void LogMessage::Init(const char* file, int line, LogSeverity severity) {
   base::StringPiece filename(file);
   size_t last_slash_pos = filename.find_last_of("\\/");
   if (last_slash_pos != base::StringPiece::npos)
@@ -934,18 +973,18 @@ void LogMessage::Init(const char* file, int line) {
 
   // TODO(darin): It might be nice if the columns were fixed width.
 
-  stream_ <<  '[';
+  logStream_ <<  '[';
   if (g_log_prefix)
-    stream_ << g_log_prefix << ':';
+    logStream_ << g_log_prefix << ':';
   if (g_log_process_id)
-    stream_ << CurrentProcessId() << ':';
+    logStream_ << CurrentProcessId() << ':';
   if (g_log_thread_id)
-    stream_ << base::PlatformThread::CurrentId() << ':';
+    logStream_ << base::PlatformThread::CurrentId() << ':';
   if (g_log_timestamp) {
 #if defined(OS_WIN)
     SYSTEMTIME local_time;
     GetLocalTime(&local_time);
-    stream_ << std::setfill('0')
+    logStream_ << std::setfill('0')
             << std::setw(2) << local_time.wMonth
             << std::setw(2) << local_time.wDay
             << '/'
@@ -963,7 +1002,7 @@ void LogMessage::Init(const char* file, int line) {
     struct tm local_time;
     localtime_r(&t, &local_time);
     struct tm* tm_time = &local_time;
-    stream_ << std::setfill('0')
+    logStream_ << std::setfill('0')
             << std::setw(2) << 1 + tm_time->tm_mon
             << std::setw(2) << tm_time->tm_mday
             << '/'
@@ -977,16 +1016,17 @@ void LogMessage::Init(const char* file, int line) {
 #error Unsupported platform
 #endif
   }
+
   if (g_log_tickcount)
-    stream_ << TickCount() << ':';
+    logStream_ << TickCount() << ':';
   if (severity_ >= 0)
-    stream_ << log_severity_name(severity_);
+    logStream_ << log_severity_name(severity_);
   else
-    stream_ << "VERBOSE" << -severity_;
+    logStream_ << "VERBOSE" << -severity_;
 
-  stream_ << ":" << filename << "(" << line << ")] ";
+  logStream_ << ":" << filename << "(" << line << ")] ";
 
-  message_start_ = stream_.str().length();
+  message_start_ = logStream_.contentStr().length();
 }
 
 #if defined(OS_WIN)
@@ -1003,6 +1043,161 @@ SystemErrorCode GetLastSystemErrorCode() {
   return errno;
 #endif
 }
+
+CharArrayStreamBuf::~CharArrayStreamBuf() {
+  free(_data);
+}
+
+int CharArrayStreamBuf::overflow(int ch) {
+  if (ch == std::streambuf::traits_type::eof()) {
+    return ch;
+  }
+  size_t new_size = std::max(_size * 3 / 2, (size_t)64);
+  char* new_data = (char*)malloc(new_size);
+  if (UNLIKELY(new_data == NULL)) {
+    setp(NULL, NULL);
+    return std::streambuf::traits_type::eof();
+  }
+  memcpy(new_data, _data, _size);
+  free(_data);
+  _data = new_data;
+  const size_t old_size = _size;
+  _size = new_size;
+  setp(_data, _data + new_size);
+  pbump(old_size);
+  // if size == 1, this function will call overflow again.
+  return sputc(ch);
+}
+
+int CharArrayStreamBuf::sync() {
+  // data are already there.
+  return 0;
+}
+
+void CharArrayStreamBuf::reset() {
+  setp(_data, _data + _size);
+}
+
+LogStream& LogStream::SetPosition(const PathChar* file, int line,
+                                  LogSeverity severity)
+{
+  file_ = file;
+  line_ = line;
+  severity_ = severity;
+  return *this;
+}
+
+base::StringPiece LogStream::contentView() const
+{
+  return base::StringPiece(pbase(), pptr() - pbase());
+}
+
+std::string LogStream::contentStr() const
+{
+  return std::string(pbase(), pptr() - pbase());
+}
+
+#if 0
+void LogStream::FlushWithoutReset() {
+  if (empty()) {
+      // Nothing to flush.
+      return;
+  }
+
+  /// \todo
+#if 0 && \
+  !defined(OS_NACL) && !defined(__UCLIBC__)
+  if (FLAGS_print_stack_on_check && _is_check && _severity == BLOG_FATAL) {
+      // Include a stack trace on a fatal.
+      butil::debug::StackTrace trace;
+      size_t count = 0;
+      const void* const* addrs = trace.Addresses(&count);
+
+      *this << std::endl;  // Newline to separate from log message.
+      if (count > 3) {
+          // Remove top 3 frames which are useless to users.
+          // #2 may be ~LogStream
+          //   #0 0x00000059ccae butil::debug::StackTrace::StackTrace()
+          //   #1 0x0000005947c7 logging::LogStream::FlushWithoutReset()
+          //   #2 0x000000594b88 logging::LogMessage::~LogMessage()
+          butil::debug::StackTrace trace_stripped(addrs + 3, count - 3);
+          trace_stripped.OutputToStream(this);
+      } else {
+          trace.OutputToStream(this);
+      }
+  }
+#endif
+
+  // End the data with zero because sink is likely to assume this.
+  *this << std::ends;
+
+  // Move back one step because we don't want to count the zero.
+  pbump(-1);
+
+  // Give any logsink first dibs on the message.
+#ifdef BAIDU_INTERNAL
+  // If the logsink fails and it's not comlog, try comlog. stderr on last try.
+  bool tried_comlog = false;
+#endif
+  bool tried_default = false;
+  {
+      DoublyBufferedLogSink::ScopedPtr ptr;
+      if (DoublyBufferedLogSink::GetInstance()->Read(&ptr) == 0 &&
+          (*ptr) != NULL) {
+          if ((*ptr)->OnLogMessage(_severity, _file, _line, contentView())) {
+#ifdef BAIDU_INTERNAL
+              goto FINISH_LOGGING;
+#endif
+          }
+#ifdef BAIDU_INTERNAL
+          tried_comlog = (*ptr == ComlogSink::GetInstance());
+#endif
+          tried_default = (*ptr == DefaultLogSink::GetInstance());
+      }
+  }
+
+#ifdef BAIDU_INTERNAL
+  if (!tried_comlog) {
+      if (ComlogSink::GetInstance()->OnLogMessage(
+              _severity, _file, _line, contentView())) {
+          goto FINISH_LOGGING;
+      }
+  }
+#endif
+  if (!tried_default) {
+      DefaultLogSink::GetInstance()->OnLogMessage(
+          _severity, _file, _line, contentView());
+  }
+
+#ifdef BAIDU_INTERNAL
+FINISH_LOGGING:
+  if (FLAGS_crash_on_fatal_log && _severity == BLOG_FATAL) {
+      // Ensure the first characters of the string are on the stack so they
+      // are contained in minidumps for diagnostic purposes.
+      butil::StringPiece str = contentView();
+      char str_stack[1024];
+      str.copy(str_stack, arraysize(str_stack));
+      butil::debug::Alias(str_stack);
+
+      if (log_assert_handler) {
+          // Make a copy of the string for the handler out of paranoia.
+          log_assert_handler(str.as_string());
+      } else {
+          // Don't use the string with the newline, get a fresh version to send to
+          // the debug message process. We also don't display assertions to the
+          // user in release mode. The enduser can't do anything with this
+          // information, and displaying message boxes when the application is
+          // hosed can cause additional problems.
+#ifndef NDEBUG
+          DisplayDebugMessageInDialog(str.as_string());
+#endif
+          // Crash the process to generate a dump.
+          butil::debug::BreakDebugger();
+      }
+  }
+#endif
+}
+#endif // 0
 
 BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code) {
 #if defined(OS_WIN)

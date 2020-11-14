@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <chrono>
-//using namespace std; // TODO
 
 #include <cassert>
 #include <cstring>
@@ -170,6 +169,49 @@
 //
 // Note that the visibility can be changed by setting preferences in
 // SetLogItems()
+//
+// USAGE
+//
+// using ::logging::noEndl;
+// using ::logging::noFormat;
+// using ::logging::doNothing;
+//
+// std::vector<std::string> items{"item1", "item2", "item3"};
+// LOG(INFO) << "Items:" << noEndl;
+// for (auto it = items.begin(); it != items.end(); ++it) {
+//   LOG(INFO) << ' ' << *it << noFormat << noEndl;
+// }
+// LOG(INFO) << '\n' << noFormat << noEndl;
+//
+// int n = 10;
+// for(int i = 0; i < n; i++)
+// {
+//   /// \note There is no std::endl
+//   /// \note FATAL may cause coredump
+//   // LOG(FATAL) << "Unusual thing happened ..." << "...";
+//
+//   // DLOG: Print logs only when NDEBUG is not defined.
+//   DLOG(INFO) << "Something just took place..." << "...";
+//
+//   /// \note glog doesn't have NOTICE.
+//   /// Generally you should not use NOTICE
+//   /// as it is intended for important logs.
+//   LOG_IF(NOTICE, i > 8) << "This log will only be printed when i > 8";
+//   // Prints with errno:
+//   // Fail to call function setting errno: File exists (17)
+//   PLOG(WARNING) << "Fail to call function setting errno";
+//   VLOG(1) << "verbose log tier 1, see --vmodule";
+//
+// #include "base/threading/platform_thread.h"
+// base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(300));
+//
+// LOG_EVERY_N_US(INFO, 800000L) << "High-frequent logs (every 800ms)";
+// LOG_EVERY_SECOND(INFO) << "High-frequent logs (every 1sec)";
+// LOG_EVERY_N_TIMES(ERROR, 3) << "High-frequent logs (every 3 times)";
+// LOG_FIRST_N_TIMES(INFO, 5) << "Logs that prints for at most 5 times";
+// LOG_ONCE(WARNING) << "Logs that only prints once";
+// VLOG2("a/b/c", 3) << "being filtered by a/b/c rather than public/foo/bar";
+// }
 
 namespace logging {
 
@@ -376,10 +418,11 @@ const LogSeverity LOG_VERBOSE = -1;  // This is level 1 verbosity
 // Note: the log severities are used to index into the array of names,
 // see log_severity_names.
 const LogSeverity LOG_INFO = 0;
-const LogSeverity LOG_WARNING = 1;
-const LogSeverity LOG_ERROR = 2;
-const LogSeverity LOG_FATAL = 3;
-const LogSeverity LOG_NUM_SEVERITIES = 4;
+const LogSeverity LOG_NOTICE = 1;
+const LogSeverity LOG_WARNING = 2;
+const LogSeverity LOG_ERROR = 3;
+const LogSeverity LOG_FATAL = 4;
+const LogSeverity LOG_NUM_SEVERITIES = 5;
 
 // LOG_DFATAL is LOG_FATAL in debug mode, ERROR in normal mode
 #if defined(NDEBUG)
@@ -393,6 +436,8 @@ const LogSeverity LOG_DFATAL = LOG_FATAL;
 // better to have compact code for these operations.
 #define COMPACT_GOOGLE_LOG_EX_INFO(ClassName, ...) \
   ::logging::ClassName(__FILE__, __LINE__, ::logging::LOG_INFO, ##__VA_ARGS__)
+#define COMPACT_GOOGLE_LOG_EX_NOTICE(ClassName, ...) \
+  ::logging::ClassName(__FILE__, __LINE__, ::logging::LOG_NOTICE, ##__VA_ARGS__)
 #define COMPACT_GOOGLE_LOG_EX_WARNING(ClassName, ...)              \
   ::logging::ClassName(__FILE__, __LINE__, ::logging::LOG_WARNING, \
                        ##__VA_ARGS__)
@@ -406,6 +451,7 @@ const LogSeverity LOG_DFATAL = LOG_FATAL;
   ::logging::ClassName(__FILE__, __LINE__, ::logging::LOG_DCHECK, ##__VA_ARGS__)
 
 #define COMPACT_GOOGLE_LOG_INFO COMPACT_GOOGLE_LOG_EX_INFO(LogMessage)
+#define COMPACT_GOOGLE_LOG_NOTICE COMPACT_GOOGLE_LOG_EX_NOTICE(LogMessage)
 #define COMPACT_GOOGLE_LOG_WARNING COMPACT_GOOGLE_LOG_EX_WARNING(LogMessage)
 #define COMPACT_GOOGLE_LOG_ERROR COMPACT_GOOGLE_LOG_EX_ERROR(LogMessage)
 #define COMPACT_GOOGLE_LOG_FATAL COMPACT_GOOGLE_LOG_EX_FATAL(LogMessage)
@@ -432,12 +478,15 @@ const LogSeverity LOG_0 = LOG_ERROR;
 #define LOG_IS_ON(severity) \
   (::logging::ShouldCreateLogMessage(::logging::LOG_##severity))
 
+#define INTERNAL_VLOG_IS_ON(verboselevel, file) \
+  ((verboselevel) <= ::logging::GetVlogLevel(file))
+
 // We don't do any caching tricks with VLOG_IS_ON() like the
 // google-glog version since it increases binary size.  This means
 // that using the v-logging functions in conjunction with --vmodule
 // may be slow.
 #define VLOG_IS_ON(verboselevel) \
-  ((verboselevel) <= ::logging::GetVlogLevel(__FILE__))
+  INTERNAL_VLOG_IS_ON(verboselevel, __FILE__)
 
 // Helper macro which avoids evaluating the arguments to a stream if
 // the condition doesn't hold. Condition is evaluated once and only once.
@@ -469,6 +518,28 @@ const LogSeverity LOG_0 = LOG_ERROR;
   LAZY_STREAM(VLOG_STREAM(verbose_level), \
       VLOG_IS_ON(verbose_level) && (condition))
 
+#define VLOG_EVERY_N_TIMES(verbose_level, N)                                  \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(VLOG_IF, verbose_level, true, N)
+#define VLOG_IF_EVERY_N_TIMES(verbose_level, condition, N)                    \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(VLOG_IF, verbose_level, condition, N)
+
+#define VLOG_FIRST_N_TIMES(verbose_level, N)                                  \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(VLOG_IF, verbose_level, true, N)
+#define VLOG_IF_FIRST_N_TIMES(verbose_level, condition, N)                    \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(VLOG_IF, verbose_level, condition, N)
+
+#define VLOG_ONCE(verbose_level) VLOG_FIRST_N_TIMES(verbose_level, 1)
+#define VLOG_IF_ONCE(verbose_level, condition) VLOG_IF_FIRST_N_TIMES(verbose_level, condition, 1)
+
+#define VLOG_EVERY_SECOND(verbose_level)                        \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(VLOG_IF, verbose_level, true)
+#define VLOG_IF_EVERY_SECOND(verbose_level, condition)                  \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(VLOG_IF, verbose_level, condition)
+#define VLOG_EVERY_N_US(verbose_level, periodInMicroseconds)                        \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(VLOG_IF, verbose_level, true, periodInMicroseconds)
+#define VLOG_IF_EVERY_N_US(verbose_level, condition, periodInMicroseconds)                  \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(VLOG_IF, verbose_level, condition, periodInMicroseconds)
+
 #if defined (OS_WIN)
 #define VPLOG_STREAM(verbose_level) \
   ::logging::Win32ErrorLogMessage(__FILE__, __LINE__, -verbose_level, \
@@ -486,7 +557,36 @@ const LogSeverity LOG_0 = LOG_ERROR;
   LAZY_STREAM(VPLOG_STREAM(verbose_level), \
     VLOG_IS_ON(verbose_level) && (condition))
 
-// TODO(akalin): Add more VLOG variants, e.g. VPLOG.
+// You can assign virtual path to VLOG instead of physical filename.
+// [public/foo/bar.cpp]
+// VLOG2("a/b/c", 2) << "being filtered by a/b/c rather than public/foo/bar";
+#define VLOG2(virtual_path, verbose_level)                              \
+    LAZY_STREAM(VLOG_STREAM(verbose_level),                       \
+                INTERNAL_VLOG_IS_ON(verbose_level, virtual_path))
+
+#define VLOG2_IF(virtual_path, verbose_level, condition)                \
+    LAZY_STREAM(VLOG_STREAM(verbose_level),                       \
+                INTERNAL_VLOG_IS_ON(verbose_level, virtual_path) && (condition))
+
+#define DVLOG2(virtual_path, verbose_level)             \
+    VLOG2_IF(virtual_path, verbose_level, ENABLE_DLOG)
+
+#define DVLOG2_IF(virtual_path, verbose_level, condition)               \
+    VLOG2_IF(virtual_path, verbose_level, ENABLE_DLOG && (condition))
+
+#define VPLOG2(virtual_path, verbose_level)                             \
+    LAZY_STREAM(VPLOG_STREAM(verbose_level),                      \
+                INTERNAL_VLOG_IS_ON(verbose_level, virtual_path))
+
+#define VPLOG2_IF(virtual_path, verbose_level, condition)               \
+    LAZY_STREAM(VPLOG_STREAM(verbose_level),                      \
+                INTERNAL_VLOG_IS_ON(verbose_level, virtual_path) && (condition))
+
+#define DVPLOG2(virtual_path, verbose_level)                            \
+    VPLOG2_IF(virtual_path, verbose_level, ENABLE_DLOG)
+
+#define DVPLOG2_IF(virtual_path, verbose_level, condition)              \
+    VPLOG2_IF(virtual_path, verbose_level, ENABLE_DLOG && (condition))
 
 #define LOG_ASSERT(condition)                       \
   LOG_IF(FATAL, !(ANALYZER_ASSUME_TRUE(condition))) \
@@ -502,6 +602,15 @@ const LogSeverity LOG_0 = LOG_ERROR;
       ::logging::GetLastSystemErrorCode()).stream()
 #endif
 
+// Prints the string corresponding to the error code in errno,
+// like %m in printf.
+// foo.conf does not exist, errno was set to ENOENT
+// int fd = open("foo.conf", O_RDONLY);
+// if (fd < 0) {
+//     // "Fail to open foo.conf: No such file or directory"
+//     PLOG(FATAL) << "Fail to open foo.conf";
+//     return -1;
+// }
 #define PLOG(severity)                                          \
   LAZY_STREAM(PLOG_STREAM(severity), LOG_IS_ON(severity))
 
@@ -852,12 +961,88 @@ DEFINE_CHECK_OP_IMPL(GT, > )
 #define DLOG(severity)                                          \
   LAZY_STREAM(LOG_STREAM(severity), DLOG_IS_ON(severity))
 
+#define DLOG_EVERY_N_TIMES(severity, N)                               \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DLOG_IF, severity, true, N)
+#define DLOG_IF_EVERY_N_TIMES(severity, condition, N)                 \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DLOG_IF, severity, condition, N)
+#define DLOG_FIRST_N_TIMES(severity, N)                               \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DLOG_IF, severity, true, N)
+#define DLOG_IF_FIRST_N_TIMES(severity, condition, N)                 \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DLOG_IF, severity, condition, N)
+#define DLOG_ONCE(severity) DLOG_FIRST_N_TIMES(severity, 1)
+#define DLOG_IF_ONCE(severity, condition) DLOG_IF_FIRST_N_TIMES(severity, condition, 1)
+#define DLOG_EVERY_SECOND(severity)                             \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DLOG_IF, severity, true)
+#define DLOG_IF_EVERY_SECOND(severity, condition)                       \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DLOG_IF, severity, condition)
+#define DLOG_EVERY_N_US(severity, periodInMicroseconds)                             \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DLOG_IF, severity, true, periodInMicroseconds)
+#define DLOG_IF_EVERY_N_US(severity, condition, periodInMicroseconds)                       \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DLOG_IF, severity, condition, periodInMicroseconds)
+
 #define DPLOG(severity)                                         \
   LAZY_STREAM(PLOG_STREAM(severity), DLOG_IS_ON(severity))
 
+#define DPLOG_EVERY_N_TIMES(severity, N)                               \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DPLOG_IF, severity, true, N)
+#define DPLOG_IF_EVERY_N_TIMES(severity, condition, N)                 \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DPLOG_IF, severity, condition, N)
+#define DPLOG_FIRST_N_TIMES(severity, N)                               \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DPLOG_IF, severity, true, N)
+#define DPLOG_IF_FIRST_N_TIMES(severity, condition, N)                 \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DPLOG_IF, severity, condition, N)
+#define DPLOG_ONCE(severity) DPLOG_FIRST_N_TIMES(severity, 1)
+#define DPLOG_IF_ONCE(severity, condition) DPLOG_IF_FIRST_N_TIMES(severity, condition, 1)
+#define DPLOG_EVERY_SECOND(severity)                             \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DPLOG_IF, severity, true)
+#define DPLOG_IF_EVERY_SECOND(severity, condition)                       \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DPLOG_IF, severity, condition)
+#define DPLOG_EVERY_N_US(severity, periodInMicroseconds)                             \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DPLOG_IF, severity, true, periodInMicroseconds)
+#define DPLOG_IF_EVERY_N_US(severity, condition, periodInMicroseconds)                       \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DPLOG_IF, severity, condition, periodInMicroseconds)
+
 #define DVLOG(verboselevel) DVLOG_IF(verboselevel, true)
 
+#define DVLOG_EVERY_N_TIMES(verbose_level, N)                               \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DVLOG_IF, verbose_level, true, N)
+#define DVLOG_IF_EVERY_N_TIMES(verbose_level, condition, N)                 \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DVLOG_IF, verbose_level, condition, N)
+#define DVLOG_FIRST_N_TIMES(verbose_level, N)                               \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DVLOG_IF, verbose_level, true, N)
+#define DVLOG_IF_FIRST_N_TIMES(verbose_level, condition, N)                 \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DVLOG_IF, verbose_level, condition, N)
+#define DVLOG_ONCE(verbose_level) DVLOG_FIRST_N_TIMES(verbose_level, 1)
+#define DVLOG_IF_ONCE(verbose_level, condition) DVLOG_IF_FIRST_N_TIMES(verbose_level, condition, 1)
+#define DVLOG_EVERY_SECOND(verbose_level)                             \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DVLOG_IF, verbose_level, true)
+#define DVLOG_IF_EVERY_SECOND(verbose_level, condition)                       \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DVLOG_IF, verbose_level, condition)
+#define DVLOG_EVERY_N_US(verbose_level, periodInMicroseconds)                             \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVLOG_IF, verbose_level, true, periodInMicroseconds)
+#define DVLOG_IF_EVERY_N_US(verbose_level, condition, periodInMicroseconds)                       \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVLOG_IF, verbose_level, condition, periodInMicroseconds)
+
 #define DVPLOG(verboselevel) DVPLOG_IF(verboselevel, true)
+
+#define DVPLOG_EVERY_N_TIMES(verbose_level, N)                               \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DVPLOG_IF, verbose_level, true, N)
+#define DVPLOG_IF_EVERY_N_TIMES(verbose_level, condition, N)                 \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(DVPLOG_IF, verbose_level, condition, N)
+#define DVPLOG_FIRST_N_TIMES(verbose_level, N)                               \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DVPLOG_IF, verbose_level, true, N)
+#define DVPLOG_IF_FIRST_N_TIMES(verbose_level, condition, N)                 \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(DVPLOG_IF, verbose_level, condition, N)
+#define DVPLOG_ONCE(verbose_level) DVPLOG_FIRST_N_TIMES(verbose_level, 1)
+#define DVPLOG_IF_ONCE(verbose_level, condition) DVPLOG_IF_FIRST_N_TIMES(verbose_level, condition, 1)
+#define DVPLOG_EVERY_SECOND(verbose_level)                             \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DVPLOG_IF, verbose_level, true)
+#define DVPLOG_IF_EVERY_SECOND(verbose_level, condition)                       \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DVPLOG_IF, verbose_level, condition)
+#define DVPLOG_EVERY_N_US(verbose_level)                             \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVPLOG_IF, verbose_level, true)
+#define DVPLOG_IF_EVERY_N_US(verbose_level, condition)                       \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVPLOG_IF, verbose_level, condition)
 
 // Definitions for DCHECK et al.
 
@@ -991,6 +1176,116 @@ void LogErrorNotReached(const char* file, int line);
 #undef assert
 #define assert(x) DLOG_ASSERT(x)
 
+#if defined(OS_WIN)
+typedef unsigned long SystemErrorCode;
+#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
+typedef int SystemErrorCode;
+#endif
+
+// Alias for ::GetLastError() on Windows and errno on POSIX. Avoids having to
+// pull in windows.h just for GetLastError() and DWORD.
+BASE_EXPORT SystemErrorCode GetLastSystemErrorCode();
+BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code);
+
+// Underlying buffer to store logs. Comparing to using std::ostringstream
+// directly, this utility exposes more low-level methods so that we avoid
+// creation of std::string which allocates memory internally.
+class CharArrayStreamBuf
+  : public std::streambuf
+{
+public:
+  explicit CharArrayStreamBuf() : _data(NULL), _size(0) {}
+  ~CharArrayStreamBuf();
+
+  int overflow(int ch) override;
+  int sync() override;
+  void reset();
+
+private:
+  char* _data;
+  size_t _size;
+};
+
+// A std::ostream to << objects.
+// Have to use private inheritance to arrange initialization order.
+class LogStream
+  : virtual private CharArrayStreamBuf, public std::ostream
+{
+public:
+  LogStream()
+    : std::ostream(this)
+    , file_("-")
+    , line_(0)
+    , severity_(0)
+    , noEndl_(false)
+    , noFormat_(false)
+  {}
+
+  ~LogStream() {
+    noEndl_ = false;
+    noFormat_ = false;
+  }
+
+  inline LogStream& operator<<(LogStream& (*m)(LogStream&)) {
+    return m(*this);
+  }
+
+  inline LogStream& operator<<(std::ostream& (*m)(std::ostream&)) {
+    m(*(std::ostream*)this);
+    return *this;
+  }
+
+  template <typename T> inline LogStream& operator<<(T const& t) {
+    *(std::ostream*)this << t;
+    return *this;
+  }
+
+  // Reset the log prefix: "I0711 15:14:01.830110 12735 server.cpp:93] "
+  LogStream& SetPosition(const PathChar* file, int line, LogSeverity);
+
+  LogStream& dontEndlOnce()
+  {
+    noEndl_ = true;
+    return *this;
+  }
+
+  LogStream& dontFormatOnce()
+  {
+    noFormat_ = true;
+    return *this;
+  }
+
+  bool empty() const { return pbase() == pptr(); }
+
+  base::StringPiece contentView() const;
+
+  std::string contentStr() const;
+
+  const PathChar* file() const { return file_; }
+
+  int line() const { return line_; }
+
+  LogSeverity severity() const { return severity_; }
+
+  // Returns false if stream must continue on same line
+  bool needEndl() const
+  {
+    return !noEndl_;
+  }
+
+  bool needFormat() const
+  {
+    return !noFormat_;
+  }
+
+private:
+  const PathChar* file_;
+  int line_;
+  LogSeverity severity_;
+  bool noEndl_;
+  bool noFormat_;
+};
+
 // This class more or less represents a particular log message.  You
 // create an instance of LogMessage and then stream stuff to it.
 // When you finish streaming to it, ~LogMessage is called and the
@@ -1017,16 +1312,17 @@ class BASE_EXPORT LogMessage {
 
   ~LogMessage();
 
-  std::ostream& stream() { return stream_; }
+  LogStream& stream() { return logStream_; }
 
   LogSeverity severity() { return severity_; }
-  std::string str() { return stream_.str(); }
+  std::string str() { return logStream_.contentStr(); }
 
  private:
-  void Init(const char* file, int line);
+  void Init(const char* file, int line, LogSeverity severity);
 
   LogSeverity severity_;
-  std::ostringstream stream_;
+  // The real data is inside LogStream which may be cached thread-locally.
+  LogStream logStream_;
   size_t message_start_;  // Offset of the start of the message (past prefix
                           // info).
   // The file and line information passed in to the constructor.
@@ -1053,17 +1349,6 @@ class LogMessageVoidify {
 };
 
 #if defined(OS_WIN)
-typedef unsigned long SystemErrorCode;
-#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
-typedef int SystemErrorCode;
-#endif
-
-// Alias for ::GetLastError() on Windows and errno on POSIX. Avoids having to
-// pull in windows.h just for GetLastError() and DWORD.
-BASE_EXPORT SystemErrorCode GetLastSystemErrorCode();
-BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code);
-
-#if defined(OS_WIN)
 // Appends a formatted system message of the GetLastError() type.
 class BASE_EXPORT Win32ErrorLogMessage {
  public:
@@ -1075,7 +1360,7 @@ class BASE_EXPORT Win32ErrorLogMessage {
   // Appends the error message before destructing the encapsulated class.
   ~Win32ErrorLogMessage();
 
-  std::ostream& stream() { return log_message_.stream(); }
+  LogStream& stream() { return log_message_.stream(); }
 
  private:
   SystemErrorCode err_;
@@ -1095,7 +1380,7 @@ class BASE_EXPORT ErrnoLogMessage {
   // Appends the error message before destructing the encapsulated class.
   ~ErrnoLogMessage();
 
-  std::ostream& stream() { return log_message_.stream(); }
+  LogStream& stream() { return log_message_.stream(); }
 
  private:
   SystemErrorCode err_;
@@ -1131,6 +1416,37 @@ BASE_EXPORT bool IsLoggingToFileEnabled();
 // Returns the default log file path.
 BASE_EXPORT base::string16 GetLogFileFullPath();
 #endif
+
+// Do not append endl after each log message
+inline LogStream& noEndl(LogStream& ls)
+{
+  ls.dontEndlOnce();
+  return ls;
+}
+
+// Do not append extra information before each log message
+// that looks similar to:
+// [25583:25583:1113/185640.856387:39412343570:INFO:main.cc(375)]
+inline LogStream& noFormat(LogStream& ls)
+{
+  ls.dontFormatOnce();
+  return ls;
+}
+
+// Can be used in conditions
+//
+// USAGE
+//
+// for (auto it = items.begin(); it != items.end(); ++it) {
+//   const bool isLastElem
+//     = it == (items.end() - 1);
+//   LOG(INFO) << ' ' << *it << noFormat
+//             << (!isLastElem ? noEndl : doNothing);
+// }
+inline LogStream& doNothing(LogStream& ls)
+{
+  return ls;
+}
 
 }  // namespace logging
 
@@ -1175,5 +1491,126 @@ inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
     logged_once = true;                                 \
   } while (0);                                          \
   EAT_STREAM_PARAMETERS
+
+// Helper macro included by all *_EVERY_N macros.
+#define INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(logifmacro, severity, condition, N)   \
+  static ::base::subtle::Atomic32 STR_CONCAT(logeveryn_, __LINE__) = -1; \
+  const static int STR_CONCAT(logeveryn_sc_, __LINE__) = (N);       \
+  const int STR_CONCAT(logeveryn_c_, __LINE__) =                    \
+      ::base::subtle::NoBarrier_AtomicIncrement(&STR_CONCAT(logeveryn_, __LINE__), 1); \
+  logifmacro(severity, (condition) && STR_CONCAT(logeveryn_c_, __LINE__) / \
+             STR_CONCAT(logeveryn_sc_, __LINE__) * STR_CONCAT(logeveryn_sc_, __LINE__) \
+             == STR_CONCAT(logeveryn_c_, __LINE__))
+
+// Helper macro included by all *_FIRST_N macros.
+#define INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(logifmacro, severity, condition, N)   \
+  static ::base::subtle::Atomic32 STR_CONCAT(logfstn_, __LINE__) = 0; \
+  logifmacro(severity, (condition) && STR_CONCAT(logfstn_, __LINE__) < N && \
+             ::base::subtle::NoBarrier_AtomicIncrement(&STR_CONCAT(logfstn_, __LINE__), 1) <= N)
+
+// Helper macro included by all *_EVERY_SECOND macros.
+#define INTERNAL_LOG_IF_EVERY_N_US_IMPL(logifmacro, severity, condition, periodInMicroseconds) \
+  static ::base::subtle::Atomic64 STR_CONCAT(logeverys_, __LINE__) = 0; \
+  const int64_t STR_CONCAT(logeverys_ts_, __LINE__) = (base::Time::Now() - base::Time::UnixEpoch()).InMicroseconds(); \
+  const int64_t STR_CONCAT(logeverys_seen_, __LINE__) = STR_CONCAT(logeverys_, __LINE__); \
+  logifmacro(severity, (condition) && STR_CONCAT(logeverys_ts_, __LINE__) >= \
+             (STR_CONCAT(logeverys_seen_, __LINE__) + periodInMicroseconds) &&  \
+             ::base::subtle::NoBarrier_CompareAndSwap(                \
+                 &STR_CONCAT(logeverys_, __LINE__),                 \
+                 STR_CONCAT(logeverys_seen_, __LINE__),             \
+                 STR_CONCAT(logeverys_ts_, __LINE__))               \
+             == STR_CONCAT(logeverys_seen_, __LINE__))
+
+// 1000000 microseconds equals 1 second
+#define INTERNAL_LOG_IF_EVERY_SECOND_IMPL(logifmacro, severity, condition) \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(logifmacro, severity, condition, 1000000L)
+
+// ===============================================================
+
+// Print a log for at most once. (not present in glog)
+// Almost zero overhead when the log was printed.
+#ifndef LOG_ONCE
+# define LOG_ONCE(severity) LOG_FIRST_N_TIMES(severity, 1)
+# define LOG_IF_ONCE(severity, condition) LOG_IF_FIRST_N_TIMES(severity, condition, 1)
+#endif
+
+// Print a log after every N calls. First call always prints.
+// Each call to this macro has a cost of relaxed atomic increment.
+// The corresponding macro in glog is not thread-safe while this is.
+#ifndef LOG_EVERY_N_TIMES
+# define LOG_EVERY_N_TIMES(severity, N)                                \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(LOG_IF, severity, true, N)
+# define LOG_IF_EVERY_N_TIMES(severity, condition, N)                  \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(LOG_IF, severity, condition, N)
+#endif
+
+// Print logs for first N calls.
+// Almost zero overhead when the log was printed for N times
+// The corresponding macro in glog is not thread-safe while this is.
+#ifndef LOG_FIRST_N_TIMES
+# define LOG_FIRST_N_TIMES(severity, N)                                \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(LOG_IF, severity, true, N)
+# define LOG_IF_FIRST_N_TIMES(severity, condition, N)                  \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(LOG_IF, severity, condition, N)
+#endif
+
+// Print a log every second. (not present in glog). First call always prints.
+// Each call to this macro has a cost of calling gettimeofday.
+#ifndef LOG_EVERY_SECOND
+# define LOG_EVERY_SECOND(severity)                                \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(LOG_IF, severity, true)
+# define LOG_IF_EVERY_SECOND(severity, condition)                \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(LOG_IF, severity, condition)
+#endif
+
+#ifndef LOG_EVERY_N_US
+# define LOG_EVERY_N_US(severity, periodInMicroseconds)                                \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(LOG_IF, severity, true, periodInMicroseconds)
+# define LOG_IF_EVERY_N_US(severity, condition, periodInMicroseconds)                \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(LOG_IF, severity, condition, periodInMicroseconds)
+#endif
+
+#ifndef PLOG_EVERY_N_TIMES
+# define PLOG_EVERY_N_TIMES(severity, N)                               \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(PLOG_IF, severity, true, N)
+# define PLOG_IF_EVERY_N_TIMES(severity, condition, N)                 \
+  INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(PLOG_IF, severity, condition, N)
+#endif
+
+#ifndef PLOG_FIRST_N_TIMES
+# define PLOG_FIRST_N_TIMES(severity, N)                               \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(PLOG_IF, severity, true, N)
+# define PLOG_IF_FIRST_N_TIMES(severity, condition, N)                 \
+  INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(PLOG_IF, severity, condition, N)
+#endif
+
+#ifndef PLOG_ONCE
+# define PLOG_ONCE(severity) PLOG_FIRST_N_TIMES(severity, 1)
+# define PLOG_IF_ONCE(severity, condition) PLOG_IF_FIRST_N_TIMES(severity, condition, 1)
+#endif
+
+#ifndef PLOG_EVERY_SECOND
+# define PLOG_EVERY_SECOND(severity)                             \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(PLOG_IF, severity, true)
+# define PLOG_IF_EVERY_SECOND(severity, condition)                       \
+  INTERNAL_LOG_IF_EVERY_SECOND_IMPL(PLOG_IF, severity, condition)
+#endif
+
+#ifndef PLOG_EVERY_N_US
+# define PLOG_EVERY_N_US(severity, periodInMicroseconds)                             \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(PLOG_IF, severity, true, periodInMicroseconds)
+# define PLOG_IF_EVERY_N_US(severity, condition, periodInMicroseconds)                       \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(PLOG_IF, severity, condition, periodInMicroseconds)
+#endif
+
+// DEBUG_MODE is for uses like
+//   if (DEBUG_MODE) foo.CheckThatFoo();
+// instead of
+//   #ifndef NDEBUG
+//     foo.CheckThatFoo();
+//   #endif
+//
+// We tie its state to ENABLE_DLOG.
+enum { DEBUG_MODE = DCHECK_IS_ON() };
 
 #endif  // BASE_LOGGING_H_

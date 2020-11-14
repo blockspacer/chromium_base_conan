@@ -578,8 +578,16 @@ if(ENABLE_DYNAMIC_ANNOTATIONS)
   list(APPEND BASE_DEFINES DYNAMIC_ANNOTATIONS_ENABLED=1)
 endif(ENABLE_DYNAMIC_ANNOTATIONS)
 
+string(TOLOWER "${CMAKE_BUILD_TYPE}" cmake_build_type_tolower)
+if(cmake_build_type_tolower MATCHES "release")
+  list(APPEND BASE_DEFINES
+    # The official build does not print the stacktrace
+    # or reason a CHECK failed.
+    OFFICIAL_BUILD=1
+  )
+endif() # NOT CMAKE_BUILD_TYPE MATCHES
+
 list(APPEND BASE_DEFINES
-  OFFICIAL_BUILD=1
   BASE_PORT=1
 )
 
