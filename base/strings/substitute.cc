@@ -143,10 +143,10 @@ SubstituteArg16::SubstituteArg16(bool value)
   if(arg_name != base::nullopt)  \
   { \
     vec_name.emplace_back( \
-        base::rvalue_cast( \
-          base::rvalue_cast(arg_name.value()) \
-            .value()) \
-      ); \
+      base::rvalue_cast( \
+        base::rvalue_cast(arg_name.value()) \
+          .value()) \
+    ); \
   }
 
 template<class FormatStringType, class OutStringType, class ArgType>
@@ -255,16 +255,16 @@ void SubstituteAndAppend(
 {
   return SubstituteAndAppendInternal(output,
                     format,
-                     base::rvalue_cast(arg0),
-                     base::rvalue_cast(arg1),
-                     base::rvalue_cast(arg2),
-                     base::rvalue_cast(arg3),
-                     base::rvalue_cast(arg4),
-                     base::rvalue_cast(arg5),
-                     base::rvalue_cast(arg6),
-                     base::rvalue_cast(arg7),
-                     base::rvalue_cast(arg8),
-                     base::rvalue_cast(arg9));
+                    base::rvalue_cast(arg0),
+                    base::rvalue_cast(arg1),
+                    base::rvalue_cast(arg2),
+                    base::rvalue_cast(arg3),
+                    base::rvalue_cast(arg4),
+                    base::rvalue_cast(arg5),
+                    base::rvalue_cast(arg6),
+                    base::rvalue_cast(arg7),
+                    base::rvalue_cast(arg8),
+                    base::rvalue_cast(arg9));
 }
 
 std::string Substitute(
