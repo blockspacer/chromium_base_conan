@@ -64,7 +64,6 @@ void byteReverse(uint8_t* buf, unsigned longs) {
  * reflect the addition of 16 longwords of new data.  MD5Update blocks
  * the data and converts bytes into longwords for this routine.
  */
-UBSAN_IGNORE_UNSIGNED_OVERFLOW
 void MD5Transform(uint32_t buf[4], const uint32_t in[16]) {
   uint32_t a, b, c, d;
 

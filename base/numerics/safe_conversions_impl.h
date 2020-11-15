@@ -65,7 +65,6 @@ constexpr bool IsValueNegative(T) {
 // arguments, but probably doesn't do what you want for any unsigned value
 // larger than max / 2 + 1 (i.e. signed min cast to unsigned).
 template <typename T>
-UBSAN_IGNORE_IMPLICIT
 constexpr typename std::make_signed<T>::type ConditionalNegate(
     T x,
     bool is_negative) {
@@ -78,7 +77,6 @@ constexpr typename std::make_signed<T>::type ConditionalNegate(
 
 // This performs a safe, absolute value via unsigned overflow.
 template <typename T>
-UBSAN_IGNORE_IMPLICIT
 constexpr typename std::make_unsigned<T>::type SafeUnsignedAbs(T value) {
   static_assert(std::is_integral<T>::value, "Type must be integral");
   using UnsignedT = typename std::make_unsigned<T>::type;
@@ -254,7 +252,6 @@ struct NarrowingRange {
 
   // Masks out the integer bits that are beyond the precision of the
   // intermediate type used for comparison.
-  UBSAN_IGNORE_IMPLICIT
   static constexpr T Adjust(T value) {
     static_assert(std::is_same<T, Dst>::value, "");
     static_assert(kShift < DstLimits::digits, "");
@@ -305,7 +302,6 @@ struct DstRangeRelationToSrcRangeImpl<Dst,
                                       DstSign,
                                       SrcSign,
                                       NUMERIC_RANGE_CONTAINED> {
-  UBSAN_IGNORE_IMPLICIT
   static constexpr RangeCheck Check(Src value) {
     using SrcLimits = std::numeric_limits<Src>;
     using DstLimits = NarrowingRange<Dst, Src, Bounds>;
@@ -357,7 +353,6 @@ struct DstRangeRelationToSrcRangeImpl<Dst,
                                       INTEGER_REPRESENTATION_SIGNED,
                                       INTEGER_REPRESENTATION_UNSIGNED,
                                       NUMERIC_RANGE_NOT_CONTAINED> {
-  UBSAN_IGNORE_IMPLICIT
   static constexpr RangeCheck Check(Src value) {
     using DstLimits = NarrowingRange<Dst, Src, Bounds>;
     using Promotion = decltype(Src() + Dst());
@@ -378,7 +373,6 @@ struct DstRangeRelationToSrcRangeImpl<Dst,
                                       INTEGER_REPRESENTATION_UNSIGNED,
                                       INTEGER_REPRESENTATION_SIGNED,
                                       NUMERIC_RANGE_NOT_CONTAINED> {
-  UBSAN_IGNORE_IMPLICIT
   static constexpr RangeCheck Check(Src value) {
     using SrcLimits = std::numeric_limits<Src>;
     using DstLimits = NarrowingRange<Dst, Src, Bounds>;
@@ -597,11 +591,11 @@ struct ArithmeticOrUnderlyingEnum<T, false> {
 };
 
 // The following are helper templates used in the CheckedNumeric class.
-template <typename T>
-class CheckedNumeric;
+template <typename Tag, typename T>
+class StrongCheckedNumeric;
 
-template <typename T>
-class ClampedNumeric;
+template <typename Tag, typename T>
+class StrongClampedNumeric;
 
 template <typename T>
 class StrictNumeric;
@@ -616,8 +610,8 @@ struct UnderlyingType {
   static const bool is_strict = false;
 };
 
-template <typename T>
-struct UnderlyingType<CheckedNumeric<T>> {
+template <typename Tag, typename T>
+struct UnderlyingType<StrongCheckedNumeric<Tag, T>> {
   using type = T;
   static const bool is_numeric = true;
   static const bool is_checked = true;
@@ -625,8 +619,8 @@ struct UnderlyingType<CheckedNumeric<T>> {
   static const bool is_strict = false;
 };
 
-template <typename T>
-struct UnderlyingType<ClampedNumeric<T>> {
+template <typename Tag, typename T>
+struct UnderlyingType<StrongClampedNumeric<Tag, T>> {
   using type = T;
   static const bool is_numeric = true;
   static const bool is_checked = false;
@@ -671,7 +665,6 @@ struct IsStrictOp {
 // Numeric template) cast as a signed integral of equivalent precision.
 // I.e. it's mostly an alias for: static_cast<std::make_signed<T>::type>(t)
 template <typename Src>
-UBSAN_IGNORE_IMPLICIT
 constexpr typename std::make_signed<
     typename base::internal::UnderlyingType<Src>::type>::type
 as_signed(const Src value) {
@@ -684,7 +677,6 @@ as_signed(const Src value) {
 // Numeric template) cast as an unsigned integral of equivalent precision.
 // I.e. it's mostly an alias for: static_cast<std::make_unsigned<T>::type>(t)
 template <typename Src>
-UBSAN_IGNORE_IMPLICIT
 constexpr typename std::make_unsigned<
     typename base::internal::UnderlyingType<Src>::type>::type
 as_unsigned(const Src value) {
@@ -694,7 +686,6 @@ as_unsigned(const Src value) {
 }
 
 template <typename L, typename R>
-UBSAN_IGNORE_IMPLICIT
 constexpr bool IsLessImpl(const L lhs,
                           const R rhs,
                           const RangeCheck l_range,
@@ -716,7 +707,6 @@ struct IsLess {
 };
 
 template <typename L, typename R>
-UBSAN_IGNORE_IMPLICIT
 constexpr bool IsLessOrEqualImpl(const L lhs,
                                  const R rhs,
                                  const RangeCheck l_range,
@@ -738,7 +728,6 @@ struct IsLessOrEqual {
 };
 
 template <typename L, typename R>
-UBSAN_IGNORE_IMPLICIT
 constexpr bool IsGreaterImpl(const L lhs,
                              const R rhs,
                              const RangeCheck l_range,
@@ -760,7 +749,6 @@ struct IsGreater {
 };
 
 template <typename L, typename R>
-UBSAN_IGNORE_IMPLICIT
 constexpr bool IsGreaterOrEqualImpl(const L lhs,
                                     const R rhs,
                                     const RangeCheck l_range,
@@ -785,7 +773,6 @@ template <typename L, typename R>
 struct IsEqual {
   static_assert(std::is_arithmetic<L>::value && std::is_arithmetic<R>::value,
                 "Types must be numeric.");
-  UBSAN_IGNORE_IMPLICIT
   static constexpr bool Test(const L lhs, const R rhs) {
     return DstRangeRelationToSrcRange<R>(lhs) ==
                DstRangeRelationToSrcRange<L>(rhs) &&
@@ -798,7 +785,6 @@ template <typename L, typename R>
 struct IsNotEqual {
   static_assert(std::is_arithmetic<L>::value && std::is_arithmetic<R>::value,
                 "Types must be numeric.");
-  UBSAN_IGNORE_IMPLICIT
   static constexpr bool Test(const L lhs, const R rhs) {
     return DstRangeRelationToSrcRange<R>(lhs) !=
                DstRangeRelationToSrcRange<L>(rhs) ||
@@ -810,7 +796,6 @@ struct IsNotEqual {
 // These perform the actual math operations on the CheckedNumerics.
 // Binary arithmetic operations.
 template <template <typename, typename> class C, typename L, typename R>
-UBSAN_IGNORE_IMPLICIT
 constexpr bool SafeCompare(const L lhs, const R rhs) {
   static_assert(std::is_arithmetic<L>::value && std::is_arithmetic<R>::value,
                 "Types must be numeric.");

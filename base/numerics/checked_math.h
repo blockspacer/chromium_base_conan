@@ -12,31 +12,62 @@
 
 #include "base/numerics/checked_math_impl.h"
 
+// default tag for strong type
+#define STRONG_CHECKED_INT_TAG_NAME UniqueCheckedIntTypeTag
+
+// format tag name (concats strings)
+#define STRONG_CHECKED_INT_TAG_CUSTOM_2(using_name, suffix) \
+  using_name ## _ ## suffix
+
+// STRONG_CHECKED_INT_TAG_CUSTOM(MyType, UniqueTypeTag) expands to `MyType_UniqueTypeTag`
+#define STRONG_CHECKED_INT_TAG_CUSTOM(using_name, suffix) \
+  STRONG_CHECKED_INT_TAG_CUSTOM_2(using_name,suffix)
+
+/// \note Each `StrongAlias` must have UNIQUE tag.
+/// We assume that provided `using_name` globally unique
+/// (even between shared libs!)
+// STRONG_CHECKED_INT_TAG(MyType) expands to `MyType_UniqueTypeTag`
+#define STRONG_CHECKED_INT_TAG(using_name) \
+  STRONG_CHECKED_INT_TAG_CUSTOM(using_name,STRONG_CHECKED_INT_TAG_NAME)
+
+// USAGE
+//
+// DEFINE_STRONG_CHECKED_TYPE(Gigabytes, int);
+// Gigabytes t1(std::numeric_limits<int>::max());
+// t1++; // will CRASH
+// DLOG(INFO) << t1.ValueOrDie();
+// CHECK(t1.ValueOrDie() == std::numeric_limits<int>::max());
+#define DEFINE_STRONG_CHECKED_TYPE(NAME, TYPE) \
+  using NAME = base::StrongCheckedNumeric<class STRONG_CHECKED_INT_TAG(NAME), TYPE>
+
+#define STRONGLY_TYPED_CHECKED_INT(NAME) \
+  DEFINE_STRONG_CHECKED_TYPE(NAME, int)
+
 namespace base {
 namespace internal {
 
-template <typename T>
-class CheckedNumeric {
+template <typename Tag, typename T>
+class StrongCheckedNumeric {
   static_assert(std::is_arithmetic<T>::value,
-                "CheckedNumeric<T>: T must be a numeric type.");
+                "StrongCheckedNumeric<T>: T must be a numeric type.");
 
  public:
   using type = T;
 
-  constexpr CheckedNumeric() = default;
+  constexpr StrongCheckedNumeric() = default;
 
   // Copy constructor.
   template <typename Src>
-  constexpr CheckedNumeric(const CheckedNumeric<Src>& rhs)
+  constexpr StrongCheckedNumeric(const StrongCheckedNumeric<Tag, Src>& rhs)
       : state_(rhs.state_.value(), rhs.IsValid()) {}
 
-  template <typename Src>
-  friend class CheckedNumeric;
+  template <typename StrongTag, typename Src>
+  friend class StrongCheckedNumeric;
 
   // This is not an explicit constructor because we implicitly upgrade regular
-  // numerics to CheckedNumerics to make them easier to use.
+  // numerics to StrongCheckedNumeric to make them easier to use.
   template <typename Src>
-  constexpr CheckedNumeric(Src value)  // NOLINT(runtime/explicit)
+  constexpr StrongCheckedNumeric(Src value)  // NOLINT(runtime/explicit)
       : state_(value) {
     static_assert(std::is_arithmetic<Src>::value, "Argument must be numeric.");
   }
@@ -44,11 +75,11 @@ class CheckedNumeric {
   // This is not an explicit constructor because we want a seamless conversion
   // from StrictNumeric types.
   template <typename Src>
-  constexpr CheckedNumeric(
+  constexpr StrongCheckedNumeric(
       StrictNumeric<Src> value)  // NOLINT(runtime/explicit)
       : state_(static_cast<Src>(value)) {}
 
-  // IsValid() - The public API to test if a CheckedNumeric is currently valid.
+  // IsValid() - The public API to test if a StrongCheckedNumeric is currently valid.
   // A range checked destination type can be supplied using the Dst template
   // parameter.
   template <typename Dst = T>
@@ -102,10 +133,10 @@ class CheckedNumeric {
   }
 
   // Returns a checked numeric of the specified type, cast from the current
-  // CheckedNumeric. If the current state is invalid or the destination cannot
-  // represent the result then the returned CheckedNumeric will be invalid.
+  // StrongCheckedNumeric. If the current state is invalid or the destination cannot
+  // represent the result then the returned StrongCheckedNumeric will be invalid.
   template <typename Dst>
-  constexpr CheckedNumeric<typename UnderlyingType<Dst>::type> Cast() const {
+  constexpr StrongCheckedNumeric<Tag, typename UnderlyingType<Dst>::type> Cast() const {
     return *this;
   }
 
@@ -113,37 +144,37 @@ class CheckedNumeric {
   // in the the tests. Do not implement it in production code, because the
   // underlying values may change at any time.
   template <typename U>
-  friend U GetNumericValueForTest(const CheckedNumeric<U>& src);
+  friend U GetNumericValueForTest(const StrongCheckedNumeric<Tag, U>& src);
 
   // Prototypes for the supported arithmetic operator overloads.
   template <typename Src>
-  constexpr CheckedNumeric& operator+=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator+=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator-=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator-=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator*=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator*=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator/=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator/=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator%=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator%=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator<<=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator<<=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator>>=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator>>=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator&=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator&=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator|=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator|=(const Src rhs);
   template <typename Src>
-  constexpr CheckedNumeric& operator^=(const Src rhs);
+  constexpr StrongCheckedNumeric& operator^=(const Src rhs);
 
-  constexpr CheckedNumeric operator-() const {
+  constexpr StrongCheckedNumeric operator-() const {
     // The negation of two's complement int min is int min, so we simply
     // check for that in the constexpr case.
     // We use an optimized code path for a known run-time variable.
     return MustTreatAsConstexpr(state_.value()) || !std::is_signed<T>::value ||
                    std::is_floating_point<T>::value
-               ? CheckedNumeric<T>(
+               ? StrongCheckedNumeric<Tag, T>(
                      NegateWrapper(state_.value()),
                      IsValid() && (!std::is_signed<T>::value ||
                                    std::is_floating_point<T>::value ||
@@ -152,23 +183,23 @@ class CheckedNumeric {
                : FastRuntimeNegate();
   }
 
-  constexpr CheckedNumeric operator~() const {
-    return CheckedNumeric<decltype(InvertWrapper(T()))>(
+  constexpr StrongCheckedNumeric operator~() const {
+    return StrongCheckedNumeric<Tag, decltype(InvertWrapper(T()))>(
         InvertWrapper(state_.value()), IsValid());
   }
 
-  constexpr CheckedNumeric Abs() const {
+  constexpr StrongCheckedNumeric Abs() const {
     return !IsValueNegative(state_.value()) ? *this : -*this;
   }
 
   template <typename U>
-  constexpr CheckedNumeric<typename MathWrapper<CheckedMaxOp, T, U>::type> Max(
+  constexpr StrongCheckedNumeric<Tag, typename MathWrapper<CheckedMaxOp, T, U>::type> Max(
       const U rhs) const {
     using R = typename UnderlyingType<U>::type;
     using result_type = typename MathWrapper<CheckedMaxOp, T, U>::type;
     // TODO(jschuh): This can be converted to the MathOp version and remain
     // constexpr once we have C++14 support.
-    return CheckedNumeric<result_type>(
+    return StrongCheckedNumeric<Tag, result_type>(
         static_cast<result_type>(
             IsGreater<T, R>::Test(state_.value(), Wrapper<U>::value(rhs))
                 ? state_.value()
@@ -177,13 +208,13 @@ class CheckedNumeric {
   }
 
   template <typename U>
-  constexpr CheckedNumeric<typename MathWrapper<CheckedMinOp, T, U>::type> Min(
+  constexpr StrongCheckedNumeric<Tag, typename MathWrapper<CheckedMinOp, T, U>::type> Min(
       const U rhs) const {
     using R = typename UnderlyingType<U>::type;
     using result_type = typename MathWrapper<CheckedMinOp, T, U>::type;
     // TODO(jschuh): This can be converted to the MathOp version and remain
     // constexpr once we have C++14 support.
-    return CheckedNumeric<result_type>(
+    return StrongCheckedNumeric<Tag, result_type>(
         static_cast<result_type>(
             IsLess<T, R>::Test(state_.value(), Wrapper<U>::value(rhs))
                 ? state_.value()
@@ -194,74 +225,75 @@ class CheckedNumeric {
   // This function is available only for integral types. It returns an unsigned
   // integer of the same width as the source type, containing the absolute value
   // of the source, and properly handling signed min.
-  constexpr CheckedNumeric<typename UnsignedOrFloatForSize<T>::type>
+  constexpr StrongCheckedNumeric<Tag, typename UnsignedOrFloatForSize<T>::type>
   UnsignedAbs() const {
-    return CheckedNumeric<typename UnsignedOrFloatForSize<T>::type>(
+    return StrongCheckedNumeric<Tag, typename UnsignedOrFloatForSize<T>::type>(
         SafeUnsignedAbs(state_.value()), state_.is_valid());
   }
 
-  constexpr CheckedNumeric& operator++() {
+  constexpr StrongCheckedNumeric& operator++() {
     *this += 1;
     return *this;
   }
 
-  constexpr CheckedNumeric operator++(int) {
-    CheckedNumeric value = *this;
+  constexpr StrongCheckedNumeric operator++(int) {
+    StrongCheckedNumeric value = *this;
     *this += 1;
     return value;
   }
 
-  constexpr CheckedNumeric& operator--() {
+  constexpr StrongCheckedNumeric& operator--() {
     *this -= 1;
     return *this;
   }
 
-  constexpr CheckedNumeric operator--(int) {
-    CheckedNumeric value = *this;
+  constexpr StrongCheckedNumeric operator--(int) {
+    StrongCheckedNumeric value = *this;
     *this -= 1;
     return value;
   }
 
-  // These perform the actual math operations on the CheckedNumerics.
+  // These perform the actual math operations on the StrongCheckedNumerics.
   // Binary arithmetic operations.
-  template <template <typename, typename, typename> class M,
+  template <typename MathTag,
+            template <typename, typename, typename> class M,
             typename L,
             typename R>
-  static constexpr CheckedNumeric MathOp(const L lhs, const R rhs) {
+  static constexpr StrongCheckedNumeric MathOp(const L lhs, const R rhs) {
     using Math = typename MathWrapper<M, L, R>::math;
     T result = 0;
     bool is_valid =
         Wrapper<L>::is_valid(lhs) && Wrapper<R>::is_valid(rhs) &&
         Math::Do(Wrapper<L>::value(lhs), Wrapper<R>::value(rhs), &result);
-    return CheckedNumeric<T>(result, is_valid);
+    return StrongCheckedNumeric<MathTag, T>(result, is_valid);
   }
 
   // Assignment arithmetic operations.
   template <template <typename, typename, typename> class M, typename R>
-  constexpr CheckedNumeric& MathOp(const R rhs) {
+  constexpr StrongCheckedNumeric& MathOp(const R rhs) {
     using Math = typename MathWrapper<M, T, R>::math;
     T result = 0;  // Using T as the destination saves a range check.
     bool is_valid = state_.is_valid() && Wrapper<R>::is_valid(rhs) &&
                     Math::Do(state_.value(), Wrapper<R>::value(rhs), &result);
-    *this = CheckedNumeric<T>(result, is_valid);
+    *this = StrongCheckedNumeric<Tag, T>(result, is_valid);
     return *this;
   }
 
  private:
   CheckedNumericState<T> state_;
 
-  CheckedNumeric FastRuntimeNegate() const {
+  StrongCheckedNumeric FastRuntimeNegate() const {
     T result;
     bool success = CheckedSubOp<T, T>::Do(T(0), state_.value(), &result);
-    return CheckedNumeric<T>(result, IsValid() && success);
+    return StrongCheckedNumeric<Tag, T>(result, IsValid() && success);
   }
 
   template <typename Src>
-  constexpr CheckedNumeric(Src value, bool is_valid)
+  constexpr StrongCheckedNumeric(Src value, bool is_valid)
       : state_(value, is_valid) {}
 
   // These wrappers allow us to handle state the same way for both
-  // CheckedNumeric and POD arithmetic types.
+  // StrongCheckedNumeric and POD arithmetic types.
   template <typename Src>
   struct Wrapper {
     static constexpr bool is_valid(Src) { return true; }
@@ -269,11 +301,11 @@ class CheckedNumeric {
   };
 
   template <typename Src>
-  struct Wrapper<CheckedNumeric<Src>> {
-    static constexpr bool is_valid(const CheckedNumeric<Src> v) {
+  struct Wrapper<StrongCheckedNumeric<Tag, Src>> {
+    static constexpr bool is_valid(const StrongCheckedNumeric<Tag, Src> v) {
       return v.IsValid();
     }
-    static constexpr Src value(const CheckedNumeric<Src> v) {
+    static constexpr Src value(const StrongCheckedNumeric<Tag, Src> v) {
       return v.state_.value();
     }
   };
@@ -288,66 +320,96 @@ class CheckedNumeric {
 };
 
 // Convenience functions to avoid the ugly template disambiguator syntax.
-template <typename Dst, typename Src>
-constexpr bool IsValidForType(const CheckedNumeric<Src> value) {
+template <typename Tag, typename Dst, typename Src>
+constexpr bool IsValidForType(const StrongCheckedNumeric<Tag, Src> value) {
   return value.template IsValid<Dst>();
 }
 
-template <typename Dst, typename Src>
+template <typename Tag, typename Dst, typename Src>
 constexpr StrictNumeric<Dst> ValueOrDieForType(
-    const CheckedNumeric<Src> value) {
+    const StrongCheckedNumeric<Tag, Src> value) {
   return value.template ValueOrDie<Dst>();
 }
 
-template <typename Dst, typename Src, typename Default>
+template <typename Tag, typename Dst, typename Src, typename Default>
 constexpr StrictNumeric<Dst> ValueOrDefaultForType(
-    const CheckedNumeric<Src> value,
+    const StrongCheckedNumeric<Tag, Src> value,
     const Default default_value) {
   return value.template ValueOrDefault<Dst>(default_value);
 }
 
 // Convience wrapper to return a new CheckedNumeric from the provided arithmetic
 // or CheckedNumericType.
-template <typename T>
-constexpr CheckedNumeric<typename UnderlyingType<T>::type> MakeCheckedNum(
+template <typename Tag, typename T>
+constexpr StrongCheckedNumeric<Tag, typename UnderlyingType<T>::type> MakeCheckedNum(
     const T value) {
   return value;
 }
 
 // These implement the variadic wrapper for the math operations.
-template <template <typename, typename, typename> class M,
+template <typename Tag,
+          template <typename, typename, typename> class M,
           typename L,
           typename R>
-constexpr CheckedNumeric<typename MathWrapper<M, L, R>::type> CheckMathOp(
+constexpr StrongCheckedNumeric<Tag, typename MathWrapper<M, L, R>::type> CheckMathOp(
     const L lhs,
     const R rhs) {
   using Math = typename MathWrapper<M, L, R>::math;
-  return CheckedNumeric<typename Math::result_type>::template MathOp<M>(lhs,
+  return StrongCheckedNumeric<Tag, typename Math::result_type>::template MathOp<Tag, M>(lhs,
                                                                         rhs);
 }
 
 // General purpose wrapper template for arithmetic operations.
-template <template <typename, typename, typename> class M,
+template <typename Tag,
+          template <typename, typename, typename> class M,
           typename L,
           typename R,
           typename... Args>
-constexpr CheckedNumeric<typename ResultType<M, L, R, Args...>::type>
+constexpr StrongCheckedNumeric<Tag, typename ResultType<M, L, R, Args...>::type>
 CheckMathOp(const L lhs, const R rhs, const Args... args) {
-  return CheckMathOp<M>(CheckMathOp<M>(lhs, rhs), args...);
+  return CheckMathOp<Tag, M>(CheckMathOp<Tag, M>(lhs, rhs), args...);
 }
 
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Add, +, +=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Sub, -, -=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Mul, *, *=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Div, /, /=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Mod, %, %=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Lsh, <<, <<=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Rsh, >>, >>=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, And, &, &=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Or, |, |=)
-BASE_NUMERIC_ARITHMETIC_OPERATORS(Checked, Check, Xor, ^, ^=)
-BASE_NUMERIC_ARITHMETIC_VARIADIC(Checked, Check, Max)
-BASE_NUMERIC_ARITHMETIC_VARIADIC(Checked, Check, Min)
+/// \note Call `ValueOrDie` manually instead.
+/// Overload the ostream output operator to make logging work nicely.
+/// template <typename Tag, typename T>
+/// std::ostream& operator<<(std::ostream& os, const StrongCheckedNumeric<Tag, T>& value) {
+///   os << static_cast<T>(value.ValueOrDie());
+///   return os;
+/// }
+
+class CheckedNumericTag{};
+
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Add, +, +=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Sub, -, -=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Mul, *, *=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Div, /, /=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Mod, %, %=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Lsh, <<, <<=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Rsh, >>, >>=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, And, &, &=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Or, |, |=)
+BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Xor, ^, ^=)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Add)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Sub)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Mul)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Div)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Mod)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Lsh)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Rsh)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, And)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Or)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Xor)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Max)
+BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Min)
+
+/// \note Call `ValueOrDie` manually instead.
+/// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsLess, <)
+/// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsLessOrEqual, <=)
+/// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsGreater, >)
+/// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsGreaterOrEqual, >=)
+/// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsEqual, ==)
+/// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsNotEqual, !=)
 
 // These are some extra StrictNumeric operators to support simple pointer
 // arithmetic with our result types. Since wrapping on a pointer is always
@@ -368,8 +430,12 @@ L* operator-(L* lhs, const StrictNumeric<R> rhs) {
   return reinterpret_cast<L*>(result);
 }
 
+template <typename T>
+using CheckedNumeric = internal::StrongCheckedNumeric<CheckedNumericTag, T>;
+
 }  // namespace internal
 
+using internal::StrongCheckedNumeric;
 using internal::CheckedNumeric;
 using internal::IsValidForType;
 using internal::ValueOrDieForType;

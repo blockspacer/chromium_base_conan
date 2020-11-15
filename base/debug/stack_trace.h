@@ -37,7 +37,6 @@ namespace debug {
 // that are loaded in memory and caches their file descriptors (this cannot be
 // done in official builds because it has security implications).
 BASE_EXPORT
-UBSAN_IGNORE_IMPLICIT
 bool EnableInProcessStackDumping();
 
 #if defined(OS_POSIX)

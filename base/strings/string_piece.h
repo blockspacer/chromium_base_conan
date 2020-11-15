@@ -531,7 +531,6 @@ BASE_EXPORT std::ostream& operator<<(std::ostream& o,
 
 template <typename StringPieceType>
 struct StringPieceHashImpl {
-  UBSAN_IGNORE_UNSIGNED_OVERFLOW
   std::size_t operator()(StringPieceType sp) const {
     std::size_t result = 0;
     for (auto c : sp) {

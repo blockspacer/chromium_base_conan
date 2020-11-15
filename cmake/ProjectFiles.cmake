@@ -792,6 +792,8 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}strings/string16.h
   ${BASE_SOURCES_PATH}strings/string_number_conversions.cc
   ${BASE_SOURCES_PATH}strings/string_number_conversions.h
+  ${BASE_SOURCES_PATH}strings/substitute.cc
+  ${BASE_SOURCES_PATH}strings/substitute.h
   ${BASE_SOURCES_PATH}strings/string_piece.cc
   ${BASE_SOURCES_PATH}strings/string_piece.h
   ${BASE_SOURCES_PATH}strings/string_piece_forward.h

@@ -202,15 +202,15 @@
 //   PLOG(WARNING) << "Fail to call function setting errno";
 //   VLOG(1) << "verbose log tier 1, see --vmodule";
 //
-// #include "base/threading/platform_thread.h"
-// base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(300));
+//   #include "base/threading/platform_thread.h"
+//   base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(300));
 //
-// LOG_EVERY_N_US(INFO, 800000L) << "High-frequent logs (every 800ms)";
-// LOG_EVERY_SECOND(INFO) << "High-frequent logs (every 1sec)";
-// LOG_EVERY_N_TIMES(ERROR, 3) << "High-frequent logs (every 3 times)";
-// LOG_FIRST_N_TIMES(INFO, 5) << "Logs that prints for at most 5 times";
-// LOG_ONCE(WARNING) << "Logs that only prints once";
-// VLOG2("a/b/c", 3) << "being filtered by a/b/c rather than public/foo/bar";
+//   LOG_EVERY_N_US(INFO, 800000L) << "High-frequent logs (every 800ms)";
+//   LOG_EVERY_SECOND(INFO) << "High-frequent logs (every 1sec)";
+//   LOG_EVERY_N_TIMES(ERROR, 3) << "High-frequent logs (every 3 times)";
+//   LOG_FIRST_N_TIMES(INFO, 5) << "Logs that prints for at most 5 times";
+//   LOG_ONCE(WARNING) << "Logs that only prints once";
+//   VLOG2("a/b/c", 3) << "being filtered by a/b/c rather than public/foo/bar";
 // }
 
 namespace logging {
