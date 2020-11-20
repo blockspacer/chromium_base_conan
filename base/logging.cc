@@ -1044,38 +1044,31 @@ SystemErrorCode GetLastSystemErrorCode() {
 #endif
 }
 
-CharArrayStreamBuf::~CharArrayStreamBuf() {
-  free(_data);
-}
+LogStreamBuffer::~LogStreamBuffer()
+{}
 
-int CharArrayStreamBuf::overflow(int ch) {
-  if (ch == std::streambuf::traits_type::eof()) {
-    return ch;
+LogStreamBuffer::int_type LogStreamBuffer::overflow(int_type ch) {
+  auto currentSize = str_.size();
+  size_t newSize;
+  if (currentSize == 0) {
+    newSize = kInitialCapacity;
+  } else {
+    // Increase by 1.25 each time
+    newSize = currentSize + (currentSize >> 2);
   }
-  size_t new_size = std::max(_size * 3 / 2, (size_t)64);
-  char* new_data = (char*)malloc(new_size);
-  if (UNLIKELY(new_data == NULL)) {
-    setp(NULL, NULL);
-    return std::streambuf::traits_type::eof();
+
+  {
+    str_.resize(newSize);
+
+    if (ch == EOF) {
+      setp((&str_.front()) + currentSize, (&str_.front()) + newSize);
+      return 'x';
+    } else {
+      str_[currentSize] = static_cast<char>(ch);
+      setp((&str_.front()) + currentSize + 1, (&str_.front()) + newSize);
+      return ch;
+    }
   }
-  memcpy(new_data, _data, _size);
-  free(_data);
-  _data = new_data;
-  const size_t old_size = _size;
-  _size = new_size;
-  setp(_data, _data + new_size);
-  pbump(old_size);
-  // if size == 1, this function will call overflow again.
-  return sputc(ch);
-}
-
-int CharArrayStreamBuf::sync() {
-  // data are already there.
-  return 0;
-}
-
-void CharArrayStreamBuf::reset() {
-  setp(_data, _data + _size);
 }
 
 LogStream& LogStream::SetPosition(const PathChar* file, int line,

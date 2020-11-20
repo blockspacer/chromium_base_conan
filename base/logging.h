@@ -15,6 +15,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "base/base_export.h"
 #include "base/callback_forward.h"
@@ -1190,26 +1191,35 @@ BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code);
 // Underlying buffer to store logs. Comparing to using std::ostringstream
 // directly, this utility exposes more low-level methods so that we avoid
 // creation of std::string which allocates memory internally.
-class CharArrayStreamBuf
+class LogStreamBuffer
   : public std::streambuf
 {
 public:
-  explicit CharArrayStreamBuf() : _data(NULL), _size(0) {}
-  ~CharArrayStreamBuf();
+  explicit LogStreamBuffer() {
+    // We intentionally do not reserve any string buffer space initially
+  }
+  ~LogStreamBuffer();
 
-  int overflow(int ch) override;
-  int sync() override;
-  void reset();
+  bool empty() const {
+    return str_.empty();
+  }
+
+  std::string extractString() {
+    str_.resize(pptr() - (&str_.front()));
+    return std::move(str_);
+  }
+
+  int_type overflow(int_type ch) override;
 
 private:
-  char* _data;
-  size_t _size;
+  enum : size_t { kInitialCapacity = 256 };
+  std::string str_;
 };
 
 // A std::ostream to << objects.
 // Have to use private inheritance to arrange initialization order.
 class LogStream
-  : virtual private CharArrayStreamBuf, public std::ostream
+  : virtual private LogStreamBuffer, public std::ostream
 {
 public:
   LogStream()
@@ -1612,5 +1622,58 @@ inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
 //
 // We tie its state to ENABLE_DLOG.
 enum { DEBUG_MODE = DCHECK_IS_ON() };
+
+namespace internal {
+// Helper for `CHECK_PTR`.
+/// \note checks that object is alive if you use memory tool like ASAN
+template <typename T>
+// do not add `MUST_USE_RESULT` here
+// because we also want to use it outside of constructor (similar to `CHECK`)
+T checkNotNull(
+  const char* file
+  , int line
+  , const char* exprtext
+  , T&& t) NO_EXCEPTION
+{
+  CHECK(t != nullptr) << exprtext;
+  // Works with `-fsanitize=address,undefined`
+#if defined(MEMORY_TOOL_REPLACES_ALLOCATOR)
+  if (t)
+    reinterpret_cast<const volatile uint8_t*>(t)[0];
+#endif
+  return std::forward<T>(t);
+}
+} // namespace internal
+
+// MOTIVATION
+//
+// Unlike `CHECK(x != nullptr) << "..."` can be used in constructor.
+//
+// Also checks that object is alive if you use memory tool like ASAN.
+//
+// EXAMPLE
+//
+// DiagService::DiagService(OperationMode mode, SwitchInterface* switch_interface,
+//                          AuthPolicyChecker* auth_policy_checker,
+//                          ErrorBuffer* error_buffer)
+//     : mode_(mode),
+//       switch_interface_(CHECK_PTR(switch_interface)),
+//       auth_policy_checker_(CHECK_PTR(auth_policy_checker)),
+//       error_buffer_(CHECK_PTR(error_buffer)) {}
+//
+#ifndef CHECK_PTR
+#define CHECK_PTR(val) \
+  ::internal::checkNotNull(__FILE__, __LINE__, #val, (val))
+#endif
+
+#ifndef DCHECK_PTR
+#if DCHECK_IS_ON()
+#define DCHECK_PTR(val) \
+  ::internal::checkNotNull(__FILE__, __LINE__, #val, (val))
+#else // DCHECK_IS_ON()
+#define DCHECK_PTR(val) \
+  val
+#endif // DCHECK_IS_ON()
+#endif
 
 #endif  // BASE_LOGGING_H_
