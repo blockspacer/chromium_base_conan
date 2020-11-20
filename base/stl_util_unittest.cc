@@ -615,5 +615,50 @@ TEST(STLUtilTest, OptionalOrNullptr) {
   EXPECT_NE(nullptr, base::OptionalOrNullptr(optional));
 }
 
+TEST(STLUtilTest, Find) {
+  typedef std::map<std::string, std::string> Map;
+  Map m;
+
+  // Check that I can use a type that's implicitly convertible to the
+  // key or value type, such as const char* -> string.
+  EXPECT_EQ("", base::FindWithDefault(m, "foo", ""));
+  m["foo"] = "bar";
+  EXPECT_EQ("bar", base::FindWithDefault(m, "foo", ""));
+  EXPECT_EQ("bar", *base::FindOrNull(m, "foo"));
+  std::string str;
+  EXPECT_GT(m.count("foo"), 0);
+  EXPECT_EQ(m["foo"], "bar");
+}
+
+TEST(STLUtilTest, LookupOrInsert) {
+  typedef std::map<std::string, std::string> Map;
+  Map m;
+
+  // Check that I can use a type that's implicitly convertible to the
+  // key or value type, such as const char* -> string.
+  EXPECT_EQ("xyz", base::LookupOrInsert(&m, "foo", "xyz"));
+  EXPECT_EQ("xyz", base::LookupOrInsert(&m, "foo", "abc"));
+}
+
+TEST(STLUtilTest, InsertIfNotPresent) {
+  // Set operations
+  typedef std::set<int> Set;
+  Set s;
+  EXPECT_TRUE(base::InsertIfNotPresent(&s, 0));
+  EXPECT_EQ(s.count(0), 1);
+  EXPECT_FALSE(base::InsertIfNotPresent(&s, 0));
+  EXPECT_EQ(s.count(0), 1);
+}
+
+TEST(STLUtilTest, FindOrDie) {
+  std::map<std::string, int> map;
+  EXPECT_DEATH(base::FindOrDie(map, "foo"), "");
+  base::InsertOrDie(&map, "foo", 5);
+  auto val = base::FindOrDie(map, "foo");
+  EXPECT_EQ(val, 5);
+  auto const cval = base::FindOrDie(map, "foo");
+  EXPECT_EQ(cval, 5);
+}
+
 }  // namespace
 }  // namespace base
