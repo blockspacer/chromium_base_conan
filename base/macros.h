@@ -426,6 +426,9 @@ inline void ignore_result(const T&) {
     , base::Unretained(this) \
   )
 
+// Use `MUST_USE_RETURN_VALUE` with functions
+// because `MUST_USE_RESULT` must be used with enum or class.
+//
 // similar to __attribute__((warn_unused_result))
 /// \usage (note order restriction)
 /// [[nodisard]] extern bool foo();
@@ -438,14 +441,27 @@ inline void ignore_result(const T&) {
   [[nodiscard]] /* do not ignore return value */
 #endif // MUST_USE_RETURN_VALUE
 
+/// \deprecated. Use `MUST_USE_RETURN_VALUE`
 #ifndef WARN_UNUSED_RESULT
 #define WARN_UNUSED_RESULT MUST_USE_RETURN_VALUE
 #endif // WARN_UNUSED_RESULT
 
+// Use `MUST_USE_RESULT` with enum or class
+// because `MUST_USE_RETURN_VALUE` must be used with functions.
+//
+// USAGE
+//
+// enum class MUST_USE_RESULT ErrorCode {
+//     OK,
+//     Fatal,
+//     System,
+//     FileIssue
+// };
 #ifndef MUST_USE_RESULT
 #define MUST_USE_RESULT MUST_USE_RETURN_VALUE
 #endif // MUST_USE_RESULT
 
+/// \deprecated
 /// \note Prefer |MUST_USE_RETURN_VALUE|
 /// \note Similar to [[nodiscard]] attribute,
 /// being implemented by Clang and GCC as __attribute__((warn_unused_result))
