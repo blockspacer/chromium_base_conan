@@ -1188,6 +1188,7 @@ typedef int SystemErrorCode;
 BASE_EXPORT SystemErrorCode GetLastSystemErrorCode();
 BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code);
 
+#if FIXME_REMOVE_ME
 // Underlying buffer to store logs. Comparing to using std::ostringstream
 // directly, this utility exposes more low-level methods so that we avoid
 // creation of std::string which allocates memory internally.
@@ -1210,6 +1211,10 @@ public:
   }
 
   int_type overflow(int_type ch) override;
+
+  int sync() override;
+
+  void reset();
 
 private:
   enum : size_t { kInitialCapacity = 256 };
@@ -1250,7 +1255,6 @@ public:
     return *this;
   }
 
-  // Reset the log prefix: "I0711 15:14:01.830110 12735 server.cpp:93] "
   LogStream& SetPosition(const PathChar* file, int line, LogSeverity);
 
   LogStream& dontEndlOnce()
@@ -1259,6 +1263,7 @@ public:
     return *this;
   }
 
+  // Reset the log prefix: "I0711 15:14:01.830110 12735 server.cpp:93] "
   LogStream& dontFormatOnce()
   {
     noFormat_ = true;
@@ -1269,7 +1274,79 @@ public:
 
   base::StringPiece contentView() const;
 
-  std::string contentStr() const;
+  std::string str() const;
+
+  const PathChar* file() const { return file_; }
+
+  int line() const { return line_; }
+
+  LogSeverity severity() const { return severity_; }
+
+  // Returns false if stream must continue on same line
+  bool needEndl() const
+  {
+    return !noEndl_;
+  }
+
+  bool needFormat() const
+  {
+    return !noFormat_;
+  }
+
+private:
+  const PathChar* file_;
+  int line_;
+  LogSeverity severity_;
+  bool noEndl_;
+  bool noFormat_;
+};
+#endif
+
+class LogStringStream
+  : public std::ostringstream
+{
+public:
+  LogStringStream()
+    : std::ostringstream()
+    , file_("-")
+    , line_(0)
+    , severity_(0)
+    , noEndl_(false)
+    , noFormat_(false)
+  {}
+
+  ~LogStringStream() {
+    noEndl_ = false;
+    noFormat_ = false;
+  }
+
+  inline LogStringStream& operator<<(LogStringStream& (*m)(LogStringStream&)) {
+    return m(*this);
+  }
+
+  inline LogStringStream& operator<<(std::ostream& (*m)(std::ostream&)) {
+    m(*(std::ostream*)this);
+    return *this;
+  }
+
+  template <typename T> inline LogStringStream& operator<<(T const& t) {
+    *(std::ostream*)this << t;
+    return *this;
+  }
+
+  LogStringStream& SetPosition(const PathChar* file, int line, LogSeverity);
+
+  LogStringStream& dontEndlOnce()
+  {
+    noEndl_ = true;
+    return *this;
+  }
+
+  LogStringStream& dontFormatOnce()
+  {
+    noFormat_ = true;
+    return *this;
+  }
 
   const PathChar* file() const { return file_; }
 
@@ -1306,6 +1383,12 @@ private:
 // above.
 class BASE_EXPORT LogMessage {
  public:
+  using LogStreamType
+    = std::ostream;
+
+  using LogStringStreamType
+    = LogStringStream;
+
   // Used for LOG(severity).
   LogMessage(const char* file, int line, LogSeverity severity);
 
@@ -1322,17 +1405,18 @@ class BASE_EXPORT LogMessage {
 
   ~LogMessage();
 
-  LogStream& stream() { return logStream_; }
+  LogStreamType& stream() { return logStream_; }
 
   LogSeverity severity() { return severity_; }
-  std::string str() { return logStream_.contentStr(); }
+
+  std::string str() { return logStream_.str(); }
 
  private:
   void Init(const char* file, int line, LogSeverity severity);
 
   LogSeverity severity_;
   // The real data is inside LogStream which may be cached thread-locally.
-  LogStream logStream_;
+  LogStringStreamType logStream_;
   size_t message_start_;  // Offset of the start of the message (past prefix
                           // info).
   // The file and line information passed in to the constructor.
@@ -1370,7 +1454,7 @@ class BASE_EXPORT Win32ErrorLogMessage {
   // Appends the error message before destructing the encapsulated class.
   ~Win32ErrorLogMessage();
 
-  LogStream& stream() { return log_message_.stream(); }
+  LogMessage::LogStreamType& stream() { return log_message_.stream(); }
 
  private:
   SystemErrorCode err_;
@@ -1390,7 +1474,7 @@ class BASE_EXPORT ErrnoLogMessage {
   // Appends the error message before destructing the encapsulated class.
   ~ErrnoLogMessage();
 
-  LogStream& stream() { return log_message_.stream(); }
+  LogMessage::LogStreamType& stream() { return log_message_.stream(); }
 
  private:
   SystemErrorCode err_;
@@ -1428,7 +1512,7 @@ BASE_EXPORT base::string16 GetLogFileFullPath();
 #endif
 
 // Do not append endl after each log message
-inline LogStream& noEndl(LogStream& ls)
+inline LogStringStream& noEndl(LogStringStream& ls)
 {
   ls.dontEndlOnce();
   return ls;
@@ -1437,7 +1521,7 @@ inline LogStream& noEndl(LogStream& ls)
 // Do not append extra information before each log message
 // that looks similar to:
 // [25583:25583:1113/185640.856387:39412343570:INFO:main.cc(375)]
-inline LogStream& noFormat(LogStream& ls)
+inline LogStringStream& noFormat(LogStringStream& ls)
 {
   ls.dontFormatOnce();
   return ls;
@@ -1453,7 +1537,7 @@ inline LogStream& noFormat(LogStream& ls)
 //   LOG(INFO) << ' ' << *it << noFormat
 //             << (!isLastElem ? noEndl : doNothing);
 // }
-inline LogStream& doNothing(LogStream& ls)
+inline LogStringStream& doNothing(LogStringStream& ls)
 {
   return ls;
 }

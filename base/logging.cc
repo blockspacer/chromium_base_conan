@@ -659,7 +659,7 @@ LogMessage::~LogMessage()
     logStream_ << std::endl;
   }
 
-  std::string str_newline(logStream_.contentStr());
+  std::string str_newline(logStream_.str());
 
   if(!logStream_.needFormat())
   {
@@ -669,7 +669,7 @@ LogMessage::~LogMessage()
       = str_newline.substr(message_start_, str_newline.size());
   }
 
-  /// \todo
+  /// \todo proper logging in browser
 #if defined(OS_EMSCRIPTEN)
   printf("LOG: %s\n", str_newline.c_str());
 #endif
@@ -950,7 +950,7 @@ LogMessage::~LogMessage()
       if (!base::debug::BeingDebugged()) {
         // Displaying a dialog is unnecessary when debugging and can complicate
         // debugging.
-        DisplayDebugMessageInDialog(logStream_.contentStr());
+        DisplayDebugMessageInDialog(logStream_.str());
       }
 #endif // NDEBUG
       // Crash the process to generate a dump.
@@ -1026,7 +1026,7 @@ void LogMessage::Init(const char* file, int line, LogSeverity severity) {
 
   logStream_ << ":" << filename << "(" << line << ")] ";
 
-  message_start_ = logStream_.contentStr().length();
+  message_start_ = logStream_.str().length();
 }
 
 #if defined(OS_WIN)
@@ -1044,31 +1044,43 @@ SystemErrorCode GetLastSystemErrorCode() {
 #endif
 }
 
+#if FIXME_REMOVE_ME
 LogStreamBuffer::~LogStreamBuffer()
 {}
 
-LogStreamBuffer::int_type LogStreamBuffer::overflow(int_type ch) {
+LogStreamBuffer::int_type LogStreamBuffer::overflow(int_type ch)
+{
   auto currentSize = str_.size();
   size_t newSize;
-  if (currentSize == 0) {
+  if (UNLIKELY(currentSize == 0)) {
     newSize = kInitialCapacity;
   } else {
     // Increase by 1.25 each time
     newSize = currentSize + (currentSize >> 2);
   }
 
+  // Set output sequence pointers
   {
     str_.resize(newSize);
 
     if (ch == EOF) {
       setp((&str_.front()) + currentSize, (&str_.front()) + newSize);
-      return 'x';
+      return std::streambuf::traits_type::eof();
     } else {
       str_[currentSize] = static_cast<char>(ch);
       setp((&str_.front()) + currentSize + 1, (&str_.front()) + newSize);
-      return ch;
+      return sputc(ch);
     }
   }
+}
+
+int LogStreamBuffer::sync() {
+  // data are already there.
+  return 0;
+}
+
+void LogStreamBuffer::reset() {
+  setp((&str_.front()), (&str_.front()) + str_.size());
 }
 
 LogStream& LogStream::SetPosition(const PathChar* file, int line,
@@ -1085,112 +1097,20 @@ base::StringPiece LogStream::contentView() const
   return base::StringPiece(pbase(), pptr() - pbase());
 }
 
-std::string LogStream::contentStr() const
+std::string LogStream::str() const
 {
   return std::string(pbase(), pptr() - pbase());
 }
-
-#if 0
-void LogStream::FlushWithoutReset() {
-  if (empty()) {
-      // Nothing to flush.
-      return;
-  }
-
-  /// \todo
-#if 0 && \
-  !defined(OS_NACL) && !defined(__UCLIBC__)
-  if (FLAGS_print_stack_on_check && _is_check && _severity == BLOG_FATAL) {
-      // Include a stack trace on a fatal.
-      butil::debug::StackTrace trace;
-      size_t count = 0;
-      const void* const* addrs = trace.Addresses(&count);
-
-      *this << std::endl;  // Newline to separate from log message.
-      if (count > 3) {
-          // Remove top 3 frames which are useless to users.
-          // #2 may be ~LogStream
-          //   #0 0x00000059ccae butil::debug::StackTrace::StackTrace()
-          //   #1 0x0000005947c7 logging::LogStream::FlushWithoutReset()
-          //   #2 0x000000594b88 logging::LogMessage::~LogMessage()
-          butil::debug::StackTrace trace_stripped(addrs + 3, count - 3);
-          trace_stripped.OutputToStream(this);
-      } else {
-          trace.OutputToStream(this);
-      }
-  }
 #endif
 
-  // End the data with zero because sink is likely to assume this.
-  *this << std::ends;
-
-  // Move back one step because we don't want to count the zero.
-  pbump(-1);
-
-  // Give any logsink first dibs on the message.
-#ifdef BAIDU_INTERNAL
-  // If the logsink fails and it's not comlog, try comlog. stderr on last try.
-  bool tried_comlog = false;
-#endif
-  bool tried_default = false;
-  {
-      DoublyBufferedLogSink::ScopedPtr ptr;
-      if (DoublyBufferedLogSink::GetInstance()->Read(&ptr) == 0 &&
-          (*ptr) != NULL) {
-          if ((*ptr)->OnLogMessage(_severity, _file, _line, contentView())) {
-#ifdef BAIDU_INTERNAL
-              goto FINISH_LOGGING;
-#endif
-          }
-#ifdef BAIDU_INTERNAL
-          tried_comlog = (*ptr == ComlogSink::GetInstance());
-#endif
-          tried_default = (*ptr == DefaultLogSink::GetInstance());
-      }
-  }
-
-#ifdef BAIDU_INTERNAL
-  if (!tried_comlog) {
-      if (ComlogSink::GetInstance()->OnLogMessage(
-              _severity, _file, _line, contentView())) {
-          goto FINISH_LOGGING;
-      }
-  }
-#endif
-  if (!tried_default) {
-      DefaultLogSink::GetInstance()->OnLogMessage(
-          _severity, _file, _line, contentView());
-  }
-
-#ifdef BAIDU_INTERNAL
-FINISH_LOGGING:
-  if (FLAGS_crash_on_fatal_log && _severity == BLOG_FATAL) {
-      // Ensure the first characters of the string are on the stack so they
-      // are contained in minidumps for diagnostic purposes.
-      butil::StringPiece str = contentView();
-      char str_stack[1024];
-      str.copy(str_stack, arraysize(str_stack));
-      butil::debug::Alias(str_stack);
-
-      if (log_assert_handler) {
-          // Make a copy of the string for the handler out of paranoia.
-          log_assert_handler(str.as_string());
-      } else {
-          // Don't use the string with the newline, get a fresh version to send to
-          // the debug message process. We also don't display assertions to the
-          // user in release mode. The enduser can't do anything with this
-          // information, and displaying message boxes when the application is
-          // hosed can cause additional problems.
-#ifndef NDEBUG
-          DisplayDebugMessageInDialog(str.as_string());
-#endif
-          // Crash the process to generate a dump.
-          butil::debug::BreakDebugger();
-      }
-  }
-#endif
+LogStringStream& LogStringStream::SetPosition(const PathChar* file, int line,
+                                  LogSeverity severity)
+{
+  file_ = file;
+  line_ = line;
+  severity_ = severity;
+  return *this;
 }
-#endif // 0
 
 BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code) {
 #if defined(OS_WIN)

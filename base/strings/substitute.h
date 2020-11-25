@@ -1,16 +1,22 @@
 #pragma once
 
-#include "base/macros.h"
-#include "base/base_export.h"
-#include "base/optional.h"
-#include "base/strings/string16.h"
-#include "base/strings/string_piece.h"
-#include "build/build_config.h"
+#include <base/macros.h>
+#include <base/base_export.h>
+#include <base/optional.h>
+#include <base/strings/string16.h>
+#include <base/strings/string_piece.h>
+#include <base/template_util.h>
+#include <base/strings/utf_string_conversions.h>
+#include <build/build_config.h>
 
 #include <string>
 #include <variant>
+#include <type_traits>
+#include <sstream>
 
 namespace base {
+
+class Location;
 
 /// \note Argument format starts from $1
 /// i.e. $0 is invalid.
@@ -91,6 +97,53 @@ class SubstituteArg {
 
   SubstituteArg(const StringPiece16& value);
 
+  SubstituteArg(const Location& value);
+
+  // If enum or custom type can be printed to ostream,
+  // than we can support it in substitute.
+  //
+  // To support enum in ostream use code similar to:
+  //
+  // std::ostream& operator<<(std::ostream& os, const MyEnum& obj)
+  // {
+  //    os << static_cast<std::underlying_type<MyEnum>::type>(obj);
+  //    return os;
+  // }
+  //
+  // To support custom type in ostream use code similar to:
+  //
+  // struct MyStreamable
+  // {
+  //   MyStreamable(int val1, int val2)
+  //     : val1(val1)
+  //     , val2(val2)
+  //   {}
+  //
+  //   int val1;
+  //   int val2;
+  // };
+  //
+  // std::ostream& operator<<(std::ostream& os, const MyStreamable& val) {
+  //   os << val.val1 << " " << val.val2;
+  //   return os;
+  // }
+  template<
+    typename T
+    // enum or custom (not built-in) types that support ostream operator
+    , std::enable_if_t<
+        base::internal::SupportsOstreamOperator<const T&>::value
+        && (std::is_enum<T>::value
+            || !std::is_fundamental<T>::value)
+      >* = nullptr
+  >
+  SubstituteArg(const T& value)
+    : text_(
+        static_cast<std::ostringstream&&>(
+          std::ostringstream() << value
+        ).str()
+      )
+  {}
+
   SubstituteArg(int value);
 
   SubstituteArg(unsigned int value);
@@ -143,6 +196,53 @@ class SubstituteArg16 {
   SubstituteArg16(const StringPiece& value);
 
   SubstituteArg16(const StringPiece16& value);
+
+  SubstituteArg16(const Location& value);
+
+  // If enum or custom type can be printed to ostream,
+  // than we can support it in substitute.
+  //
+  // To support enum in ostream use code similar to:
+  //
+  // std::ostream& operator<<(std::ostream& os, const MyEnum& obj)
+  // {
+  //    os << static_cast<std::underlying_type<MyEnum>::type>(obj);
+  //    return os;
+  // }
+  //
+  // To support custom type in ostream use code similar to:
+  //
+  // struct MyStreamable
+  // {
+  //   MyStreamable(int val1, int val2)
+  //     : val1(val1)
+  //     , val2(val2)
+  //   {}
+  //
+  //   int val1;
+  //   int val2;
+  // };
+  //
+  // std::ostream& operator<<(std::ostream& os, const MyStreamable& val) {
+  //   os << val.val1 << " " << val.val2;
+  //   return os;
+  // }
+  template<
+    typename T
+    // enum or custom (not built-in) types that support ostream operator
+    , std::enable_if_t<
+        base::internal::SupportsOstreamOperator<const T&>::value
+        && (std::is_enum<T>::value
+            || !std::is_fundamental<T>::value)
+      >* = nullptr
+  >
+  SubstituteArg16(const T& value)
+    : text_(base::ASCIIToUTF16(
+        static_cast<std::ostringstream&&>(
+          std::ostringstream() << value
+        ).str()
+      ))
+  {}
 
   SubstituteArg16(int value);
 

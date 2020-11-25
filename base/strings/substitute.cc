@@ -7,6 +7,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/rvalue_cast.h"
+#include "base/location.h"
 
 #include <vector>
 #include <iterator>
@@ -65,6 +66,9 @@ SubstituteArg::SubstituteArg(const StringPiece& value)
 SubstituteArg::SubstituteArg(const StringPiece16& value)
   : text_(base::UTF16ToASCII(value.data())) {}
 
+SubstituteArg::SubstituteArg(const Location& value)
+  : text_(value.ToString()) {}
+
 SubstituteArg::SubstituteArg(int value)
   : text_(NumberToString(value)) {}
 
@@ -111,6 +115,9 @@ SubstituteArg16::SubstituteArg16(const StringPiece& value)
 
 SubstituteArg16::SubstituteArg16(const StringPiece16& value)
   : text_(value.data()) {}
+
+SubstituteArg16::SubstituteArg16(const Location& value)
+  : text_(base::ASCIIToUTF16(value.ToString())) {}
 
 SubstituteArg16::SubstituteArg16(int value)
   : text_(base::ASCIIToUTF16(NumberToString(value))) {}
