@@ -279,6 +279,7 @@ class LoggingLock {
     UnlockLogging();
   }
 
+  /// \todo unused: new_log_file
   static void Init(LogLockingState lock_log, const PathChar* new_log_file) {
     if (initialized)
       return;
@@ -965,7 +966,10 @@ LogMessage::~LogMessage()
 }
 
 // writes the common header info to the stream
-void LogMessage::Init(const char* file, int line, LogSeverity severity) {
+void LogMessage::Init(const char* file, int line, LogSeverity severity)
+{
+  logStream_.SetPosition(file, line, severity);
+
   base::StringPiece filename(file);
   size_t last_slash_pos = filename.find_last_of("\\/");
   if (last_slash_pos != base::StringPiece::npos)
@@ -1044,66 +1048,7 @@ SystemErrorCode GetLastSystemErrorCode() {
 #endif
 }
 
-#if FIXME_REMOVE_ME
-LogStreamBuffer::~LogStreamBuffer()
-{}
-
-LogStreamBuffer::int_type LogStreamBuffer::overflow(int_type ch)
-{
-  auto currentSize = str_.size();
-  size_t newSize;
-  if (UNLIKELY(currentSize == 0)) {
-    newSize = kInitialCapacity;
-  } else {
-    // Increase by 1.25 each time
-    newSize = currentSize + (currentSize >> 2);
-  }
-
-  // Set output sequence pointers
-  {
-    str_.resize(newSize);
-
-    if (ch == EOF) {
-      setp((&str_.front()) + currentSize, (&str_.front()) + newSize);
-      return std::streambuf::traits_type::eof();
-    } else {
-      str_[currentSize] = static_cast<char>(ch);
-      setp((&str_.front()) + currentSize + 1, (&str_.front()) + newSize);
-      return sputc(ch);
-    }
-  }
-}
-
-int LogStreamBuffer::sync() {
-  // data are already there.
-  return 0;
-}
-
-void LogStreamBuffer::reset() {
-  setp((&str_.front()), (&str_.front()) + str_.size());
-}
-
-LogStream& LogStream::SetPosition(const PathChar* file, int line,
-                                  LogSeverity severity)
-{
-  file_ = file;
-  line_ = line;
-  severity_ = severity;
-  return *this;
-}
-
-base::StringPiece LogStream::contentView() const
-{
-  return base::StringPiece(pbase(), pptr() - pbase());
-}
-
-std::string LogStream::str() const
-{
-  return std::string(pbase(), pptr() - pbase());
-}
-#endif
-
-LogStringStream& LogStringStream::SetPosition(const PathChar* file, int line,
+LogStringStream& LogStringStream::SetPosition(const char* file, int line,
                                   LogSeverity severity)
 {
   file_ = file;
@@ -1228,6 +1173,18 @@ base::string16 GetLogFileFullPath() {
 BASE_EXPORT void LogErrorNotReached(const char* file, int line) {
   LogMessage(file, line, LOG_ERROR).stream()
       << "NOTREACHED() hit.";
+}
+
+LogStringStream& info(LogStringStream& ls)
+{
+  ls
+    << "file:"
+    << ls.file()
+    << " line:"
+    << ls.line()
+    << " severity:"
+    << log_severity_name(ls.severity());
+  return ls;
 }
 
 }  // namespace logging

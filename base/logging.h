@@ -176,6 +176,7 @@
 // using ::logging::noEndl;
 // using ::logging::noFormat;
 // using ::logging::doNothing;
+// using ::logging::info;
 //
 // std::vector<std::string> items{"item1", "item2", "item3"};
 // LOG(INFO) << "Items:" << noEndl;
@@ -1188,120 +1189,6 @@ typedef int SystemErrorCode;
 BASE_EXPORT SystemErrorCode GetLastSystemErrorCode();
 BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code);
 
-#if FIXME_REMOVE_ME
-// Underlying buffer to store logs. Comparing to using std::ostringstream
-// directly, this utility exposes more low-level methods so that we avoid
-// creation of std::string which allocates memory internally.
-class LogStreamBuffer
-  : public std::streambuf
-{
-public:
-  explicit LogStreamBuffer() {
-    // We intentionally do not reserve any string buffer space initially
-  }
-  ~LogStreamBuffer();
-
-  bool empty() const {
-    return str_.empty();
-  }
-
-  std::string extractString() {
-    str_.resize(pptr() - (&str_.front()));
-    return std::move(str_);
-  }
-
-  int_type overflow(int_type ch) override;
-
-  int sync() override;
-
-  void reset();
-
-private:
-  enum : size_t { kInitialCapacity = 256 };
-  std::string str_;
-};
-
-// A std::ostream to << objects.
-// Have to use private inheritance to arrange initialization order.
-class LogStream
-  : virtual private LogStreamBuffer, public std::ostream
-{
-public:
-  LogStream()
-    : std::ostream(this)
-    , file_("-")
-    , line_(0)
-    , severity_(0)
-    , noEndl_(false)
-    , noFormat_(false)
-  {}
-
-  ~LogStream() {
-    noEndl_ = false;
-    noFormat_ = false;
-  }
-
-  inline LogStream& operator<<(LogStream& (*m)(LogStream&)) {
-    return m(*this);
-  }
-
-  inline LogStream& operator<<(std::ostream& (*m)(std::ostream&)) {
-    m(*(std::ostream*)this);
-    return *this;
-  }
-
-  template <typename T> inline LogStream& operator<<(T const& t) {
-    *(std::ostream*)this << t;
-    return *this;
-  }
-
-  LogStream& SetPosition(const PathChar* file, int line, LogSeverity);
-
-  LogStream& dontEndlOnce()
-  {
-    noEndl_ = true;
-    return *this;
-  }
-
-  // Reset the log prefix: "I0711 15:14:01.830110 12735 server.cpp:93] "
-  LogStream& dontFormatOnce()
-  {
-    noFormat_ = true;
-    return *this;
-  }
-
-  bool empty() const { return pbase() == pptr(); }
-
-  base::StringPiece contentView() const;
-
-  std::string str() const;
-
-  const PathChar* file() const { return file_; }
-
-  int line() const { return line_; }
-
-  LogSeverity severity() const { return severity_; }
-
-  // Returns false if stream must continue on same line
-  bool needEndl() const
-  {
-    return !noEndl_;
-  }
-
-  bool needFormat() const
-  {
-    return !noFormat_;
-  }
-
-private:
-  const PathChar* file_;
-  int line_;
-  LogSeverity severity_;
-  bool noEndl_;
-  bool noFormat_;
-};
-#endif
-
 class LogStringStream
   : public std::ostringstream
 {
@@ -1334,7 +1221,7 @@ public:
     return *this;
   }
 
-  LogStringStream& SetPosition(const PathChar* file, int line, LogSeverity);
+  LogStringStream& SetPosition(const char* file, int line, LogSeverity);
 
   LogStringStream& dontEndlOnce()
   {
@@ -1348,7 +1235,7 @@ public:
     return *this;
   }
 
-  const PathChar* file() const { return file_; }
+  const char* file() const { return file_; }
 
   int line() const { return line_; }
 
@@ -1366,7 +1253,7 @@ public:
   }
 
 private:
-  const PathChar* file_;
+  const char* file_;
   int line_;
   LogSeverity severity_;
   bool noEndl_;
@@ -1527,9 +1414,13 @@ inline LogStringStream& noFormat(LogStringStream& ls)
   return ls;
 }
 
+LogStringStream& info(LogStringStream& ls);
+
 // Can be used in conditions
 //
 // USAGE
+//
+// using ::logging::doNothing;
 //
 // for (auto it = items.begin(); it != items.end(); ++it) {
 //   const bool isLastElem
