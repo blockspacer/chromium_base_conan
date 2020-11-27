@@ -1718,9 +1718,16 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 #define STRINGIFY(X) #X
 #endif // STRINGIFY
 
+/// \note without comma (see STRINGIFY_VA_ARGS)
+#ifndef STRINGIFY_VA_ARG
+#define STRINGIFY_VA_ARG(...) #__VA_ARGS__
+#endif // STRINGIFY_VA_ARGS
+
+/// \note without comma  (see STRINGIFY_VA_ARG)
 #ifndef STRINGIFY_VA_ARGS
 #define STRINGIFY_VA_ARGS(...) , ##__VA_ARGS__
 #endif // STRINGIFY_VA_ARGS
+
 
 // Use PP_CONCAT instead of ## when necessary.
 //
