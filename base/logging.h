@@ -1260,6 +1260,9 @@ private:
   bool noFormat_;
 };
 
+/// \todo support custom log sinks
+/// like in https://source.chromium.org/chromium/chromium/src/+/master:third_party/webrtc/rtc_base/logging.h
+//
 // This class more or less represents a particular log message.  You
 // create an instance of LogMessage and then stream stuff to it.
 // When you finish streaming to it, ~LogMessage is called and the
@@ -1487,6 +1490,9 @@ inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
              STR_CONCAT(logeveryn_sc_, __LINE__) * STR_CONCAT(logeveryn_sc_, __LINE__) \
              == STR_CONCAT(logeveryn_c_, __LINE__))
 
+/// \note Do not add `INTERNAL_LOG_IF_ONCE*` beacuse you can use `OneShotEvent` like so:
+/// base::OneShotEvent event; if(!event.is_signaled()) { LOG(INFO) << "..."; event.Signal(); }
+//
 // Helper macro included by all *_FIRST_N macros.
 #define INTERNAL_LOG_IF_FIRST_N_TIMES_IMPL(logifmacro, severity, condition, N)   \
   static ::base::subtle::Atomic32 STR_CONCAT(logfstn_, __LINE__) = 0; \

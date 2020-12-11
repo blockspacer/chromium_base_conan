@@ -122,7 +122,7 @@ const int32 kint32max = ((int32)0x7FFFFFFF);
 // cases, you have to use the unsafe ARRAYSIZE_UNSAFE() macro below.  This is
 // due to a limitation in C++'s template system.  The limitation might
 // eventually be removed, but it hasn't happened yet.
-
+//
 // This template function declaration is used in defining arraysize.
 // Note that the function doesn't need an implementation, as we only
 // use its type.
@@ -137,6 +137,8 @@ template <typename T, size_t N>
 char (&ArraySizeHelper(const T (&array)[N]))[N];
 #endif
 
+/// \note prefer `base::size` from "base/stl_util.h"
+//
 #if defined(COMPILER_GHS)
 // GHS does not support local types as template arguments, so we must fall back
 // to the unsafe version

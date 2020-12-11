@@ -621,6 +621,8 @@ LogMessage::LogMessage(const char* file, int line, LogSeverity severity,
 }
 
 /// \todo support custom log sinks
+/// like in https://source.chromium.org/chromium/chromium/src/+/master:third_party/webrtc/rtc_base/logging.h
+///
 /// TEST_F(StreamingLogTest, log_at) {
 ///   ::logging::StringSink log_str;
 ///   ::logging::LogSink* old_sink = ::logging::SetLogSink(&log_str);

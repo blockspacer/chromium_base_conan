@@ -75,13 +75,13 @@ namespace base {
  *   void foo();
  *  private:
  *   // Or `FUNCTION_RECURSION_CHECKER_ONCE`, etc.
- *   FUNCTION_RECURSION_CHECKER_999(foo);
+ *   FUNCTION_RECURSION_CHECKER_LIMIT_999(foo_limit);
  * }
  *
  * void MyClass::foo()
  * {
- *   DCHECK_FUNCTION_RECURSION(foo);
- *   // You can not call `MyClass::foo()` from here.
+ *   DCHECK_FUNCTION_RECURSION(foo_limit);
+ *   // You can not call infinetely `MyClass::foo()` from here.
  * }
  */
 class RecursionChecker {

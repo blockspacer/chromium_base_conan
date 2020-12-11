@@ -341,6 +341,8 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}auto_reset.h
   ${BASE_SOURCES_PATH}barrier_closure.cc
   ${BASE_SOURCES_PATH}barrier_closure.h
+  ${BASE_SOURCES_PATH}crc32.cc
+  ${BASE_SOURCES_PATH}crc32.h
   ${BASE_SOURCES_PATH}base64.cc
   ${BASE_SOURCES_PATH}base64.h
   ${BASE_SOURCES_PATH}base64url.cc
@@ -389,6 +391,8 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}containers/unique_ptr_adapters.h
   ${BASE_SOURCES_PATH}containers/util.h
   ${BASE_SOURCES_PATH}containers/vector_buffer.h
+  ${BASE_SOURCES_PATH}containers/bounded_inline_vector.h
+  ${BASE_SOURCES_PATH}containers/bounded_inline_vector_impl.h
   ${BASE_SOURCES_PATH}cpu.cc
   ${BASE_SOURCES_PATH}cpu.h
   ${BASE_SOURCES_PATH}critical_closure.h

@@ -71,6 +71,10 @@
   DEFAULT_COPY(ClassName)                               \
   DEFAULT_MOVE(ClassName)
 
+/// \note Use `UNREFERENCED_PARAMETER(x)` for ignoring function parameter.
+/// \note Use `ignore_result(x)` for ignoring result of function call.
+/// \note Use `ALLOW_UNUSED_LOCAL(x)` for ignoring local variable.
+//
 // Used to explicitly mark the return value of a function as unused. If you are
 // really sure you don't want to do anything with the return value of a function
 // that has been marked WARN_UNUSED_RESULT, wrap it with this. Example:
@@ -855,6 +859,7 @@ inline void ignore_result(const T&) {
 #endif // MUST_USE_RETURN_VALUE
 
 /// \deprecated. Use `MUST_USE_RETURN_VALUE`
+/// \see WARN_UNUSED_RESULT from `base/compiler_specific.h`
 #ifndef WARN_UNUSED_RESULT
 #define WARN_UNUSED_RESULT MUST_USE_RETURN_VALUE
 #endif // WARN_UNUSED_RESULT
@@ -882,7 +887,11 @@ inline void ignore_result(const T&) {
 // Annotate a function indicating the caller must examine the return value.
 // Use like:
 //   ATTRIBUTE_DISCARDED_RESULT int foo();
-// To explicitly ignore a result, see |ignore_result()| in base/macros.h.
+//
+/// \note Use `UNREFERENCED_PARAMETER(x)` for ignoring function parameter.
+/// \note Use `ignore_result(x)` for ignoring result of function call.
+/// \note Use `ALLOW_UNUSED_LOCAL(x)` for ignoring local variable.
+//
 #undef ATTRIBUTE_DISCARDED_RESULT
 #if defined(COMPILER_GCC) || defined(__clang__)
 #define ATTRIBUTE_DISCARDED_RESULT __attribute__((warn_unused_result))
@@ -1316,6 +1325,9 @@ inline void ignore_result(const T&) {
 
 // ATTRIBUTE_COLD
 //
+// Good candidates for the cold attribute are internal error handling functions
+// which are called only in case of errors.
+//
 // The cold attribute is used to inform the compiler
 // that a function is unlikely executed.
 // The function is optimized for size
@@ -1339,6 +1351,15 @@ inline void ignore_result(const T&) {
 
 // ATTRIBUTE_HOT
 //
+// The compiler can order the code in branches, such as if statements,
+// to favour branches that call these hot functions
+// and disfavour functions cold functions, under the assumption
+// that it is more likely that that the branch that will be taken
+// will call a hot function and less likely to call a cold one.
+//
+// In addition, the compiler can choose to group together functions
+// marked as hot in a special section in the generated binary
+//
 // Tells GCC that a function is hot or cold. GCC can use this information to
 // improve static analysis, i.e. a conditional branch to a cold function
 // is likely to be not-taken.
@@ -1350,6 +1371,35 @@ inline void ignore_result(const T&) {
 #ifndef ATTRIBUTE_HOT
 #define ATTRIBUTE_HOT() __attribute__((hot))
 #endif // ATTRIBUTE_HOT
+
+// A common technique for improving performance of hot code in C/C++
+// is to inline the hottest functions called.
+// While it often helps make things faster, there are some downsides to inlining
+// (larger program size, worse cache locality, longer build time).
+//
+// Flattening instead of global inlining lets you opt in to the pros
+// of aggressive inlining on a per-function basis,
+// while protecting the rest of your program from the cons!
+//
+// Note:
+//
+// Functions with __attribute__((noinline)) will not be inlined.
+// The same goes for functions where the compiler can’t see the body.
+//
+// Example:
+//
+// ATTRIBUTE_FLATTEN void hot_code()
+// {
+//     // the program spends >80% of its runtime in this function
+//     while (condition) {
+//         call_something();   // inlined!
+//         do_thing(y);        // inlined!
+//         other_thing();      // also inlined!
+//     }
+// }
+#ifndef ATTRIBUTE_FLATTEN
+#define ATTRIBUTE_FLATTEN() __attribute__((flatten))
+#endif // ATTRIBUTE_FLATTEN
 
 // ATTRIBUTE_REINITIALIZES
 //
@@ -1497,6 +1547,8 @@ inline void ignore_result(const T&) {
 #define SCANF_ATTRIBUTE(string_index, first_to_check)
 #endif
 
+/// \see `ALWAYS_INLINE` from `base/compiler_specific.h`
+//
 // ATTRIBUTE_ALWAYS_INLINE
 // ATTRIBUTE_NOINLINE
 //
@@ -1509,6 +1561,8 @@ inline void ignore_result(const T&) {
 #define ATTRIBUTE_ALWAYS_INLINE
 #endif
 
+/// \see `NOINLINE` from `base/compiler_specific.h`
+//
 #if HAVE_ATTRIBUTE(noinline) || (defined(__GNUC__) && !defined(__clang__))
 #define ATTRIBUTE_NOINLINE __attribute__((noinline))
 #define HAVE_ATTRIBUTE_NOINLINE 1
@@ -1535,6 +1589,22 @@ inline void ignore_result(const T&) {
 // Every usage of a deprecated entity will trigger a warning when compiled with
 // clang's `-Wdeprecated-declarations` option. This option is turned off by
 // default, but the warnings will be reported by clang-tidy.
+//
+// NOTE 1: The annotation goes on the declaration in the .h file, not the
+// definition in the .cc file!
+//
+// NOTE 2: In order to keep unit testing the deprecated function without
+// getting warnings, do something like this:
+//
+//   std::pony DEPRECATED_PonyPlz(const std::pony_spec& ps);
+//   ATTRIBUTE_DEPRECATED("Do not use PonyPlz()") inline std::pony PonyPlz(const std::pony_spec& ps) {
+//     return DEPRECATED_PonyPlz(ps);
+//   }
+//
+// In other words, rename the existing function, and provide an inline wrapper
+// using the original name that calls it. That way, callers who are willing to
+// call it using the DEPRECATED_-prefixed name don't get the warning.
+//
 #if HAVE_ATTRIBUTE(unused) || defined(__clang__) && __cplusplus >= 201103L
 #define ATTRIBUTE_DEPRECATED(message) __attribute__((deprecated(message)))
 #elif __cplusplus >= 201703L
@@ -1551,6 +1621,8 @@ struct ATTRIBUTE_DEPRECATED("deprecated_type") deprecated_type {
   using type = T;
 };
 
+/// \see `FALLTHROUGH` from `base/compiler_specific.h`
+//
 // FALL_THROUGH_BREAK
 //
 // Annotates implicit fall-through between switch labels, allowing a case to
@@ -1745,8 +1817,9 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 # define STR_CONCAT_HELPER(a, b) a##b
 #endif
 
-/// \note Use `ignore_result(x)` instead.
-// similar to ignore_result
+/// \note Use `UNREFERENCED_PARAMETER(x)` for ignoring function parameter.
+/// \note Use `ignore_result(x)` for ignoring result of function call.
+/// \note Use `ALLOW_UNUSED_LOCAL(x)` for ignoring local variable.
 //
 // Example:
 // void onReceiveError(IoErrorCode error_code) {
@@ -1755,7 +1828,7 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 // }
 // windows.h defines UNREFERENCED_PARAMETER:
 // #define UNREFERENCED_PARAMETER(P) {(P) = (P);}
-#ifndef WIN32
+#ifndef UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(X) ((void)(X))
 #endif
 

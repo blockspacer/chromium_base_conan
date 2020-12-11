@@ -93,6 +93,10 @@
 // These macros are not available in official builds.
 #endif  // !defined(OFFICIAL_BUILD)
 
+/// \note Use `UNREFERENCED_PARAMETER(x)` for ignoring function parameter.
+/// \note Use `ignore_result(x)` for ignoring result of function call.
+/// \note Use `ALLOW_UNUSED_LOCAL(x)` for ignoring local variable.
+//
 // Annotate a variable indicating it's ok if the variable is not used.
 // (Typically used to silence a compiler warning when the assignment
 // is important for some other reason.)
@@ -306,7 +310,7 @@
 #if defined(__arm__)
 #if !defined(__ARMEB__) && !defined(__ARM_EABI__) && !defined(__EABI__) && \
     !defined(__VFP_FP__) && !defined(_WIN32_WCE) && !defined(ANDROID)
-#error Chromium does not support middle endian architecture
+#error does not support middle endian architecture
 #endif
 #if defined(__ARM_NEON__)
 #define CPU_ARM_NEON 1

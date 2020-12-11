@@ -19,8 +19,8 @@ class Location;
 class SingleThreadTaskRunner;
 class TimeDelta;
 
-// This class represents an event that's expected to happen once.  It
-// allows clients to guarantee that code is run after the OneShotEvent
+// This class represents an event that's expected to happen once (i.e. OneTimeEvent).
+// It allows clients to guarantee that code is run after the OneShotEvent
 // is signaled.  If the OneShotEvent is destroyed before it's
 // signaled, the closures are destroyed without being run.
 //
