@@ -69,6 +69,16 @@ class BASE_EXPORT Location {
   // are not available, this will return "pc:<hex address>".
   std::string ToString() const;
 
+#if SUPPORTS_LOCATION_BUILTINS && BUILDFLAG(ENABLE_LOCATION_SOURCE)
+  static Location Current(const char* function_name = __builtin_FUNCTION(),
+                          const char* file_name = __builtin_FILE(),
+                          int line_number = __builtin_LINE());
+#elif SUPPORTS_LOCATION_BUILTINS
+  static Location Current(const char* file_name = __builtin_FILE());
+#else
+  static Location Current();
+#endif
+
   static Location CreateFromHere(const char* file_name);
   static Location CreateFromHere(const char* function_name,
                                  const char* file_name,
