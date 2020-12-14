@@ -182,7 +182,7 @@ bool InitializeICUWithFileDescriptorInternal(
   }
   if (data_fd == kInvalidPlatformFile) {
     g_debug_icu_load = 1;  // To debug http://crbug.com/445616.
-    LOG(ERROR) << "Invalid file descriptor to ICU data received: "  << icuDataFileName;
+    LOG(WARNING) << "Invalid file descriptor to ICU data received: "  << icuDataFileName;
 #if defined(OS_EMSCRIPTEN)
     DCHECK(false);
 #endif
