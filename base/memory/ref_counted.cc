@@ -58,12 +58,8 @@ void RefCountedThreadSafeBase::AddRefWithCheck() const {
 
 #if DCHECK_IS_ON()
 bool RefCountedBase::CalledOnValidSequence() const {
-//#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-//    return true;
-//#else
   return sequence_checker_.CalledOnValidSequence() ||
          g_cross_thread_ref_count_access_allow_count.load() != 0;
-//#endif
 }
 #endif
 
