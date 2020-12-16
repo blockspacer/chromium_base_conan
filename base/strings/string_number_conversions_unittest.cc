@@ -848,6 +848,30 @@ TEST(StringNumberConversionsTest, HexEncode) {
   EXPECT_EQ(hex.compare("01FF02FE038081"), 0);
 }
 
+TEST(StringNumberConversionsTest, HexEncodeDecode) {
+  std::string str_hash = "Hello world!";
+  std::string encoded = base::HexEncode(str_hash.c_str(), str_hash.length());
+  EXPECT_EQ(str_hash, base::HexDecode(encoded));
+  EXPECT_EQ(encoded, "48656c6C6F20776f726C6421");
+}
+
+TEST(StringNumberConversionsTest, HexDump) {
+  EXPECT_EQ("", HexDump(""));
+  EXPECT_EQ("0x0000:  4865 6c6c 6f20 776f 726c 6421            Hello.world!\n",
+            HexDump("Hello world!"));
+  EXPECT_EQ(
+      "0x0000:  5052 4920 2a20 4854 5450 2f32 2e30 0d0a  PRI.*.HTTP/2.0..\n"
+      "0x0010:  0d0a 534d 0d0a 0d0a                      ..SM....\n",
+      HexDump("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"));
+  // Verify that 0x21 and 0x7e are printable, 0x20 and 0x7f are not.
+  EXPECT_EQ("0x0000:  2021 7e7f                                .!~.\n",
+            HexDump(HexDecode("20217e7f")));
+  // Verify that values above numeric_limits<unsigned char>::max() are cast
+  // properly on platforms where char is unsigned.
+  EXPECT_EQ("0x0000:  90aa ff                                  ...\n",
+            HexDump(HexDecode("90aaff")));
+}
+
 // Test cases of known-bad strtod conversions that motivated the use of dmg_fp.
 // See https://bugs.chromium.org/p/chromium/issues/detail?id=593512.
 TEST(StringNumberConversionsTest, StrtodFailures) {
