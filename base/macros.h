@@ -1019,7 +1019,7 @@ inline void ignore_result(const T&) {
 /// \note use `base::rvalue_cast` instead of `std::move`
 /// where possible.
 /// Document usage of `std::move` like below:
-/// CAN_COPY_ON_MOVE("moving const") std::move(ec)
+/// COPY_OR_MOVE(x)
 //
 // Documents that value may be NOT moved
 // while using `std::move` or cast to rvalue.
@@ -1031,6 +1031,9 @@ inline void ignore_result(const T&) {
 // may call the copy constructor
 // when passed to another object
 #define CAN_COPY_ON_MOVE(x)
+
+// Use it instead of `CAN_COPY_ON_MOVE("moving const") std::move(x)`
+#define COPY_OR_MOVE(x) std::move(x)
 
 /// \note prefer `REFERENCED` to `RAW_REFERENCED`
 // Documents that value will be used as alias

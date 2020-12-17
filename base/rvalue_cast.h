@@ -20,8 +20,8 @@ namespace base {
 //
 // m_queue.push(rvalue_cast(value));
 // // If you can not use rvalue_cast,
-// // than add some comments why (i.e. use `CAN_COPY_ON_MOVE` etc.)
-// m_queue.push(CAN_COPY_ON_MOVE("moving const") std::move(const_value));
+// // than add some comments why (i.e. use `COPY_OR_MOVE` etc.)
+// m_queue.push(COPY_OR_MOVE(const_value));
 //
 // If `m_queue.push` throws, is the value moved-from?
 // No. std::move is just an rvalue_cast

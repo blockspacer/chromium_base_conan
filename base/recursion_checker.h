@@ -72,15 +72,15 @@ namespace base {
  *
  * class MyClass {
  *  public:
- *   void foo();
+ *   void foo() const;
  *  private:
  *   // Or `FUNCTION_RECURSION_CHECKER_ONCE`, etc.
- *   FUNCTION_RECURSION_CHECKER_LIMIT_999(foo_limit);
+ *   mutable FUNCTION_RECURSION_CHECKER_LIMIT_999(dependsOnRecursionLimit);
  * }
  *
- * void MyClass::foo()
+ * void MyClass::foo() const
  * {
- *   DCHECK_FUNCTION_RECURSION(foo_limit);
+ *   DCHECK_FUNCTION_RECURSION(dependsOnRecursionLimit);
  *   // You can not call infinetely `MyClass::foo()` from here.
  * }
  */

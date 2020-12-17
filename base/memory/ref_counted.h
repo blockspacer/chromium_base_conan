@@ -23,6 +23,9 @@
 namespace base {
 namespace subtle {
 
+/// \note You can use `WrapRefCounted(this)` to imitate `std::shared_from_this`
+/// You can also use `base::RetainedRef(this)` if callback recieves pointer.
+//
 class BASE_EXPORT RefCountedBase {
  public:
   bool HasOneRef() const { return ref_count_ == 1; }
