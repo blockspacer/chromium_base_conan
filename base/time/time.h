@@ -942,14 +942,8 @@ class BASE_EXPORT ThreadTicks : public time_internal::TimeBase<ThreadTicks> {
 
   // Returns true if ThreadTicks::Now() is supported on this system.
   static bool IsSupported() WARN_UNUSED_RESULT {
-#if defined(STARBOARD)
-
-#if SB_HAS(TIME_THREAD_NOW)
+#if defined(STARBOARD) && SB_HAS(TIME_THREAD_NOW)
     return true;
-#else
-    return false;
-#endif
-
 #elif (defined(_POSIX_THREAD_CPUTIME) && (_POSIX_THREAD_CPUTIME >= 0)) || \
     (defined(OS_MACOSX) && !defined(OS_IOS)) || defined(OS_ANDROID) ||  \
     defined(OS_FUCHSIA)

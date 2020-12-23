@@ -29,7 +29,7 @@
 #include "base/win/com_init_util.h"
 #include "build/build_config.h"
 #include GMOCK_HEADER_INCLUDE
-#include "testing/gtest/include/gtest/gtest-spi.h"
+#include <gtest/gtest-spi.h>
 #include GTEST_HEADER_INCLUDE
 
 #if defined(OS_POSIX)

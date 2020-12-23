@@ -22,7 +22,7 @@
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/perf/perf_test.h"
+#include "base/test/testing/perf/perf_test.h"
 
 #if defined(OS_POSIX)
 #include <pthread.h>

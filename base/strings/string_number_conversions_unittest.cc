@@ -852,7 +852,7 @@ TEST(StringNumberConversionsTest, HexEncodeDecode) {
   std::string str_hash = "Hello world!";
   std::string encoded = base::HexEncode(str_hash.c_str(), str_hash.length());
   EXPECT_EQ(str_hash, base::HexDecode(encoded));
-  EXPECT_EQ(encoded, "48656c6C6F20776f726C6421");
+  EXPECT_EQ(encoded, "48656C6C6F20776F726C6421");
 }
 
 TEST(StringNumberConversionsTest, HexDump) {

@@ -59,7 +59,7 @@ typedef enum SbThreadPriorityTODO {
   // default priority assignment method of that platform. This may mean to
   // inherit the priority of the spawning thread, or it may mean a specific
   // default priority, or it may mean something else, depending on the platform.
-  base_kSbThreadNoPriority = base_kSbInt32Min//kSbInvalidInt,
+  base_kSbThreadNoPriority = base_kSbInt32Min,
 } SbThreadPriorityTODO;
 #endif
 
@@ -157,7 +157,6 @@ const PlatformThreadId kInvalidThreadId(0);
 // Valid values for priority of Thread::Options and SimpleThread::Options, and
 // SetCurrentThreadPriority(), listed in increasing order of importance.
 enum class ThreadPriority : int {
-/// \todo STARBOARD
 #if defined(STARBOARD)
   DEFAULT = base_kSbThreadNoPriority,
   LOWEST = base_kSbThreadPriorityLowest,
@@ -282,8 +281,7 @@ class BASE_EXPORT PlatformThread {
 
   static ThreadPriority GetCurrentThreadPriority();
 
-  /// __TODO__
-/*#if defined(OS_LINUX) //|| defined(OS_EMSCRIPTEN)
+#if defined(OS_LINUX) && !defined(OS_EMSCRIPTEN)
   // Toggles a specific thread's priority at runtime. This can be used to
   // change the priority of a thread in a different process and will fail
   // if the calling process does not have proper permissions. The
@@ -295,7 +293,7 @@ class BASE_EXPORT PlatformThread {
   // whole thread group's (i.e. process) priority.
   static void SetThreadPriority(PlatformThreadId thread_id,
                                 ThreadPriority priority);
-#endif*/
+#endif
 
   // Returns the default thread stack size set by chrome. If we do not
   // explicitly set default size then returns 0.

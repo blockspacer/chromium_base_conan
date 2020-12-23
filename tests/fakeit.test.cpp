@@ -1,10 +1,4 @@
-#include "testsCommon.h"
-
-#if !defined(USE_CATCH_TEST)
-#warning "use USE_CATCH_TEST"
-// default
-#define USE_CATCH_TEST 1
-#endif // !defined(USE_CATCH_TEST)
+#include "tests_common.hpp"
 
 #include <chrono>
 #include <cstdlib>

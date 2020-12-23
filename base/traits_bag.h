@@ -75,6 +75,7 @@ struct Exclude {
             std::enable_if_t<ParameterPack<
                 TraitsToExclude...>::template HasType<T>()>* = nullptr>
   static constexpr EmptyTrait Filter(T t) {
+    UNREFERENCED_PARAMETER(t);
     return EmptyTrait();
   }
 
@@ -121,8 +122,7 @@ constexpr TraitFilterType GetTraitFromArg(CallFirstTag, ArgType arg) {
 
 template <class TraitFilterType, class ArgType>
 constexpr InvalidTrait GetTraitFromArg(CallSecondTag, ArgType arg) {
-  /// \todo non-constexpr function 'ignore_result' cannot be used in a constant expression
-  /// ignore_result(arg);
+  UNREFERENCED_PARAMETER(arg);
   return InvalidTrait();
 }
 

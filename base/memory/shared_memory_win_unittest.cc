@@ -18,7 +18,7 @@
 #include "base/test/test_timeouts.h"
 #include "base/win/scoped_handle.h"
 #include "base/win/win_util.h"
-#include "testing/multiprocess_func_list.h"
+#include "base/test/testing/multiprocess_func_list.h"
 
 namespace base {
 namespace {

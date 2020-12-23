@@ -11,6 +11,10 @@
 #include "base/i18n/utf8_validator_tables.h"
 #include "base/logging.h"
 
+#if UCONFIG_NO_COLLATION
+#error "found icu with UCONFIG_NO_COLLATION"
+#endif // UCONFIG_NO_COLLATION
+
 namespace base {
 namespace {
 

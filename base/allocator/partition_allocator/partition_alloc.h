@@ -288,6 +288,8 @@ ALWAYS_INLINE void* PartitionRoot::Alloc(size_t size, const char* type_name) {
 ALWAYS_INLINE void* PartitionRoot::AllocFlags(int flags,
                                               size_t size,
                                               const char* type_name) {
+  UNREFERENCED_PARAMETER(flags);
+  UNREFERENCED_PARAMETER(type_name);
 #if defined(MEMORY_TOOL_REPLACES_ALLOCATOR)
   // Make MEMORY_TOOL_REPLACES_ALLOCATOR behave the same for max size
   // as other alloc code.
@@ -385,6 +387,7 @@ ALWAYS_INLINE void* PartitionAllocGenericFlags(PartitionRootGeneric* root,
                                                int flags,
                                                size_t size,
                                                const char* type_name) {
+  UNREFERENCED_PARAMETER(type_name);
   DCHECK_LT(flags, PartitionAllocLastFlag << 1);
 
 #if defined(MEMORY_TOOL_REPLACES_ALLOCATOR)

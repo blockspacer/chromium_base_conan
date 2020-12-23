@@ -27,24 +27,6 @@ BASE_I18N_EXPORT bool InitializeICU();
 BASE_I18N_EXPORT bool InitializeICUWithPath(base::FilePath icuDataFileName);
 
 #if ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_FILE
-#if defined(OS_ANDROID)
-// Returns the PlatformFile and Region that was initialized by InitializeICU().
-// Use with InitializeICUWithFileDescriptor().
-BASE_I18N_EXPORT PlatformFile GetIcuDataFileHandle(
-    MemoryMappedFile::Region* out_region);
-
-// Android uses a file descriptor passed by browser process to initialize ICU
-// in render processes.
-BASE_I18N_EXPORT bool InitializeICUWithFileDescriptor(
-    PlatformFile data_fd,
-    const MemoryMappedFile::Region& data_region);
-
-BASE_I18N_EXPORT bool InitializeICUWithFileDescriptorWithPath(
-    base::FilePath icuDataFileName,
-    PlatformFile data_fd,
-    const MemoryMappedFile::Region& data_region);
-#endif
-
 // Returns a void pointer to the memory mapped ICU data file.
 //
 // There are cases on Android where we would be unsafely reusing a file

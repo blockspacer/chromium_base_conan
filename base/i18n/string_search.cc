@@ -15,7 +15,7 @@ namespace i18n {
 FixedPatternStringSearch::FixedPatternStringSearch(const string16& find_this,
                                                    bool case_sensitive)
     : find_this_(find_this) {
-#if !defined(UCONFIG_NO_COLLATION)
+#if !UCONFIG_NO_COLLATION
   // usearch_open requires a valid string argument to be searched, even if we
   // want to set it by usearch_setText afterwards. So, supplying a dummy text.
   const string16& dummy = find_this_;
@@ -40,24 +40,24 @@ FixedPatternStringSearch::FixedPatternStringSearch(const string16& find_this,
   }
 #else
     NOTIMPLEMENTED();
-#endif // !defined(UCONFIG_NO_COLLATION)
+#endif // !UCONFIG_NO_COLLATION
 }
 
 FixedPatternStringSearch::~FixedPatternStringSearch() {
-#if !defined(UCONFIG_NO_COLLATION)
+#if !UCONFIG_NO_COLLATION
   if (search_)
     usearch_close(search_);
 #else
     // see https://github.com/blockspacer/skia-opengl-emscripten/blob/8390245e4aadd160d99e297968594bb6ad86caaa/thirdparty/icu-git/icu4c/source/i18n/usearch.cpp#L2754
     NOTIMPLEMENTED();
-#endif // !defined(UCONFIG_NO_COLLATION)
+#endif // !UCONFIG_NO_COLLATION
 }
 
 bool FixedPatternStringSearch::Search(const string16& in_this,
                                       size_t* match_index,
                                       size_t* match_length,
                                       bool forward_search) {
-#if !defined(UCONFIG_NO_COLLATION)
+#if !UCONFIG_NO_COLLATION
   UErrorCode status = U_ZERO_ERROR;
   usearch_setText(search_, in_this.data(), in_this.size(), &status);
 
@@ -88,7 +88,7 @@ bool FixedPatternStringSearch::Search(const string16& in_this,
 #else
     NOTIMPLEMENTED();
   return false;
-#endif // !defined(UCONFIG_NO_COLLATION)
+#endif // !UCONFIG_NO_COLLATION
 }
 
 FixedPatternStringSearchIgnoringCaseAndAccents::

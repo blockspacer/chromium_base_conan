@@ -98,7 +98,8 @@
 //   DFAKE_MUTEX(ctor_dtor_);
 //   DFAKE_MUTEX(shareable_section_);
 // };
-
+//
+// See https://faouellet.github.io/ddmutex/
 
 #if !defined(NDEBUG)
 
@@ -134,7 +135,7 @@ namespace base {
 // used. During the unit tests is used another class that doesn't "DCHECK"
 // in case of collision (check thread_collision_warner_unittests.cc)
 struct BASE_EXPORT AsserterBase {
-  virtual ~AsserterBase() = default;
+  virtual ~AsserterBase() = 0;
   virtual void warn() = 0;
 };
 

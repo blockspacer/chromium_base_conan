@@ -39,7 +39,7 @@
 #include "build/build_config.h"
 #include GMOCK_HEADER_INCLUDE
 #include GTEST_HEADER_INCLUDE
-#include "testing/multiprocess_func_list.h"
+#include "base/test/testing/multiprocess_func_list.h"
 
 #if defined(OS_MACOSX)
 #include "base/mac/scoped_nsautorelease_pool.h"

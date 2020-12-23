@@ -15,7 +15,7 @@
 #include "base/threading/thread_local.h"
 #include "build/build_config.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/multiprocess_func_list.h"
+#include "base/test/testing/multiprocess_func_list.h"
 
 namespace {
 

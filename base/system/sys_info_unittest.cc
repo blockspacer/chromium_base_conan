@@ -22,7 +22,7 @@
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/platform_test.h"
+#include "base/test/testing/platform_test.h"
 
 namespace base {
 

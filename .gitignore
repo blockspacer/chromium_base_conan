@@ -53,3 +53,4 @@ tmp/
 *.txt.user
 /typescript
 *.directory
+*_buildflags.h

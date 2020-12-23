@@ -299,7 +299,9 @@ class ScopedGeneric {
   typename std::enable_if_t<
       !std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
       Void>
-  TrackAcquire(const T& value) {}
+  TrackAcquire(const T& value) {
+    UNREFERENCED_PARAMETER(value);
+  }
 
   template <typename Void = void>
   typename std::enable_if_t<
@@ -315,7 +317,9 @@ class ScopedGeneric {
   typename std::enable_if_t<
       !std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
       Void>
-  TrackRelease(const T& value) {}
+  TrackRelease(const T& value) {
+    UNREFERENCED_PARAMETER(value);
+  }
 
   // Forbid comparison. If U != T, it totally doesn't make sense, and if U ==
   // T, it still doesn't make sense because you should never have the same

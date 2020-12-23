@@ -412,4 +412,6 @@ void StatisticsRecorder::InitLogOnShutdownWhileLocked() {
   }
 }
 
+StatisticsRecorder::HistogramProvider::~HistogramProvider(){}
+
 }  // namespace base

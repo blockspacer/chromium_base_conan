@@ -7,6 +7,10 @@
 #include "base/strings/utf_string_conversions.h"
 #include GTEST_HEADER_INCLUDE
 
+#if UCONFIG_NO_COLLATION
+#error "found icu with UCONFIG_NO_COLLATION"
+#endif // UCONFIG_NO_COLLATION
+
 namespace base {
 namespace i18n {
 

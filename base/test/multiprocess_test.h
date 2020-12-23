@@ -11,7 +11,7 @@
 #include "base/process/launch.h"
 #include "base/process/process.h"
 #include "build/build_config.h"
-#include "testing/platform_test.h"
+#include "base/test/testing/platform_test.h"
 
 namespace base {
 

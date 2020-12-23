@@ -11,7 +11,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/perf/perf_test.h"
+#include "base/test/testing/perf/perf_test.h"
 
 // Ask the compiler not to use a register for this counter, in case it decides
 // to do magic optimizations like |counter += kLaps|.

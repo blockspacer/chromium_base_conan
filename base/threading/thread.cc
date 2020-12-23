@@ -478,4 +478,6 @@ void MessageLoopTaskEnvironment::BindToCurrentThread(TimerSlack timer_slack) {
 
 }  // namespace internal
 
+Thread::TaskEnvironment::~TaskEnvironment(){}
+
 }  // namespace base

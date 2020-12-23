@@ -391,10 +391,6 @@ bool Pickle::PeekNext(size_t header_size,
   return true;
 }
 
-template <size_t length> void Pickle::WriteBytesStatic(const void* data) {
-  WriteBytesCommon(data, length);
-}
-
 template void Pickle::WriteBytesStatic<2>(const void* data);
 template void Pickle::WriteBytesStatic<4>(const void* data);
 template void Pickle::WriteBytesStatic<8>(const void* data);

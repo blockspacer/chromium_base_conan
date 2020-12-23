@@ -8,14 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+#include "tests_common.hpp"
+
 #include "base/containers/bounded_inline_vector.h"
 
 #include <memory>
 #include <string>
 #include <utility>
-
-#include "test/gmock.h"
-#include "test/gtest.h"
 
 namespace base {
 namespace {

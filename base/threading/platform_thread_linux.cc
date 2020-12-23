@@ -100,8 +100,7 @@ const ThreadPriorityToNiceValuePair kThreadPriorityToNiceValueMap[4] = {
 
 Optional<bool> CanIncreaseCurrentThreadPriorityForPlatform(
     ThreadPriority priority) {
-    /// __TODO__
-/*#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // A non-zero soft-limit on RLIMIT_RTPRIO is required to be allowed to invoke
   // pthread_setschedparam in SetCurrentThreadPriorityForPlatform().
   struct rlimit rlim;
@@ -109,19 +108,18 @@ Optional<bool> CanIncreaseCurrentThreadPriorityForPlatform(
       getrlimit(RLIMIT_RTPRIO, &rlim) != 0 && rlim.rlim_cur != 0) {
     return base::make_optional(true);
   }
-#endif*/
+#endif
   return base::nullopt;
 }
 
 bool SetCurrentThreadPriorityForPlatform(ThreadPriority priority) {
-  /// __TODO__
-/*#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   SetThreadCgroupsForThreadPriority(PlatformThread::CurrentId(), priority);
   return priority == ThreadPriority::REALTIME_AUDIO &&
          pthread_setschedparam(pthread_self(), SCHED_RR, &kRealTimePrio) == 0;
-#else*/
+#else
   return false;
-//#endif
+#endif
 }
 
 Optional<ThreadPriority> GetCurrentThreadPriorityForPlatform() {
@@ -164,8 +162,7 @@ void PlatformThread::SetName(const std::string& name) {
 #endif  //  !defined(OS_NACL) && !defined(OS_AIX)
 }
 
-  /// __TODO__
-/*#if !defined(OS_NACL) && !defined(OS_AIX) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL) && !defined(OS_AIX) && !defined(OS_EMSCRIPTEN)
 // static
 void PlatformThread::SetThreadPriority(PlatformThreadId thread_id,
                                        ThreadPriority priority) {
@@ -182,7 +179,7 @@ void PlatformThread::SetThreadPriority(PlatformThreadId thread_id,
               << nice_setting;
   }
 }
-#endif  //  !defined(OS_NACL) && !defined(OS_AIX)*/
+#endif  //  !defined(OS_NACL) && !defined(OS_AIX)
 
 void InitThreading() {}
 
@@ -192,11 +189,6 @@ size_t GetDefaultThreadStackSize(const pthread_attr_t& attributes) {
 #if !defined(THREAD_SANITIZER) || defined(OS_EMSCRIPTEN)
   return 0;
 #else
-
-#if defined(OS_EMSCRIPTEN)
-#error "wasm can`t support GetDefaultThreadStackSize"
-#endif
-
   // ThreadSanitizer bloats the stack heavily. Evidence has been that the
   // default stack size isn't enough for some browser tests.
   return 2 * (1 << 23);  // 2 times 8192K (the default stack size on Linux).

@@ -30,18 +30,80 @@
 #define STRONG_CLAMPED_INT_TAG(using_name) \
   STRONG_CLAMPED_INT_TAG_CUSTOM(using_name,STRONG_CLAMPED_INT_TAG_NAME)
 
+#define DECLARE_STRONG_CLAMPED_TYPE_WITH_TAG(TAG, NAME, TYPE) \
+  using NAME = base::internal::StrongClampedNumeric<TAG, TYPE>;
+
 // USAGE
 //
-// DEFINE_STRONG_CLAMPED_TYPE(Petabytes, int);
+// namespace base {
+// namespace internal {
+// DECLARE_STRONG_CLAMPED_TYPE(Petabytes, int);
+// } // namespace base
+// } // namespace internal
+// using Petabytes = ::base::internal::Petabytes;
+//
+// // Or with custom type:
+// template<typename T>
+// using PetabytesTyped = base::StrongClampedNumeric<class STRONG_CLAMPED_INT_TAG(Petabytes), T>;
 // Petabytes t1(std::numeric_limits<int>::max());
 // t1++;
-// CHECK(t1 == std::numeric_limits<int>::max());
+// // t1 == std::numeric_limits<int>::max()
 // DLOG(INFO) << t1;
-#define DEFINE_STRONG_CLAMPED_TYPE(NAME, TYPE) \
-  using NAME = base::StrongClampedNumeric<class STRONG_CLAMPED_INT_TAG(NAME), TYPE>
+#define DECLARE_STRONG_CLAMPED_TYPE(NAME, TYPE) \
+  DECLARE_STRONG_CLAMPED_TYPE_WITH_TAG(class STRONG_CLAMPED_INT_TAG(NAME), NAME, TYPE)
 
 #define STRONGLY_TYPED_CLAMPED_INT(NAME) \
-  DEFINE_STRONG_CLAMPED_TYPE(NAME, int)
+  DECLARE_STRONG_CLAMPED_TYPE(NAME, int)
+
+// USAGE: CLAMPED_UNARY_OPERATOR(ClampedAddOp, +=)
+#define CLAMPED_UNARY_OPERATOR(OP_NAME, OP2)                 \
+  template <typename R>                                  \
+  constexpr auto& operator OP2 (                         \
+      const R rhs) {                                     \
+    return MathOp<OP_NAME>(rhs);                         \
+  }
+
+#define CLAMPED_BINARY_OPERATOR(OP_NAME, OP2) \
+  template <typename TagT, typename ClampedT, typename R \
+        , typename std::enable_if< \
+                !std::is_same<R, base::internal::StrongClampedNumeric<TagT, ClampedT> >::value \
+                && internal::IsClampedOp<base::internal::StrongClampedNumeric<TagT, ClampedT>, R>::value \
+          >::type* = nullptr \
+  > \
+  constexpr \
+  StrongClampedNumeric<TagT, typename base::internal::MathWrapper<OP_NAME, typename UnderlyingType<ClampedT>::type, typename UnderlyingType<R>::type >::type> \
+  operator OP2 ( \
+    const R other \
+    , const base::internal::StrongClampedNumeric<TagT, ClampedT> ClampedVal) \
+  { \
+    return decltype(ClampedVal OP2 other)::template MathOp<TagT, OP_NAME>(ClampedVal, other); \
+  } \
+  template <typename TagT, typename ClampedT, typename R \
+        , typename std::enable_if< \
+                !std::is_same<R, base::internal::StrongClampedNumeric<TagT, ClampedT> >::value \
+                && internal::IsClampedOp<base::internal::StrongClampedNumeric<TagT, ClampedT>, R>::value \
+          >::type* = nullptr \
+  > \
+  constexpr \
+  StrongClampedNumeric<TagT, typename base::internal::MathWrapper<OP_NAME, typename UnderlyingType<ClampedT>::type, typename UnderlyingType<R>::type >::type> \
+  operator OP2 ( \
+    const base::internal::StrongClampedNumeric<TagT, ClampedT> ClampedVal \
+    , const R other) \
+  { \
+    return decltype(ClampedVal OP2 other)::template MathOp<TagT, OP_NAME>(ClampedVal, other); \
+  } \
+  template <typename TagT, typename ClampedT, typename RTagT, typename RClampedT \
+  > \
+  constexpr \
+  StrongClampedNumeric<TagT, typename base::internal::MathWrapper<OP_NAME, typename UnderlyingType<ClampedT>::type, typename UnderlyingType<RClampedT>::type >::type> \
+  operator OP2 ( \
+    const base::internal::StrongClampedNumeric<TagT, ClampedT> ClampedVal \
+    , const base::internal::StrongClampedNumeric<RTagT, RClampedT> other) \
+  { \
+    static_assert(std::is_same<TagT, RTagT>::value, \
+                  "Unable to select underlying tag."); \
+    return decltype(ClampedVal OP2 other)::template MathOp<TagT, OP_NAME>(ClampedVal, other); \
+  }
 
 namespace base {
 namespace internal {
@@ -53,6 +115,8 @@ class StrongClampedNumeric {
 
  public:
   using type = T;
+
+  using tag = Tag;
 
   constexpr StrongClampedNumeric() : value_(0) {}
 
@@ -86,27 +150,16 @@ class StrongClampedNumeric {
     return *this;
   }
 
-  // Prototypes for the supported arithmetic operator overloads.
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator+=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator-=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator*=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator/=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator%=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator<<=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator>>=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator&=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator|=(const Src rhs);
-  template <typename Src>
-  constexpr StrongClampedNumeric& operator^=(const Src rhs);
+  CLAMPED_UNARY_OPERATOR(ClampedAddOp, +=)
+  CLAMPED_UNARY_OPERATOR(ClampedSubOp, -=)
+  CLAMPED_UNARY_OPERATOR(ClampedMulOp, *=)
+  CLAMPED_UNARY_OPERATOR(ClampedDivOp, /=)
+  CLAMPED_UNARY_OPERATOR(ClampedModOp, %=)
+  CLAMPED_UNARY_OPERATOR(ClampedLshOp, <<=)
+  CLAMPED_UNARY_OPERATOR(ClampedRshOp, >>=)
+  CLAMPED_UNARY_OPERATOR(ClampedAndOp, &=)
+  CLAMPED_UNARY_OPERATOR(ClampedOrOp , |=)
+  CLAMPED_UNARY_OPERATOR(ClampedXorOp, ^=)
 
   constexpr StrongClampedNumeric operator-() const {
     // The negation of two's complement int min is int min, so that's the
@@ -216,13 +269,81 @@ class StrongClampedNumeric {
   };
 };
 
+template <typename T>
+struct HasTag {
+private:
+  template <typename T1>
+  static typename T1::tag test(int);
+  template <typename>
+  static void test(...);
+public:
+  enum { value = !std::is_void<decltype(test<T>(0))>::value };
+};
+
+static_assert(std::is_same<StrongCheckedNumeric<class TmpTag, int>::tag, class TmpTag>::value,
+              "Unable to find tag.");
+
+static_assert(HasTag< StrongCheckedNumeric<class TmpTag, int> >::value,
+              "Unable to find tag.");
+
+static_assert(!HasTag< int >::value,
+              "int must not have tag.");
+
 // Convience wrapper to return a new StrongClampedNumeric from the provided arithmetic
 // or StrongClampedNumericType.
 template <typename Tag, typename T>
-constexpr StrongClampedNumeric<Tag, typename UnderlyingType<T>::type> MakeClampedNum(
+constexpr StrongClampedNumeric<Tag, typename UnderlyingType<T>::type> MakeClampedNumInternal(
     const T value) {
   return value;
 }
+
+// used to print type names in static_assert
+template<typename ... typeclass>
+struct clamped_underlying_false : std::false_type {};
+
+// SelectTag<int, int> -> error
+// SelectTag<StrongCheckedNumeric<Tag, T>, int> -> Tag
+// SelectTag<int, StrongCheckedNumeric<Tag, T>> -> Tag
+// SelectTag<StrongCheckedNumeric<Tag, T1>, StrongCheckedNumeric<Tag, T2>> -> Tag
+// SelectTag<StrongCheckedNumeric<TagOne, T1>, StrongCheckedNumeric<TagTwo, T2>> -> error
+template <typename L, typename R
+          , bool LHasTag = HasTag<L>::value
+          , bool RHasTag = HasTag<R>::value
+         >
+struct SelectClampedTag;
+
+template <typename L, typename R>
+struct SelectClampedTag<L, R, false, false>
+{
+  static_assert(clamped_underlying_false<L, R>::value,
+                "Unable to find underlying tag.");
+};
+
+template <typename L, typename R>
+struct SelectClampedTag<L, R, true, true>
+{
+  static_assert(std::is_same<typename L::tag, typename R::tag>::value,
+                "Unable to select underlying tag.");
+  static_assert(UnderlyingType<L>::is_clamped,
+                "Unable to find underlying tag.");
+  using type = typename L::tag;
+};
+
+template <typename L, typename R>
+struct SelectClampedTag<L, R, false, true>
+{
+  static_assert(UnderlyingType<R>::is_clamped,
+                "Unable to find underlying tag.");
+  using type = typename R::tag;
+};
+
+template <typename L, typename R>
+struct SelectClampedTag<L, R, true, false>
+{
+  static_assert(UnderlyingType<L>::is_clamped,
+                "Unable to find underlying tag.");
+  using type = typename L::tag;
+};
 
 // Overload the ostream output operator to make logging work nicely.
 template <typename Tag, typename T>
@@ -257,28 +378,6 @@ ClampMathOp(const L lhs, const R rhs, const Args... args) {
 
 class ClampedNumericTag{};
 
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Add, +, +=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Sub, -, -=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Mul, *, *=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Div, /, /=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Mod, %, %=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Lsh, <<, <<=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Rsh, >>, >>=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, And, &, &=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Or, |, |=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Xor, ^, ^=)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Add)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Sub)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Mul)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Div)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Mod)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Lsh)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Rsh)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, And)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Or)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Xor)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Max)
-BASE_STRONG_ARITHMETIC_VARIADIC(ClampedNumericTag, Strong, Clamped, Clamp, Min)
 BASE_STRONG_COMPARISON_OPERATORS(Strong, Clamped, IsLess, <)
 BASE_STRONG_COMPARISON_OPERATORS(Strong, Clamped, IsLessOrEqual, <=)
 BASE_STRONG_COMPARISON_OPERATORS(Strong, Clamped, IsGreater, >)
@@ -286,14 +385,61 @@ BASE_STRONG_COMPARISON_OPERATORS(Strong, Clamped, IsGreaterOrEqual, >=)
 BASE_STRONG_COMPARISON_OPERATORS(Strong, Clamped, IsEqual, ==)
 BASE_STRONG_COMPARISON_OPERATORS(Strong, Clamped, IsNotEqual, !=)
 
-template <typename T>
-using ClampedNumeric = internal::StrongClampedNumeric<ClampedNumericTag, T>;
+CLAMPED_BINARY_OPERATOR(ClampedAddOp, + )
+CLAMPED_BINARY_OPERATOR(ClampedSubOp, - )
+CLAMPED_BINARY_OPERATOR(ClampedMulOp, * )
+CLAMPED_BINARY_OPERATOR(ClampedDivOp, / )
+CLAMPED_BINARY_OPERATOR(ClampedModOp, % )
+CLAMPED_BINARY_OPERATOR(ClampedLshOp, <<)
+CLAMPED_BINARY_OPERATOR(ClampedRshOp, >>)
+CLAMPED_BINARY_OPERATOR(ClampedAndOp, & )
+CLAMPED_BINARY_OPERATOR(ClampedOrOp , | )
+CLAMPED_BINARY_OPERATOR(ClampedXorOp, ^ )
+
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Add, ClampedAddOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Sub, ClampedSubOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Mul, ClampedMulOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Div, ClampedDivOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Mod, ClampedModOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Lsh, ClampedLshOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Rsh, ClampedRshOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, And, ClampedAndOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Or,  ClampedOrOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Xor, ClampedXorOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Max, ClampedMaxOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Clamped, Clamp, Min, ClampedMinOp)
+
+DECLARE_STRONG_CLAMPED_TYPE_WITH_TAG(internal::ClampedNumericTag, ClampedNumericInt, int)
+
+// `ClampAdd`, `ClampSub`, etc. will default to `ClampedNumericTag`
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Add, ClampedAddOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Sub, ClampedSubOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Mul, ClampedMulOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Div, ClampedDivOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Mod, ClampedModOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Lsh, ClampedLshOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Rsh, ClampedRshOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, And, ClampedAndOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Or,  ClampedOrOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Xor, ClampedXorOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Max, ClampedMaxOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::ClampedNumericTag, Strong, Clamped, Clamp, Min, ClampedMinOp)
 
 }  // namespace internal
 
 using internal::StrongClampedNumeric;
-using internal::ClampedNumeric;
-using internal::MakeClampedNum;
+
+template <typename T>
+using ClampedNumeric = internal::StrongClampedNumeric<internal::ClampedNumericTag, T>;
+
+using ClampedNumericInt = internal::ClampedNumericInt;
+
+template <typename T>
+constexpr auto MakeClampedNum(
+    const T value) {
+  return internal::MakeClampedNumInternal<internal::ClampedNumericTag, T>(value);
+}
+
 using internal::ClampMax;
 using internal::ClampMin;
 using internal::ClampAdd;

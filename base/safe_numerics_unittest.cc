@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "base/compiler_specific.h"
+#include "base/location.h"
 
 // WARNING: This block must come before the base/numerics headers are included.
 // These tests deliberately cause arithmetic boundary errors. If the compiler is
@@ -786,6 +787,100 @@ static void TestArithmetic(const char* dst, int line) {
 
 // Helper macro to wrap displaying the conversion types and line numbers.
 #define TEST_ARITHMETIC(Dst) TestArithmetic<Dst>(#Dst, __LINE__)
+
+TEST(SafeNumerics, Simple) {
+  auto loc = FROM_HERE.ToString();
+  const char* dst = loc.c_str();
+  int line = FROM_HERE.line_number();
+
+  CheckedNumeric<int> valA = 1;
+  valA += 1;
+  TEST_EXPECTED_VALUE(2, valA);
+
+  CheckedNumeric<int> valB = CheckedNumeric<int>(1) + 1;
+  TEST_EXPECTED_VALUE(2, valB);
+
+  CheckedNumeric<int> valC = 1 + CheckedNumeric<int>(1);
+  TEST_EXPECTED_VALUE(2, valC);
+}
+
+DECLARE_STRONG_CHECKED_TYPE(Gigabytes, int);
+
+template<typename T>
+using GigabytesTyped = base::StrongCheckedNumeric<class STRONG_CHECKED_INT_TAG(Gigabytes), T>;
+
+template <typename T>
+constexpr T GetValue(const GigabytesTyped<T>& src) {
+  return src.template ValueOrDie<T, LogOnFailure>();
+}
+
+template <typename T, typename U>
+constexpr T GetValueAsDest(const GigabytesTyped<U>& src) {
+  return src.template ValueOrDie<T, LogOnFailure>();
+}
+
+template <typename U>
+U GetNumericValueForTest(const GigabytesTyped<U>& src) {
+  return src.state_.value();
+}
+
+// We have to handle promotions, so infer the underlying type below from actual.
+#define TEST_STRONG_EXPECTED_VALUE(expected, actual)                               \
+  EXPECT_EQ(GetValue(expected), GetValueAsDest<decltype(expected)>(actual)) \
+      << "Result test: Value " << GetNumericValueForTest(actual);
+
+TEST(SafeNumerics, StrongType) {
+  auto loc = FROM_HERE.ToString();
+  const char* dst = loc.c_str();
+  int line = FROM_HERE.line_number();
+
+  Gigabytes valA(1);
+  valA += 1;
+  TEST_STRONG_EXPECTED_VALUE(2, valA);
+
+  Gigabytes valB = 1 + Gigabytes(1);
+  TEST_STRONG_EXPECTED_VALUE(2, valB);
+}
+
+TEST(SafeNumerics, StrongVariadicNumericOperations) {
+  {  // Synthetic scope to avoid variable naming collisions.
+    auto a = base::internal::CheckAddVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1, 2UL, base::internal::MakeCheckedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(3LL), 4).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(a)::type>(10), a);
+    auto b = base::internal::CheckSubVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(base::internal::MakeCheckedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20.0), 2UL, 4).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(b)::type>(14.0), b);
+    auto c = base::internal::CheckMulVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20.0, base::internal::MakeCheckedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1), 5, 3UL).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(c)::type>(300.0), c);
+    auto d = base::internal::CheckDivVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20.0, 2.0, base::internal::MakeCheckedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(5LL), -4).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(d)::type>(-.5), d);
+    auto e = base::internal::CheckModVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(base::internal::MakeCheckedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20), 3).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(e)::type>(2), e);
+    auto f = base::internal::CheckLshVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1, base::internal::MakeCheckedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(2)).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(f)::type>(4), f);
+    auto g = base::internal::CheckRshVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(4, base::internal::MakeCheckedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(2)).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(g)::type>(1), g);
+    auto h = base::internal::CheckRshVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(CheckAddVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1, 1, 1, 1), CheckSubVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(4, 2)).ValueOrDie();
+    EXPECT_EQ(static_cast<decltype(h)::type>(1), h);
+  }
+
+  {
+    auto a = base::internal::ClampAddVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1, 2UL, base::internal::MakeClampedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(3LL), 4);
+    EXPECT_EQ(static_cast<decltype(a)::type>(10), a);
+    auto b = base::internal::ClampSubVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(base::internal::MakeClampedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20.0), 2UL, 4);
+    EXPECT_EQ(static_cast<decltype(b)::type>(14.0), b);
+    auto c = base::internal::ClampMulVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20.0, base::internal::MakeClampedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1), 5, 3UL);
+    EXPECT_EQ(static_cast<decltype(c)::type>(300.0), c);
+    auto d = base::internal::ClampDivVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20.0, 2.0, base::internal::MakeClampedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(5LL), -4);
+    EXPECT_EQ(static_cast<decltype(d)::type>(-.5), d);
+    auto e = base::internal::ClampModVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(base::internal::MakeClampedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(20), 3);
+    EXPECT_EQ(static_cast<decltype(e)::type>(2), e);
+    auto f = base::internal::ClampLshVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1, base::internal::MakeClampedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(2U));
+    EXPECT_EQ(static_cast<decltype(f)::type>(4), f);
+    auto g = base::internal::ClampRshVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(4, base::internal::MakeClampedNumInternal<class STRONG_CHECKED_INT_TAG(Gigabytes)>(2U));
+    EXPECT_EQ(static_cast<decltype(g)::type>(1), g);
+    auto h = base::internal::ClampRshVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(ClampAddVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(1, 1, 1, 1), ClampSubVariadic<class STRONG_CHECKED_INT_TAG(Gigabytes)>(4U, 2));
+    EXPECT_EQ(static_cast<decltype(h)::type>(1), h);
+  }
+}
 
 TEST(SafeNumerics, SignedIntegerMath) {
   TEST_ARITHMETIC(int8_t);

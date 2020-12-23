@@ -11,7 +11,7 @@
 
 #include "base/strings/string_piece.h"
 #include "base/values.h"
-#include "testing/gmock/include/gmock/gmock-matchers.h"
+#include <gmock/gmock-matchers.h>
 
 namespace base {
 

@@ -34,7 +34,7 @@ struct FileDescriptor {
   }
 
   FileDescriptor(File file) : fd(file.TakePlatformFile()), auto_close(true) {}
-  explicit FileDescriptor(ScopedFD fd) : fd(fd.release()), auto_close(true) {}
+  explicit FileDescriptor(ScopedFD fd_in) : fd(fd_in.release()), auto_close(true) {}
 
   bool operator==(const FileDescriptor& other) const {
     return (fd == other.fd && auto_close == other.auto_close);

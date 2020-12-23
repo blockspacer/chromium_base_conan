@@ -72,6 +72,12 @@ struct SupportsOstreamOperator<T,
                                              << std::declval<T>()))>
     : std::true_type {};
 
+template <typename T, typename = void>
+struct SupportsToString : std::false_type {};
+template <typename T>
+struct SupportsToString<T, decltype(void(std::declval<T>().ToString()))>
+    : std::true_type {};
+
 // Used to detech whether the given type is an iterator.  This is normally used
 // with std::enable_if to provide disambiguation for functions that take
 // templatzed iterators as input.
@@ -82,6 +88,15 @@ template <typename T>
 struct is_iterator<T,
                    void_t<typename std::iterator_traits<T>::iterator_category>>
     : std::true_type {};
+
+// Helper to express preferences in an overload set. If more than one overload
+// are available for a given set of parameters the overload with the higher
+// priority will be chosen.
+template <size_t I>
+struct priority_tag : priority_tag<I - 1> {};
+
+template <>
+struct priority_tag<0> {};
 
 }  // namespace internal
 
@@ -172,6 +187,103 @@ struct is_in_place_type_t {
 template <typename... Ts>
 struct is_in_place_type_t<in_place_type_t<Ts...>> {
   static constexpr bool value = true;
+};
+
+// C++14 implementation of C++17's std::bool_constant.
+//
+// Reference: https://en.cppreference.com/w/cpp/types/integral_constant
+// Specification: https://wg21.link/meta.type.synop
+template <bool B>
+using bool_constant = std::integral_constant<bool, B>;
+
+// C++14 implementation of C++17's std::conjunction.
+//
+// Reference: https://en.cppreference.com/w/cpp/types/conjunction
+// Specification: https://wg21.link/meta.logical#1.itemdecl:1
+template <typename...>
+struct conjunction : std::true_type {};
+
+template <typename B1>
+struct conjunction<B1> : B1 {};
+
+template <typename B1, typename... Bn>
+struct conjunction<B1, Bn...>
+    : std::conditional_t<static_cast<bool>(B1::value), conjunction<Bn...>, B1> {
+};
+
+// C++14 implementation of C++17's std::disjunction.
+//
+// Reference: https://en.cppreference.com/w/cpp/types/disjunction
+// Specification: https://wg21.link/meta.logical#itemdecl:2
+template <typename...>
+struct disjunction : std::false_type {};
+
+template <typename B1>
+struct disjunction<B1> : B1 {};
+
+template <typename B1, typename... Bn>
+struct disjunction<B1, Bn...>
+    : std::conditional_t<static_cast<bool>(B1::value), B1, disjunction<Bn...>> {
+};
+
+// C++14 implementation of C++17's std::negation.
+//
+// Reference: https://en.cppreference.com/w/cpp/types/negation
+// Specification: https://wg21.link/meta.logical#itemdecl:3
+template <typename B>
+struct negation : bool_constant<!static_cast<bool>(B::value)> {};
+
+// Implementation of C++17's std::invoke_result_t.
+//
+// This implementation adds references to `Functor` and `Args` to work around
+// some quirks of std::result_of_t. See the #Notes section of [1] for details.
+//
+// References:
+// [1] https://en.cppreference.com/w/cpp/types/result_of
+// [2] https://wg21.link/meta.type.synop#lib:invoke_result_t
+template <typename Functor, typename... Args>
+using invoke_result_t = std::result_of_t<Functor && (Args && ...)>;
+
+// Simplified implementation of C++20's std::iter_value_t.
+// As opposed to std::iter_value_t, this implementation does not restrict
+// the type of `Iter` and does not consider specializations of
+// `indirectly_readable_traits`.
+//
+// Reference: https://wg21.link/readable.traits#2
+template <typename Iter>
+using iter_value_t = typename std::iterator_traits<
+    std::remove_cv_t<std::remove_reference_t<Iter>>>::value_type;
+
+// Simplified implementation of C++20's std::iter_reference_t.
+// As opposed to std::iter_reference_t, this implementation does not restrict
+// the type of `Iter`.
+//
+// Reference: https://wg21.link/iterator.synopsis#:~:text=iter_reference_t
+template <typename Iter>
+using iter_reference_t = decltype(*std::declval<Iter&>());
+
+// Simplified implementation of C++20's std::indirect_result_t. As opposed to
+// std::indirect_result_t, this implementation does not restrict the type of
+// `Func` and `Iters`.
+//
+// Reference: https://wg21.link/iterator.synopsis#:~:text=indirect_result_t
+template <typename Func, typename... Iters>
+using indirect_result_t = invoke_result_t<Func, iter_reference_t<Iters>...>;
+
+// Simplified implementation of C++20's std::projected. As opposed to
+// std::projected, this implementation does not explicitly restrict the type of
+// `Iter` and `Proj`, but rather does so implicitly by requiring
+// `indirect_result_t<Proj, Iter>` is a valid type. This is required for SFINAE
+// friendliness.
+//
+// Reference: https://wg21.link/projected
+template <typename Iter,
+          typename Proj,
+          typename IndirectResultT = indirect_result_t<Proj, Iter>>
+struct projected {
+  using value_type = std::remove_cv_t<std::remove_reference_t<IndirectResultT>>;
+
+  IndirectResultT operator*() const;  // not defined
 };
 
 }  // namespace base

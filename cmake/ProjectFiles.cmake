@@ -55,7 +55,37 @@ endif(USE_ALLOC_SHIM)
 if(USE_TEST_SUPPORT)
   # NOTE: `testing` dir not from `base`!
   list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}test/testing/platform_test.h
+    # TODO
+    #${BASE_SOURCES_PATH}test/testing/platform_test_ios.mm
+    #${BASE_SOURCES_PATH}test/testing/platform_test_mac.mm
+    ${BASE_SOURCES_PATH}test/testing/multiprocess_func_list.h
     ${BASE_SOURCES_PATH}test/testing/multiprocess_func_list.cc
+    ${BASE_SOURCES_PATH}test/testing/perf/perf_test.h
+    ${BASE_SOURCES_PATH}test/testing/perf/perf_test.cc
+  )
+
+  list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}profiler/stack_sampling_profiler_test_util.h
+    ${BASE_SOURCES_PATH}profiler/stack_sampling_profiler_test_util.cc
+    # if (is_win || is_mac)
+    # if (current_cpu == "x64" || (current_cpu == "arm64" && is_win))
+    ${BASE_SOURCES_PATH}profiler/test_support_library.cc
+  )
+
+  list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}trace_event/trace_event_filter_test_utils.cc
+    ${BASE_SOURCES_PATH}trace_event/trace_event_filter_test_utils.h
+    ${BASE_SOURCES_PATH}trace_event/memory_dump_manager_test_utils.h
+  )
+
+  list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}task/thread_pool/test_task_factory.cc
+    ${BASE_SOURCES_PATH}task/thread_pool/test_task_factory.h
+    ${BASE_SOURCES_PATH}task/thread_pool/test_utils.cc
+    ${BASE_SOURCES_PATH}task/thread_pool/test_utils.h
+    ${BASE_SOURCES_PATH}task/test_task_traits_extension.cc
+    ${BASE_SOURCES_PATH}task/test_task_traits_extension.h
   )
 
   list(APPEND BASE_SOURCES
@@ -108,10 +138,10 @@ if(USE_TEST_SUPPORT)
     ${BASE_SOURCES_PATH}test/launcher/test_results_tracker.h
     ${BASE_SOURCES_PATH}test/launcher/unit_test_launcher.h
     #
-    #${BASE_SOURCES_PATH}test/metrics/histogram_enum_reader.cc
-    #${BASE_SOURCES_PATH}test/metrics/histogram_enum_reader.h
-    #${BASE_SOURCES_PATH}test/metrics/histogram_tester.cc
-    #${BASE_SOURCES_PATH}test/metrics/histogram_tester.h
+    ${BASE_SOURCES_PATH}test/metrics/histogram_enum_reader.cc
+    ${BASE_SOURCES_PATH}test/metrics/histogram_enum_reader.h
+    ${BASE_SOURCES_PATH}test/metrics/histogram_tester.cc
+    ${BASE_SOURCES_PATH}test/metrics/histogram_tester.h
     #
     ${BASE_SOURCES_PATH}test/metrics/user_action_tester.cc
     ${BASE_SOURCES_PATH}test/metrics/user_action_tester.h
@@ -125,19 +155,24 @@ if(USE_TEST_SUPPORT)
     ${BASE_SOURCES_PATH}test/mock_log.cc
     ${BASE_SOURCES_PATH}test/mock_log.h
     ${BASE_SOURCES_PATH}test/move_only_int.h
-    #${BASE_SOURCES_PATH}test/multiprocess_test.h
+    ${BASE_SOURCES_PATH}test/multiprocess_test.h
     #${BASE_SOURCES_PATH}test/multiprocess_test_android.cc
     ${BASE_SOURCES_PATH}test/null_task_runner.cc
     ${BASE_SOURCES_PATH}test/null_task_runner.h
     #
-    #${BASE_SOURCES_PATH}test/perf_log.cc
-    #${BASE_SOURCES_PATH}test/perf_log.h
-    #${BASE_SOURCES_PATH}test/perf_test_suite.cc
-    #${BASE_SOURCES_PATH}test/perf_test_suite.h
-    #${BASE_SOURCES_PATH}test/perf_time_logger.cc
-    #${BASE_SOURCES_PATH}test/perf_time_logger.h
-    #${BASE_SOURCES_PATH}test/power_monitor_test_base.cc
-    #${BASE_SOURCES_PATH}test/power_monitor_test_base.h
+    ${BASE_SOURCES_PATH}test/type_id_test_support_a.cc
+    ${BASE_SOURCES_PATH}test/type_id_test_support_a.h
+    ${BASE_SOURCES_PATH}test/type_id_test_support_b.cc
+    ${BASE_SOURCES_PATH}test/type_id_test_support_b.h
+    #
+    ${BASE_SOURCES_PATH}test/perf_log.cc
+    ${BASE_SOURCES_PATH}test/perf_log.h
+    ${BASE_SOURCES_PATH}test/perf_test_suite.cc
+    ${BASE_SOURCES_PATH}test/perf_test_suite.h
+    ${BASE_SOURCES_PATH}test/perf_time_logger.cc
+    ${BASE_SOURCES_PATH}test/perf_time_logger.h
+    ${BASE_SOURCES_PATH}test/power_monitor_test_base.cc
+    ${BASE_SOURCES_PATH}test/power_monitor_test_base.h
     #
     #${BASE_SOURCES_PATH}test/reached_code_profiler_android.cc
     ${BASE_SOURCES_PATH}test/scoped_command_line.cc
@@ -157,16 +192,16 @@ if(USE_TEST_SUPPORT)
     ${BASE_SOURCES_PATH}test/scoped_task_environment.cc
     ${BASE_SOURCES_PATH}test/scoped_task_environment.h
     #
-    #${BASE_SOURCES_PATH}test/sequenced_task_runner_test_template.cc
-    #${BASE_SOURCES_PATH}test/sequenced_task_runner_test_template.h
+    ${BASE_SOURCES_PATH}test/sequenced_task_runner_test_template.cc
+    ${BASE_SOURCES_PATH}test/sequenced_task_runner_test_template.h
     #
     ${BASE_SOURCES_PATH}test/simple_test_clock.cc
     ${BASE_SOURCES_PATH}test/simple_test_clock.h
     ${BASE_SOURCES_PATH}test/simple_test_tick_clock.cc
     ${BASE_SOURCES_PATH}test/simple_test_tick_clock.h
     #
-    #${BASE_SOURCES_PATH}test/task_runner_test_template.cc
-    #${BASE_SOURCES_PATH}test/task_runner_test_template.h
+    ${BASE_SOURCES_PATH}test/task_runner_test_template.cc
+    ${BASE_SOURCES_PATH}test/task_runner_test_template.h
     #
     ${BASE_SOURCES_PATH}test/test_discardable_memory_allocator.cc
     ${BASE_SOURCES_PATH}test/test_discardable_memory_allocator.h
@@ -211,8 +246,8 @@ if(USE_TEST_SUPPORT)
     ${BASE_SOURCES_PATH}test/trace_event_analyzer.h
     ${BASE_SOURCES_PATH}test/trace_to_file.cc
     ${BASE_SOURCES_PATH}test/trace_to_file.h
-    #${BASE_SOURCES_PATH}test/values_test_util.cc
-    #${BASE_SOURCES_PATH}test/values_test_util.h
+    ${BASE_SOURCES_PATH}test/values_test_util.cc
+    ${BASE_SOURCES_PATH}test/values_test_util.h
     #
     #
     ${BASE_SOURCES_PATH}test/launcher/test_launcher.cc
@@ -370,6 +405,22 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}command_line.h
   ${BASE_SOURCES_PATH}compiler_specific.h
   ${BASE_SOURCES_PATH}component_export.h
+  ${BASE_SOURCES_PATH}functional/identity.h
+  ${BASE_SOURCES_PATH}functional/invoke.h
+  ${BASE_SOURCES_PATH}functional/not_fn.h
+  ${BASE_SOURCES_PATH}ranges/enumerated.h
+  ${BASE_SOURCES_PATH}ranges/pipelined.h
+  ${BASE_SOURCES_PATH}ranges/algorithm.h
+  ${BASE_SOURCES_PATH}ranges/functional.h
+  ${BASE_SOURCES_PATH}ranges/ranges.h
+  ${BASE_SOURCES_PATH}containers/contains.h
+  ${BASE_SOURCES_PATH}containers/contiguous_iterator.h
+  # TODO: FIXME
+  #${BASE_SOURCES_PATH}containers/fixed_flat_set.h
+  # TODO: FIXME
+  #${BASE_SOURCES_PATH}containers/fixed_flat_map.h
+  ${BASE_SOURCES_PATH}containers/intrusive_heap.h
+  ${BASE_SOURCES_PATH}containers/intrusive_heap.cc
   ${BASE_SOURCES_PATH}containers/adapters.h
   ${BASE_SOURCES_PATH}containers/any_internal.cc
   ${BASE_SOURCES_PATH}containers/any_internal.h
@@ -806,6 +857,8 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}strings/string_tokenizer.h
   ${BASE_SOURCES_PATH}strings/string_util.cc
   ${BASE_SOURCES_PATH}strings/string_util.h
+  ${BASE_SOURCES_PATH}strings/escape.cc
+  ${BASE_SOURCES_PATH}strings/escape.h
   ${BASE_SOURCES_PATH}strings/string_util_constants.cc
   ${BASE_SOURCES_PATH}strings/stringize_macros.h
   ${BASE_SOURCES_PATH}strings/stringprintf.cc
@@ -970,6 +1023,11 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}thread_annotations.h
   ${BASE_SOURCES_PATH}threading/platform_thread.cc
   ${BASE_SOURCES_PATH}threading/platform_thread.h
+  #
+  #FIXME
+  #${BASE_SOURCES_PATH}threading/hang_watcher.cc
+  #${BASE_SOURCES_PATH}threading/hang_watcher.h
+  #
   #${BASE_SOURCES_PATH}threading/platform_thread_android.cc
   #${BASE_SOURCES_PATH}threading/platform_thread_mac.mm
   ${BASE_SOURCES_PATH}threading/post_task_and_reply_impl.cc
@@ -1029,6 +1087,8 @@ list(APPEND BASE_SOURCES
   #${BASE_SOURCES_PATH}token.h
   ${BASE_SOURCES_PATH}base_token.cc
   ${BASE_SOURCES_PATH}base_token.h
+  ${BASE_SOURCES_PATH}util/values/values_util.cc
+  ${BASE_SOURCES_PATH}util/values/values_util.h
   ${BASE_SOURCES_PATH}trace_event/auto_open_close_event.h
   ${BASE_SOURCES_PATH}trace_event/blame_context.cc
   ${BASE_SOURCES_PATH}trace_event/blame_context.h
@@ -1582,6 +1642,8 @@ endif(TARGET_WINDOWS)
 
 list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}base_paths.cc
+  ${BASE_SOURCES_PATH}metrics/persistent_histogram_storage.cc
+  ${BASE_SOURCES_PATH}metrics/persistent_histogram_storage.h
   #if (is_linux) {
   #  sources += [
   #    "base_paths_posix.cc
@@ -1665,9 +1727,6 @@ if(TARGET_LINUX)
   )
 endif()
 
-if(NOT DEFINED ENABLE_COBALT)
-  message(FATAL_ERROR "NOT DEFINED: ENABLE_COBALT")
-endif(NOT DEFINED ENABLE_COBALT)
 if(ENABLE_COBALT)
   list(APPEND COBALT_port_base_SOURCES
     # TODO: port chromium base to starboard

@@ -1616,6 +1616,8 @@ T checkNotNull(
   , const char* exprtext
   , T&& t) NO_EXCEPTION
 {
+  UNREFERENCED_PARAMETER(file);
+  UNREFERENCED_PARAMETER(line);
   CHECK(t != nullptr) << exprtext;
   // Works with `-fsanitize=address,undefined`
 #if defined(MEMORY_TOOL_REPLACES_ALLOCATOR)

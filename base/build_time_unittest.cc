@@ -9,7 +9,7 @@
 #include GTEST_HEADER_INCLUDE
 
 TEST(BuildTime, DateLooksValid) {
-  char build_date[] = BUILD_DATE;
+  char build_date[] = BASE_BUILD_DATE;
 
   EXPECT_EQ(20u, strlen(build_date));
   EXPECT_EQ(' ', build_date[3]);

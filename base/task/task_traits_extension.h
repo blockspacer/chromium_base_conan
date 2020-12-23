@@ -193,8 +193,7 @@ struct TaskTraitsExtension {
             class CheckCanMakeExtension =
                 decltype(MakeTaskTraitsExtension(std::declval<ArgTypes>()...))>
   constexpr TaskTraitsExtension(ArgTypes... args) {
-    /// \todo non-constexpr function 'ignore_result' cannot be used in a constant expression
-    /// ignore_result(args...)
+    ((void)(UNREFERENCED_PARAMETER(args)), ...);
   }
 };
 
@@ -213,9 +212,7 @@ template <class... ArgTypes>
 constexpr TaskTraitsExtensionStorage GetTaskTraitsExtension(
     std::true_type base_traits,
     ArgTypes... args) {
-  /// \todo non-constexpr function 'ignore_result' cannot be used in a constant expression
-  /// ignore_result(base_traits);
-  /// \todo ignore_result(args...);
+  ((void)(UNREFERENCED_PARAMETER(args)), ...);
   return TaskTraitsExtensionStorage();
 }
 

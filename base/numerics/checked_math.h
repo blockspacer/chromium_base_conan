@@ -30,18 +30,78 @@
 #define STRONG_CHECKED_INT_TAG(using_name) \
   STRONG_CHECKED_INT_TAG_CUSTOM(using_name,STRONG_CHECKED_INT_TAG_NAME)
 
+#define DECLARE_STRONG_CHECKED_TYPE_WITH_TAG(TAG, NAME, TYPE) \
+  using NAME = base::internal::StrongCheckedNumeric<TAG, TYPE>;
+
 // USAGE
-//
-// DEFINE_STRONG_CHECKED_TYPE(Gigabytes, int);
+// namespace base {
+// namespace internal {
+// DECLARE_STRONG_CHECKED_TYPE(Gigabytes, int);
+// } // namespace base
+// } // namespace internal
+// using Gigabytes = ::base::internal::Gigabytes;
+// // Or with custom type:
+// template<typename T>
+// using GigabytesTyped = base::StrongCheckedNumeric<class STRONG_CHECKED_INT_TAG(Gigabytes), T>;
 // Gigabytes t1(std::numeric_limits<int>::max());
 // t1++; // will CRASH
 // DLOG(INFO) << t1.ValueOrDie();
 // CHECK(t1.ValueOrDie() == std::numeric_limits<int>::max());
-#define DEFINE_STRONG_CHECKED_TYPE(NAME, TYPE) \
-  using NAME = base::StrongCheckedNumeric<class STRONG_CHECKED_INT_TAG(NAME), TYPE>
+#define DECLARE_STRONG_CHECKED_TYPE(NAME, TYPE) \
+  DECLARE_STRONG_CHECKED_TYPE_WITH_TAG(class STRONG_CHECKED_INT_TAG(NAME), NAME, TYPE)
 
 #define STRONGLY_TYPED_CHECKED_INT(NAME) \
-  DEFINE_STRONG_CHECKED_TYPE(NAME, int)
+  DECLARE_STRONG_CHECKED_TYPE(NAME, int)
+
+// USAGE: CHECKED_UNARY_OPERATOR(CheckedAddOp, +=)
+#define CHECKED_UNARY_OPERATOR(OP_NAME, OP2)                 \
+  template <typename R>                                  \
+  constexpr auto& operator OP2 (                         \
+      const R rhs) {                                     \
+    return MathOp<OP_NAME>(rhs);                         \
+  }
+
+#define CHECKED_BINARY_OPERATOR(OP_NAME, OP2) \
+  template <typename TagT, typename CheckedT, typename R \
+        , typename std::enable_if< \
+                !std::is_same<R, base::internal::StrongCheckedNumeric<TagT, CheckedT> >::value \
+                && internal::IsCheckedOp<base::internal::StrongCheckedNumeric<TagT, CheckedT>, R>::value \
+          >::type* = nullptr \
+  > \
+  constexpr \
+  StrongCheckedNumeric<TagT, typename base::internal::MathWrapper<OP_NAME, typename UnderlyingType<CheckedT>::type, typename UnderlyingType<R>::type >::type> \
+  operator OP2 ( \
+    const R other \
+    , const base::internal::StrongCheckedNumeric<TagT, CheckedT> CheckedVal) \
+  { \
+    return decltype(CheckedVal OP2 other)::template MathOp<TagT, OP_NAME>(CheckedVal, other); \
+  } \
+  template <typename TagT, typename CheckedT, typename R \
+        , typename std::enable_if< \
+                !std::is_same<R, base::internal::StrongCheckedNumeric<TagT, CheckedT> >::value \
+                && internal::IsCheckedOp<base::internal::StrongCheckedNumeric<TagT, CheckedT>, R>::value \
+          >::type* = nullptr \
+  > \
+  constexpr \
+  StrongCheckedNumeric<TagT, typename base::internal::MathWrapper<OP_NAME, typename UnderlyingType<CheckedT>::type, typename UnderlyingType<R>::type >::type> \
+  operator OP2 ( \
+    const base::internal::StrongCheckedNumeric<TagT, CheckedT> CheckedVal \
+    , const R other) \
+  { \
+    return decltype(CheckedVal OP2 other)::template MathOp<TagT, OP_NAME>(CheckedVal, other); \
+  } \
+  template <typename TagT, typename CheckedT, typename RTagT, typename RCheckedT \
+  > \
+  constexpr \
+  StrongCheckedNumeric<TagT, typename base::internal::MathWrapper<OP_NAME, typename UnderlyingType<CheckedT>::type, typename UnderlyingType<RCheckedT>::type >::type> \
+  operator OP2 ( \
+    const base::internal::StrongCheckedNumeric<TagT, CheckedT> CheckedVal \
+    , const base::internal::StrongCheckedNumeric<RTagT, RCheckedT> other) \
+  { \
+    static_assert(std::is_same<TagT, RTagT>::value, \
+                  "Unable to select underlying tag."); \
+    return decltype(CheckedVal OP2 other)::template MathOp<TagT, OP_NAME>(CheckedVal, other); \
+  }
 
 namespace base {
 namespace internal {
@@ -53,6 +113,8 @@ class StrongCheckedNumeric {
 
  public:
   using type = T;
+
+  using tag = Tag;
 
   constexpr StrongCheckedNumeric() = default;
 
@@ -147,26 +209,16 @@ class StrongCheckedNumeric {
   friend U GetNumericValueForTest(const StrongCheckedNumeric<Tag, U>& src);
 
   // Prototypes for the supported arithmetic operator overloads.
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator+=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator-=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator*=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator/=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator%=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator<<=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator>>=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator&=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator|=(const Src rhs);
-  template <typename Src>
-  constexpr StrongCheckedNumeric& operator^=(const Src rhs);
+  CHECKED_UNARY_OPERATOR(CheckedAddOp, +=)
+  CHECKED_UNARY_OPERATOR(CheckedSubOp, -=)
+  CHECKED_UNARY_OPERATOR(CheckedMulOp, *=)
+  CHECKED_UNARY_OPERATOR(CheckedDivOp, /=)
+  CHECKED_UNARY_OPERATOR(CheckedModOp, %=)
+  CHECKED_UNARY_OPERATOR(CheckedLshOp, <<=)
+  CHECKED_UNARY_OPERATOR(CheckedRshOp, >>=)
+  CHECKED_UNARY_OPERATOR(CheckedAndOp, &=)
+  CHECKED_UNARY_OPERATOR(CheckedOrOp , |=)
+  CHECKED_UNARY_OPERATOR(CheckedXorOp, ^=)
 
   constexpr StrongCheckedNumeric operator-() const {
     // The negation of two's complement int min is int min, so we simply
@@ -321,18 +373,18 @@ class StrongCheckedNumeric {
 
 // Convenience functions to avoid the ugly template disambiguator syntax.
 template <typename Tag, typename Dst, typename Src>
-constexpr bool IsValidForType(const StrongCheckedNumeric<Tag, Src> value) {
+constexpr bool IsValidForTypeInternal(const StrongCheckedNumeric<Tag, Src> value) {
   return value.template IsValid<Dst>();
 }
 
 template <typename Tag, typename Dst, typename Src>
-constexpr StrictNumeric<Dst> ValueOrDieForType(
+constexpr StrictNumeric<Dst> ValueOrDieForTypeInternal(
     const StrongCheckedNumeric<Tag, Src> value) {
   return value.template ValueOrDie<Dst>();
 }
 
 template <typename Tag, typename Dst, typename Src, typename Default>
-constexpr StrictNumeric<Dst> ValueOrDefaultForType(
+constexpr StrictNumeric<Dst> ValueOrDefaultForTypeInternal(
     const StrongCheckedNumeric<Tag, Src> value,
     const Default default_value) {
   return value.template ValueOrDefault<Dst>(default_value);
@@ -341,7 +393,7 @@ constexpr StrictNumeric<Dst> ValueOrDefaultForType(
 // Convience wrapper to return a new CheckedNumeric from the provided arithmetic
 // or CheckedNumericType.
 template <typename Tag, typename T>
-constexpr StrongCheckedNumeric<Tag, typename UnderlyingType<T>::type> MakeCheckedNum(
+constexpr StrongCheckedNumeric<Tag, typename UnderlyingType<T>::type> MakeCheckedNumInternal(
     const T value) {
   return value;
 }
@@ -380,29 +432,6 @@ CheckMathOp(const L lhs, const R rhs, const Args... args) {
 
 class CheckedNumericTag{};
 
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Add, +, +=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Sub, -, -=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Mul, *, *=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Div, /, /=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Mod, %, %=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Lsh, <<, <<=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Rsh, >>, >>=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, And, &, &=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Or, |, |=)
-BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Checked, Check, Xor, ^, ^=)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Add)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Sub)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Mul)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Div)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Mod)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Lsh)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Rsh)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, And)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Or)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Xor)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Max)
-BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Min)
-
 /// \note Call `ValueOrDie` manually instead.
 /// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsLess, <)
 /// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsLessOrEqual, <=)
@@ -410,6 +439,46 @@ BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Min)
 /// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsGreaterOrEqual, >=)
 /// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsEqual, ==)
 /// BASE_STRONG_COMPARISON_OPERATORS(Strong, Checked, IsNotEqual, !=)
+
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Add, CheckedAddOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Sub, CheckedSubOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Mul, CheckedMulOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Div, CheckedDivOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Mod, CheckedModOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Lsh, CheckedLshOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Rsh, CheckedRshOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, And, CheckedAndOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Or , CheckedOrOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Xor, CheckedXorOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Max, CheckedMaxOp)
+BASE_ARITHMETIC_VARIADIC(Strong, Checked, Check, Min, CheckedMinOp)
+
+CHECKED_BINARY_OPERATOR(CheckedAddOp, + )
+CHECKED_BINARY_OPERATOR(CheckedSubOp, - )
+CHECKED_BINARY_OPERATOR(CheckedMulOp, * )
+CHECKED_BINARY_OPERATOR(CheckedDivOp, / )
+CHECKED_BINARY_OPERATOR(CheckedModOp, % )
+CHECKED_BINARY_OPERATOR(CheckedLshOp, <<)
+CHECKED_BINARY_OPERATOR(CheckedRshOp, >>)
+CHECKED_BINARY_OPERATOR(CheckedAndOp, & )
+CHECKED_BINARY_OPERATOR(CheckedOrOp , | )
+CHECKED_BINARY_OPERATOR(CheckedXorOp, ^ )
+
+// `CheckAdd`, `CheckSub`, etc. will default to `CheckedNumericTag`
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Add, CheckedAddOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Sub, CheckedSubOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Mul, CheckedMulOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Div, CheckedDivOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Mod, CheckedModOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Lsh, CheckedLshOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Rsh, CheckedRshOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, And, CheckedAndOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Or , CheckedOrOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Xor, CheckedXorOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Max, CheckedMaxOp)
+BASE_STRONG_ARITHMETIC_VARIADIC(base::internal::CheckedNumericTag, Strong, Checked, Check, Min, CheckedMinOp)
+
+DECLARE_STRONG_CHECKED_TYPE_WITH_TAG(internal::CheckedNumericTag, CheckedNumericInt, int)
 
 // These are some extra StrictNumeric operators to support simple pointer
 // arithmetic with our result types. Since wrapping on a pointer is always
@@ -430,17 +499,41 @@ L* operator-(L* lhs, const StrictNumeric<R> rhs) {
   return reinterpret_cast<L*>(result);
 }
 
-template <typename T>
-using CheckedNumeric = internal::StrongCheckedNumeric<CheckedNumericTag, T>;
-
 }  // namespace internal
 
 using internal::StrongCheckedNumeric;
-using internal::CheckedNumeric;
-using internal::IsValidForType;
-using internal::ValueOrDieForType;
-using internal::ValueOrDefaultForType;
-using internal::MakeCheckedNum;
+
+template <typename T>
+using CheckedNumeric = internal::StrongCheckedNumeric<internal::CheckedNumericTag, T>;
+
+using CheckedNumericInt = internal::CheckedNumericInt;
+
+template <typename Dst, typename Src>
+constexpr bool IsValidForType(const StrongCheckedNumeric<internal::CheckedNumericTag, Src> value) {
+  return internal::IsValidForTypeInternal<internal::CheckedNumericTag, Dst, Src>(value);
+}
+
+template <typename Dst, typename Src>
+constexpr auto ValueOrDieForType(
+    const StrongCheckedNumeric<internal::CheckedNumericTag, Src> value) {
+  return internal::ValueOrDieForTypeInternal<internal::CheckedNumericTag, Dst, Src>(value);
+}
+
+template <typename Dst, typename Src, typename Default>
+constexpr auto ValueOrDefaultForType(
+    const internal::StrongCheckedNumeric<internal::CheckedNumericTag, Src> value,
+    const Default default_value) {
+  return internal::ValueOrDefaultForTypeInternal<internal::CheckedNumericTag, Dst, Src>(value, default_value);
+}
+
+// Convience wrapper to return a new CheckedNumeric from the provided arithmetic
+// or CheckedNumericType.
+template <typename T>
+constexpr auto MakeCheckedNum(
+    const T value) {
+  return internal::MakeCheckedNumInternal<internal::CheckedNumericTag, T>(value);
+}
+
 using internal::CheckMax;
 using internal::CheckMin;
 using internal::CheckAdd;

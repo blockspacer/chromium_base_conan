@@ -53,6 +53,7 @@ class BASE_EXPORT StatisticsRecorder {
    public:
     // Merges all histogram information into the global versions.
     virtual void MergeHistogramDeltas() = 0;
+    virtual ~HistogramProvider();
   };
 
   typedef std::vector<HistogramBase*> Histograms;

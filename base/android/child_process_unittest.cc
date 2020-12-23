@@ -6,7 +6,7 @@
 #include "base/run_loop.h"
 #include "base/test/multiprocess_test.h"
 #include "base/test/test_timeouts.h"
-#include "testing/multiprocess_func_list.h"
+#include "base/test/testing/multiprocess_func_list.h"
 
 namespace base {
 namespace android {

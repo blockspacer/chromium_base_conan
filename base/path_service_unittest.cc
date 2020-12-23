@@ -9,9 +9,9 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest-spi.h"
+#include <gtest/gtest-spi.h>
 #include GTEST_HEADER_INCLUDE
-#include "testing/platform_test.h"
+#include "base/test/testing/platform_test.h"
 
 #if defined(OS_WIN)
 #include "base/win/windows_version.h"

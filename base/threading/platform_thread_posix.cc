@@ -399,10 +399,9 @@ void PlatformThread::Detach(PlatformThreadHandle thread_handle) {
 
 // static
 bool PlatformThread::CanIncreaseThreadPriority(ThreadPriority priority) {
-  /// __TODO__
-//#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
   return false;
-/*#else
+#else
   auto platform_specific_ability =
       internal::CanIncreaseCurrentThreadPriorityForPlatform(priority);
   if (platform_specific_ability)
@@ -410,7 +409,7 @@ bool PlatformThread::CanIncreaseThreadPriority(ThreadPriority priority) {
 
   return internal::CanLowerNiceTo(
       internal::ThreadPriorityToNiceValue(priority));
-#endif  // defined(OS_NACL)*/
+#endif  // defined(OS_NACL)
 }
 
 // static
@@ -437,11 +436,10 @@ void PlatformThread::SetCurrentThreadPriorityImpl(ThreadPriority priority) {
 
 // static
 ThreadPriority PlatformThread::GetCurrentThreadPriority() {
-  /// __TODO__
-//#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
   NOTIMPLEMENTED();
   return ThreadPriority::NORMAL;
-/*#else
+#else
   // Mirrors SetCurrentThreadPriority()'s implementation.
   auto platform_specific_priority =
       internal::GetCurrentThreadPriorityForPlatform();
@@ -459,7 +457,7 @@ ThreadPriority PlatformThread::GetCurrentThreadPriority() {
   }
 
   return internal::NiceValueToThreadPriority(nice_value);
-#endif  // !defined(OS_NACL)*/
+#endif  // !defined(OS_NACL)
 }
 
 #endif  // !defined(OS_MACOSX) && !defined(OS_FUCHSIA)

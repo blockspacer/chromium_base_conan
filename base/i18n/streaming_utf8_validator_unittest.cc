@@ -15,6 +15,10 @@
 #include "base/strings/string_piece.h"
 #include GTEST_HEADER_INCLUDE
 
+#if UCONFIG_NO_COLLATION
+#error "found icu with UCONFIG_NO_COLLATION"
+#endif // UCONFIG_NO_COLLATION
+
 // Define BASE_I18N_UTF8_VALIDATOR_THOROUGH_TEST to verify that this class
 // accepts exactly the same set of 4-byte strings as ICU-based validation. This
 // tests every possible 4-byte string, so it is too slow to run routinely on

@@ -30,7 +30,7 @@
 #include "base/time/default_tick_clock.h"
 #include "build/build_config.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/perf/perf_test.h"
+#include "base/test/testing/perf/perf_test.h"
 
 namespace base {
 namespace sequence_manager {

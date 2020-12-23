@@ -17,6 +17,10 @@
 #include "third_party/icu/source/i18n/unicode/timezone.h"
 #include "third_party/icu/source/i18n/unicode/tzfmt.h"
 
+#if UCONFIG_NO_COLLATION
+#error "found icu with UCONFIG_NO_COLLATION"
+#endif // UCONFIG_NO_COLLATION
+
 namespace base {
 namespace {
 

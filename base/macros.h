@@ -546,6 +546,7 @@ inline void ignore_result(const T&) {
 // It's a wrapper around `__has_cpp_attribute`, defined by ISO C++ SD-6
 // (https://en.cppreference.com/w/cpp/experimental/feature_test). If we don't
 // find `__has_cpp_attribute`, will evaluate to 0.
+#ifndef HAVE_CPP_ATTRIBUTE
 #if defined(__cplusplus) && defined(__has_cpp_attribute)
 // NOTE: requiring __cplusplus above should not be necessary, but
 // works around https://bugs.llvm.org/show_bug.cgi?id=23435.
@@ -553,6 +554,7 @@ inline void ignore_result(const T&) {
 #else
 #define HAVE_CPP_ATTRIBUTE(x) 0
 #endif // defined(__cplusplus) && defined(__has_cpp_attribute)
+#endif // HAVE_CPP_ATTRIBUTE
 
 #if defined(UNDEFINED_BEHAVIOR_SANITIZER) \
   || HAVE_FEATURE(undefined_sanitizer) \
@@ -1829,6 +1831,14 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 //   config_->stats().downstream_rx_errors_.inc();
 //   UNREFERENCED_PARAMETER(error_code);
 // }
+// struct TaskTraitsExtension {
+//   template <class... ArgTypes,
+//             class CheckCanMakeExtension =
+//                 decltype(MakeTaskTraitsExtension(std::declval<ArgTypes>()...))>
+//   constexpr TaskTraitsExtension(ArgTypes... args) {
+//     ((void)(UNREFERENCED_PARAMETER(args)), ...);
+//   }
+// };
 // windows.h defines UNREFERENCED_PARAMETER:
 // #define UNREFERENCED_PARAMETER(P) {(P) = (P);}
 #ifndef UNREFERENCED_PARAMETER

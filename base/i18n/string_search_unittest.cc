@@ -16,6 +16,10 @@
 namespace base {
 namespace i18n {
 
+#if UCONFIG_NO_COLLATION
+#error "found icu with UCONFIG_NO_COLLATION"
+#endif // UCONFIG_NO_COLLATION
+
 #define EXPECT_MATCH_IGNORE_CASE(find_this, in_this, ex_start, ex_len)         \
   {                                                                            \
     size_t index = 0;                                                          \

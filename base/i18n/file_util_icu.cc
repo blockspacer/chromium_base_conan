@@ -142,7 +142,7 @@ void ReplaceIllegalCharactersInPath(FilePath::StringType* file_name,
 }
 
 bool LocaleAwareCompareFilenames(const FilePath& a, const FilePath& b) {
-#if !defined(UCONFIG_NO_COLLATION)
+#if !UCONFIG_NO_COLLATION
 
   UErrorCode error_code = U_ZERO_ERROR;
   // Use the default collator. The default locale should have been properly

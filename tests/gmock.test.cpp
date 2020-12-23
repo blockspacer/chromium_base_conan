@@ -1,10 +1,4 @@
-#include "testsCommon.h"
-
-#if !defined(USE_GTEST_TEST)
-#warning "use USE_GTEST_TEST"
-// default
-#define USE_GTEST_TEST 1
-#endif // !defined(USE_GTEST_TEST)
+#include "tests_common.hpp"
 
 #include <chrono>
 #include <cstdlib>

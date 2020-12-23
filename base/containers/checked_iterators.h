@@ -318,6 +318,18 @@ class CheckedRandomAccessConstIterator {
   const T* end_ = nullptr;
 };
 
+/// \todo Update version
+/// to https://source.chromium.org/chromium/chromium/src/+/master:base/containers/checked_iterators.h
+/// https://chromium-review.googlesource.com/c/chromium/src/+/1811377/1
+template <typename T>
+using CheckedContiguousIterator = CheckedRandomAccessIterator<T>;
+
+/// \todo Update version
+/// to https://source.chromium.org/chromium/chromium/src/+/master:base/containers/checked_iterators.h
+/// https://chromium-review.googlesource.com/c/chromium/src/+/1811377/1
+template <typename T>
+using CheckedContiguousConstIterator = CheckedRandomAccessConstIterator<T>;
+
 }  // namespace base
 
 #endif  // BASE_CONTAINERS_CHECKED_ITERATORS_H_

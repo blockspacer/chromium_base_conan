@@ -192,15 +192,27 @@ ALWAYS_INLINE size_t CountTrailingZeroBitsSizeT(size_t x) {
 
 // Returns the integer i such as 2^i <= n < 2^(i+1)
 inline int Log2Floor(uint32_t n) {
+  UNREFERENCED_PARAMETER(n);
   return 31 - CountLeadingZeroBits(n);
 }
 
 // Returns the integer i such as 2^(i-1) < n <= 2^i
 inline int Log2Ceiling(uint32_t n) {
+  UNREFERENCED_PARAMETER(n);
   // When n == 0, we want the function to return -1.
   // When n == 0, (n - 1) will underflow to 0xFFFFFFFF, which is
   // why the statement below starts with (n ? 32 : -1).
   return (n ? 32 : -1) - CountLeadingZeroBits(n - 1);
+}
+
+// Returns a value of type T with a single bit set in the left-most position.
+// Can be used instead of manually shifting a 1 to the left.
+template <typename T>
+constexpr T LeftmostBit() {
+  static_assert(std::is_integral<T>::value,
+                "This function can only be used with integral types.");
+  T one(1u);
+  return one << ((CHAR_BIT * sizeof(T) - 1));
 }
 
 }  // namespace bits

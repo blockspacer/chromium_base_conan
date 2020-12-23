@@ -337,8 +337,6 @@ pthread_mutex_t LoggingLock::log_mutex = PTHREAD_MUTEX_INITIALIZER;
 // and can be used for writing. Returns false if the file could not be
 // initialized. |g_log_file| will be nullptr in this case.
 bool InitializeLogFileHandle() {
-  printf("logging.cc: InitializeLogFileHandle\n");
-
   if (g_log_file)
     return true;
 
@@ -399,8 +397,6 @@ bool InitializeLogFileHandle() {
 }
 
 void CloseFile(FileHandle log) {
-  printf("logging.cc: CloseFile\n");
-
 #if defined(OS_WIN)
   CloseHandle(log);
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)

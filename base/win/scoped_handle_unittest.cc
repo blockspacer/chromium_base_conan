@@ -14,7 +14,7 @@
 #include "base/win/scoped_handle.h"
 
 #include GTEST_HEADER_INCLUDE
-#include "testing/multiprocess_func_list.h"
+#include "base/test/testing/multiprocess_func_list.h"
 
 namespace base {
 namespace win {

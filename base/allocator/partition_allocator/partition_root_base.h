@@ -95,7 +95,7 @@ ALWAYS_INLINE void* PartitionRootBase::AllocFromBucket(PartitionBucket* bucket,
   // Check that this page is neither full nor freed.
   DCHECK(page->num_allocated_slots >= 0);
   void* ret = page->freelist_head;
-  if (LIKELY(ret != 0)) {
+  if (LIKELY(ret != nullptr)) {
     // If these DCHECKs fire, you probably corrupted memory. TODO(palmer): See
     // if we can afford to make these CHECKs.
     DCHECK(PartitionRootBase::IsValidPage(page));

@@ -234,25 +234,49 @@ struct ResultType {
 // The following macros are just boilerplate for the standard arithmetic
 // operator overloads and variadic function templates. A macro isn't the nicest
 // solution, but it beats rewriting these over and over again.
-#define BASE_STRONG_ARITHMETIC_VARIADIC(TYPE_TAG, TAG_NAME, CLASS, CL_ABBR, OP_NAME)       \
+//
+// USAGE
+//
+// BASE_STRONG_ARITHMETIC_VARIADIC(CheckedNumericTag, Strong, Checked, Check, Add)
+//
+#define BASE_STRONG_ARITHMETIC_VARIADIC(TYPE_TAG, TAG_NAME, CLASS, CL_ABBR, OP_NAME, FULL_OP_NAME)       \
   template <typename L, typename R, typename... Args>                   \
   constexpr TAG_NAME##CLASS##Numeric<                                             \
       TYPE_TAG,                                                              \
-      typename ResultType<CLASS##OP_NAME##Op, L, R, Args...>::type>     \
+      typename ResultType<FULL_OP_NAME, L, R, Args...>::type>     \
       CL_ABBR##OP_NAME(const L lhs, const R rhs, const Args... args) {  \
-    return CL_ABBR##MathOp<TYPE_TAG, CLASS##OP_NAME##Op, L, R, Args...>(lhs, rhs, \
+    return CL_ABBR##MathOp<TYPE_TAG, FULL_OP_NAME, L, R, Args...>(lhs, rhs, \
                                                               args...); \
   }
 
+#define BASE_ARITHMETIC_VARIADIC(TAG_NAME, CLASS, CL_ABBR, OP_NAME, FULL_OP_NAME)       \
+  template < \
+     typename T \
+     , typename L \
+     , typename R \
+     , typename... Args \
+  >                   \
+  constexpr TAG_NAME##CLASS##Numeric<                                             \
+      T,                                                              \
+      typename ResultType<FULL_OP_NAME, L, R, Args...>::type>     \
+      CL_ABBR##OP_NAME##Variadic(const L lhs, const R rhs, const Args... args) {  \
+    return CL_ABBR##MathOp<T, FULL_OP_NAME, L, R, Args...>(lhs, rhs, \
+                                                              args...); \
+  }
+
+// USAGE
+//
+// BASE_STRONG_ARITHMETIC_OPERATORS(Strong, Clamped, Clamp, Add, +, +=)
+//
 #define BASE_STRONG_ARITHMETIC_OPERATORS(TAG_NAME, CLASS, CL_ABBR, OP_NAME, OP, CMP_OP) \
   /* Binary arithmetic operator for all CLASS##Numeric operations. */          \
   template <typename Tag, typename L, typename R,                              \
             typename std::enable_if<Is##CLASS##Op<L, R>::value>::type* =       \
                 nullptr>                                                       \
   constexpr TAG_NAME##CLASS##Numeric<                                                    \
-      Tag, typename MathWrapper<CLASS##OP_NAME##Op, L, R>::type>               \
+      Tag, typename base::internal::MathWrapper<OP_NAME, L, R>::type>               \
   operator OP(const L lhs, const R rhs) {                                      \
-    return decltype(lhs OP rhs)::template MathOp<Tag, CLASS##OP_NAME##Op>(lhs,      \
+    return decltype(lhs OP rhs)::template MathOp<Tag, OP_NAME>(lhs,      \
                                                                      rhs);     \
   }                                                                            \
   /* Assignment arithmetic operator implementation from CLASS##Numeric. */     \
@@ -260,7 +284,7 @@ struct ResultType {
   template <typename R>                                                        \
   constexpr TAG_NAME##CLASS##Numeric<Tag, L>& TAG_NAME##CLASS##Numeric<Tag, L>::operator CMP_OP(   \
       const R rhs) {                                                           \
-    return MathOp<CLASS##OP_NAME##Op>(rhs);                                    \
+    return MathOp<OP_NAME>(rhs);                                    \
   }
 
 #define BASE_STRONG_COMPARISON_OPERATORS(TAG_NAME, CLASS, NAME, OP)              \

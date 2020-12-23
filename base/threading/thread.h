@@ -62,7 +62,7 @@ class BASE_EXPORT LOCKABLE Thread : PlatformThread::Delegate {
  public:
   class BASE_EXPORT TaskEnvironment {
    public:
-    virtual ~TaskEnvironment() {}
+    virtual ~TaskEnvironment() = 0;
 
     virtual scoped_refptr<SingleThreadTaskRunner> GetDefaultTaskRunner() = 0;
 

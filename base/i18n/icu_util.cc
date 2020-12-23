@@ -35,7 +35,7 @@
 #include "unicode/numfmt.h"
 #include "unicode/strenum.h"
 #include "unicode/ubrk.h"
-#if !defined(UCONFIG_NO_FORMATTING)
+#if !UCONFIG_NO_FORMATTING
 #include "unicode/ucal.h"
 #endif // !defined(UCONFIG_NO_FORMATTING)
 #include "unicode/uclean.h"
@@ -279,32 +279,6 @@ bool InitializeICUWithFileDescriptorInternal(
 
 #if !defined(OS_NACL)// && !defined(OS_EMSCRIPTEN)
 #if ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_FILE
-#if defined(OS_ANDROID)
-bool InitializeICUWithFileDescriptorWithPath(
-    base::FilePath icuDataFileName,
-    PlatformFile data_fd,
-    const MemoryMappedFile::Region& data_region) {
-#if DCHECK_IS_ON()
-  DCHECK(!g_check_called_once || !g_called_once);
-  g_called_once = true;
-#endif
-  return InitializeICUWithFileDescriptorInternal(icuDataFileName, data_fd, data_region);
-}
-
-bool InitializeICUWithFileDescriptor(
-    PlatformFile data_fd,
-    const MemoryMappedFile::Region& data_region)) {
-  base::FilePath icuDataFileName;
-  icuDataFileName = icuDataFileName.Append(kIcuDataFileName);
-  return InitializeICUWithFileDescriptorWithPath(icuDataFileName, data_fd, data_region);
-}
-
-PlatformFile GetIcuDataFileHandle(MemoryMappedFile::Region* out_region) {
-  CHECK_NE(g_icudtl_pf, kInvalidPlatformFile);
-  *out_region = g_icudtl_region;
-  return g_icudtl_pf;
-}
-#endif
 
 const uint8_t* GetRawIcuMemory() {
   CHECK(g_icudtl_mapped_file);
@@ -418,35 +392,35 @@ bool InitializeICUWithPath(base::FilePath icuDataFileName) {
 
   UErrorCode status = U_ZERO_ERROR;
 
-/**
- *  Initialize ICU.
- *
- *  Use of this function is optional.  It is OK to simply use ICU
- *  services and functions without first having initialized
- *  ICU by calling u_init().
- *
- *  u_init() will attempt to load some part of ICU's data, and is
- *  useful as a test for configuration or installation problems that
- *  leave the ICU data inaccessible.  A successful invocation of u_init()
- *  does not, however, guarantee that all ICU data is accessible.
- *
- *  Multiple calls to u_init() cause no harm, aside from the small amount
- *  of time required.
- *
- *  In old versions of ICU, u_init() was required in multi-threaded applications
- *  to ensure the thread safety of ICU.  u_init() is no longer needed for this purpose.
- *
- * @param status An ICU UErrorCode parameter. It must not be <code>NULL</code>.
- *    An Error will be returned if some required part of ICU data can not
- *    be loaded or initialized.
- *    The function returns immediately if the input error code indicates a
- *    failure, as usual.
- *
- * @stable ICU 2.6
- */
- /// \see https://github.com/abergmeier/emscripten-icu/blob/master/readme.html#L1464
- /// \see https://github.com/blockspacer/cobalt-clone-28052019/blob/master/src/third_party/icu/source/common/uinit.cpp
-   u_init(&status); /// __TODO__
+  /**
+   *  Initialize ICU.
+   *
+   *  Use of this function is optional.  It is OK to simply use ICU
+   *  services and functions without first having initialized
+   *  ICU by calling u_init().
+   *
+   *  u_init() will attempt to load some part of ICU's data, and is
+   *  useful as a test for configuration or installation problems that
+   *  leave the ICU data inaccessible.  A successful invocation of u_init()
+   *  does not, however, guarantee that all ICU data is accessible.
+   *
+   *  Multiple calls to u_init() cause no harm, aside from the small amount
+   *  of time required.
+   *
+   *  In old versions of ICU, u_init() was required in multi-threaded applications
+   *  to ensure the thread safety of ICU.  u_init() is no longer needed for this purpose.
+   *
+   * @param status An ICU UErrorCode parameter. It must not be <code>NULL</code>.
+   *    An Error will be returned if some required part of ICU data can not
+   *    be loaded or initialized.
+   *    The function returns immediately if the input error code indicates a
+   *    failure, as usual.
+   *
+   * @stable ICU 2.6
+   */
+   /// \see https://github.com/abergmeier/emscripten-icu/blob/master/readme.html#L1464
+   /// \see https://github.com/blockspacer/cobalt-clone-28052019/blob/master/src/third_party/icu/source/common/uinit.cpp
+   u_init(&status);
 
   union {
       uint8_t byte;

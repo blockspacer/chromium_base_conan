@@ -6,6 +6,10 @@
 
 #include GTEST_HEADER_INCLUDE
 
+#if UCONFIG_NO_COLLATION
+#error "found icu with UCONFIG_NO_COLLATION"
+#endif // UCONFIG_NO_COLLATION
+
 namespace base {
 
 TEST(CharacterEncodingTest, GetCanonicalEncodingNameByAliasName) {

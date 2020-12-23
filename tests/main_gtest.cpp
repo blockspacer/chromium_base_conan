@@ -1,14 +1,3 @@
-#ifdef __EMSCRIPTEN__
-#define CATCH_INTERNAL_CONFIG_NO_POSIX_SIGNALS
-#define CATCH_CONFIG_RUNNER
-#else
-// @see markfontenot.net/2016/09/13/c-and-catch-adding-your-own-main-method/
-// #define CATCH_CONFIG_MAIN
-// CATCH_CONFIG_RUNNER tells the catch library that this
-// project will now explicitly call for the tests to be run.
-#define CATCH_CONFIG_RUNNER
-#endif
-
 #include <base/logging.h>
 #include <base/i18n/icu_util.h>
 #include <base/command_line.h>
@@ -17,37 +6,29 @@
 #include <base/feature_list.h>
 #include <base/at_exit.h>
 #include <base/message_loop/message_loop.h>
+#include <base/files/file_path.h>
+#include <base/base_paths.h>
 
 #include <base/bind.h>
 #include <base/test/launcher/unit_test_launcher.h>
 #include <base/test/test_suite.h>
+#include <base/path_service.h>
 #include <build/build_config.h>
 
-#include "testsCommon.h"
+#include "tests_common.hpp"
 
-#if defined(USE_CATCH_TEST)
-/*
- * runCatchTests will cause Catch to go ahead and
- * run your tests (that are contained in the tests.cpp file.
- * to do that, it needs access to the command line
- * args - argc and argv. It returns an integer that
- * ultimately gets passed back up to the operating system.
- * See the if statement at the top of main for
- * a better overview.
- */
-int runCatchTests(int argc, char* const argv[]) {
-  // This line of code causes the Catch library to
-  // run the tests in the project.
-  return Catch::Session().run(argc, argv);
-}
-#endif // USE_CATCH_TEST
+#if defined(GTEST_PERF_SUITE)
+#include "base/test/perf_test_suite.h"
+# endif // GTEST_PERF_SUITE
 
-#if defined(USE_CATCH_TEST) || defined(GTEST_NO_SUITE)
+#if defined(GTEST_NO_SUITE)
 static inline void initI18n()
 {
-  /// \todo InitializeICUWithFileDescriptor
-  bool icu_initialized = base::i18n::InitializeICU();
-  //DCHECK(icu_initialized);
+  base::FilePath exe_path;
+  DCHECK(base::PathService::Get(base::DIR_EXE, &exe_path));
+  base::FilePath data_path = exe_path.AppendASCII("./resources/icu/optimal/icudt64l.dat");
+  bool icu_initialized = base::i18n::InitializeICUWithPath(data_path);
+  DCHECK(icu_initialized);
 }
 
 static inline void initCommandLine(int argc, char* argv[])
@@ -141,10 +122,10 @@ static inline void initCommandLine(int argc, char* argv[])
   // base::TaskScheduler::CreateAndStartWithDefaultParams("MainThreadPool");
   // DCHECK(base::TaskScheduler::GetInstance());
 }
-#endif // USE_CATCH_TEST || defined(GTEST_NO_SUITE)
+#endif // defined(GTEST_NO_SUITE)
 
 int main(int argc, char* argv[]) {
-#if defined(USE_CATCH_TEST) || defined(GTEST_NO_SUITE)
+#if defined(GTEST_NO_SUITE)
   initCommandLine(argc, argv);
 
   // This object instance is required (for example,
@@ -172,17 +153,7 @@ int main(int argc, char* argv[]) {
       LOG(INFO) << "shutdown...";
     }
   ));
-#endif // USE_CATCH_TEST || defined(GTEST_NO_SUITE)
-
-#if defined(USE_CATCH_TEST)
-  // If the TEST macro is defined to be true,
-  // runCatchTests will be called and immediately
-  // return causing the program to terminate. Change TEST
-  // to false in the macro def at the top of this file
-  // to skip tests and run the rest of your code.
-  const int catch_res = runCatchTests(argc, argv);
-  return catch_res;
-#endif // USE_CATCH_TEST
+#endif // defined(GTEST_NO_SUITE)
 
 #if defined(USE_GTEST_TEST)
 #if defined(GTEST_NO_SUITE)
@@ -190,6 +161,9 @@ int main(int argc, char* argv[]) {
   ::testing::InitGoogleMock(&argc, argv);
   const int gtest_res = RUN_ALL_TESTS();
   return gtest_res;
+#elif defined(GTEST_PERF_SUITE)
+  LOG(INFO) << "Running perf test...";
+  return base::PerfTestSuite(argc, argv).Run();
 #else
   base::TestSuite test_suite(argc, argv);
   return base::LaunchUnitTests(

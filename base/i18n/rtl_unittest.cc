@@ -16,7 +16,7 @@
 #include "base/test/icu_test_util.h"
 #include "build/build_config.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/platform_test.h"
+#include "base/test/testing/platform_test.h"
 #include "third_party/icu/source/common/unicode/locid.h"
 #include "third_party/icu/source/i18n/unicode/usearch.h"
 

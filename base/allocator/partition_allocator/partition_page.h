@@ -139,7 +139,7 @@ ALWAYS_INLINE PartitionPage* PartitionPage::FromPointerNoAlignmentCheck(
       (partition_page_index << kPageMetadataShift));
   // Partition pages in the same slot span can share the same page object.
   // Adjust for that.
-  size_t delta = page->page_offset << kPageMetadataShift;
+  size_t delta = static_cast<size_t>(page->page_offset << kPageMetadataShift);
   page =
       reinterpret_cast<PartitionPage*>(reinterpret_cast<char*>(page) - delta);
   return page;

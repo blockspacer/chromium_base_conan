@@ -57,4 +57,6 @@ TaskExecutor* GetRegisteredTaskExecutorForTraits(const TaskTraits& traits) {
   return nullptr;
 }
 
+TaskExecutor::~TaskExecutor() {}
+
 }  // namespace base

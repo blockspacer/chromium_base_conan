@@ -28,7 +28,7 @@
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/multiprocess_func_list.h"
+#include "base/test/testing/multiprocess_func_list.h"
 
 #if defined(OS_ANDROID)
 #include "base/callback.h"

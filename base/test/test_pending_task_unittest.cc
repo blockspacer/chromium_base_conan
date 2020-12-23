@@ -7,7 +7,7 @@
 #include "base/bind.h"
 #include "base/trace_event/trace_event.h"
 #include GMOCK_HEADER_INCLUDE
-#include "testing/gtest/include/gtest/gtest-spi.h"
+#include <gtest/gtest-spi.h>
 #include GTEST_HEADER_INCLUDE
 
 namespace base {

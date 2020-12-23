@@ -426,7 +426,6 @@ bool StringToUint64(StringPiece16 input, uint64_t* output) {
   return String16ToIntImpl(input, output);
 }
 
-// __TODO__
 bool StringToSizeT(StringPiece input, size_t* output) {
   return StringToIntImpl(input, output);
 }

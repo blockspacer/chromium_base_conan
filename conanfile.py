@@ -58,7 +58,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         "shared=False",
         "debug=False",
         "enable_sanitizers=False",
-        "enable_cobalt=True",
+        "enable_cobalt=False",
         "enable_ubsan=False",
         "enable_asan=False",
         "enable_msan=False",
@@ -199,11 +199,6 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         # provides clang-tidy, clang-format, IWYU, scan-build, etc.
         if self._is_llvm_tools_enabled():
           self.build_requires("llvm_tools/master@conan/stable")
-
-        #if self._is_tests_enabled() or self.options.use_test_support:
-            #self.build_requires("catch2/[>=2.1.0]@bincrafters/stable")
-            #self.build_requires("FakeIt/[>=2.0.5]@gasuketsu/stable")
-            #self.build_requires("doctest/2.3.4@bincrafters/stable")
 
     def requirements(self):
         self.requires("chromium_build_util/master@conan/stable")

@@ -11,7 +11,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/platform_test.h"
+#include "base/test/testing/platform_test.h"
 
 #if defined(OS_POSIX) || defined(OS_FUCHSIA)
 #include "base/test/scoped_locale.h"

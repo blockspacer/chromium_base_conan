@@ -5,8 +5,44 @@ find_package(PythonInterp 2.7 REQUIRED)
 
 find_package(Git REQUIRED)
 
-set(BASE_NEED_GEN_BUILD_DATE TRUE) # TODO
-set(BASE_NEED_GEN_BUILDFLAGS TRUE) # TODO
+# NOTE: To speed up builds pass to cmake
+#   -DBASE_NEED_GEN_BUILD_DATE=FALSE \
+#   -DBASE_NEED_GEN_BUILDFLAGS=FALSE
+# Otherwise code will be FULLY recompiled on each build.
+set(BASE_NEED_GEN_BUILD_DATE FALSE CACHE BOOL "BASE_NEED_GEN_BUILD_DATE")
+set(BASE_NEED_GEN_BUILDFLAGS FALSE CACHE BOOL "BASE_NEED_GEN_BUILDFLAGS")
+
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/base/generated_build_date.h")
+  set(BASE_NEED_GEN_BUILD_DATE TRUE)
+  message(STATUS "Unable to find required file: generated_build_date.h")
+  message(STATUS "File will be re-generated: generated_build_date.h")
+endif()
+
+if(NOT EXISTS "${BASE_SOURCES_PATH}cfi_buildflags.h")
+  message(STATUS "Unable to find required file: cfi_buildflags.h")
+  message(STATUS "File will be re-generated: cfi_buildflags.h")
+  set(BASE_NEED_GEN_BUILDFLAGS TRUE)
+endif()
+
+if(NOT EXISTS "${BASE_SOURCES_PATH}allocator/buildflags.h")
+  message(STATUS "Unable to find required file: allocator/buildflags.h")
+  message(STATUS "File will be re-generated: allocator/buildflags.h")
+  set(BASE_NEED_GEN_BUILDFLAGS TRUE)
+endif()
+
+if(TARGET_WINDOWS)
+  if(NOT EXISTS "${BASE_SOURCES_PATH}win/base_win_buildflags.h")
+    message(STATUS "Unable to find required file: win/base_win_buildflags.h")
+    message(STATUS "File will be re-generated: win/base_win_buildflags.h")
+    set(BASE_NEED_GEN_BUILDFLAGS TRUE)
+  endif()
+endif(TARGET_WINDOWS)
+
+if(NOT EXISTS "${BASE_SOURCES_PATH}debug/debugging_buildflags.h")
+  message(STATUS "Unable to find required file: debug/debugging_buildflags.h")
+  message(STATUS "File will be re-generated: debug/debugging_buildflags.h")
+  set(BASE_NEED_GEN_BUILDFLAGS TRUE)
+endif()
 
 if(BASE_NEED_GEN_BUILD_DATE)
   if(NOT GIT_EXECUTABLE)
@@ -75,7 +111,7 @@ if(BASE_NEED_GEN_BUILDFLAGS)
   # https://github.com/chromium/chromium/blob/master/base/allocator/BUILD.gn#L291
   # https://github.com/ruslanch/quic-cmake/blob/master/base/CMakeLists.txt#L35
   configure_file(${BUILDFLAGS_GENERATORS_PATH}/buildflags/allocator_buildflags.h.inc
-    ${BASE_SOURCES_PATH}allocator/buildflags.h @ONLY)
+    ${BASE_SOURCES_PATH}allocator/buildflags.h COPYONLY)
 
   if(TARGET_WINDOWS)
     configure_file(${BUILDFLAGS_GENERATORS_PATH}/buildflags/base_win_buildflags.h.inc
@@ -100,4 +136,8 @@ if(BASE_NEED_GEN_BUILDFLAGS)
   # https://github.com/chromium/chromium/blob/master/base/BUILD.gn#L2044
   configure_file(${BUILDFLAGS_GENERATORS_PATH}/buildflags/clang_coverage_buildflags.h.inc
     ${BASE_SOURCES_PATH}clang_coverage_buildflags.h COPYONLY)
+
+  # https://github.com/citizenfx/fivem/blob/master/vendor/chromium/base/sanitizer_buildflags.h
+  configure_file(${BUILDFLAGS_GENERATORS_PATH}/buildflags/sanitizer_buildflags.h.inc
+    ${BASE_SOURCES_PATH}sanitizer_buildflags.h COPYONLY)
 endif(BASE_NEED_GEN_BUILDFLAGS)

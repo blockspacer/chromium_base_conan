@@ -8,7 +8,7 @@
 
 #include "base/threading/simple_thread.h"
 #include GTEST_HEADER_INCLUDE
-#include "testing/perf/perf_test.h"
+#include "base/test/testing/perf/perf_test.h"
 
 namespace base {
 

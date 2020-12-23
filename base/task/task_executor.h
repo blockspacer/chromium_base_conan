@@ -25,7 +25,7 @@ class TaskTraits;
 // should be registered by calling RegisterTaskExecutor().
 class BASE_EXPORT TaskExecutor {
  public:
-  virtual ~TaskExecutor() = default;
+  virtual ~TaskExecutor() = 0;
 
   // Posts |task| with a |delay| and specific |traits|. |delay| can be zero. For
   // one off tasks that don't require a TaskRunner. Returns false if the task

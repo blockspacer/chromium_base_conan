@@ -259,7 +259,7 @@ class BASE_EXPORT Pickle {
   // header + payload.
   const char* end_of_payload() const {
     // This object may be invalid.
-    return header_ ? payload() + payload_size() : NULL;
+    return header_ ? payload() + payload_size() : nullptr;
   }
 
  protected:
@@ -286,7 +286,7 @@ class BASE_EXPORT Pickle {
   // Returns the address of the first byte claimed.
   void* ClaimBytes(size_t num_bytes);
 
-  // Find the end of the pickled data that starts at range_start.  Returns NULL
+  // Find the end of the pickled data that starts at range_start.  Returns nullptr
   // if the entire Pickle is not found in the given data range.
   static const char* FindNext(size_t header_size,
                               const char* range_start,
@@ -320,7 +320,10 @@ class BASE_EXPORT Pickle {
   size_t write_offset_;
 
   // Just like WriteBytes, but with a compile-time size, for performance.
-  template<size_t length> void BASE_EXPORT WriteBytesStatic(const void* data);
+  template<size_t length> void BASE_EXPORT WriteBytesStatic(const void* data)
+  {
+    WriteBytesCommon(data, length);
+  }
 
   // Writes a POD by copying its bytes.
   template <typename T> bool WritePOD(const T& data) {
@@ -328,8 +331,8 @@ class BASE_EXPORT Pickle {
     return true;
   }
 
-  inline void* ClaimUninitializedBytesInternal(size_t num_bytes);
-  inline void WriteBytesCommon(const void* data, size_t length);
+  void* ClaimUninitializedBytesInternal(size_t num_bytes);
+  void WriteBytesCommon(const void* data, size_t length);
 
   FRIEND_TEST_ALL_PREFIXES(PickleTest, DeepCopyResize);
   FRIEND_TEST_ALL_PREFIXES(PickleTest, Resize);

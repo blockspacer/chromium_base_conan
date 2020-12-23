@@ -280,8 +280,10 @@ if(ENABLE_COMPACT_ENC_DET)
   endif()
 endif(ENABLE_COMPACT_ENC_DET)
 
-option(ENABLE_COBALT "ENABLE_COBALT" ON)
+set(ENABLE_COBALT FALSE CACHE BOOL "ENABLE_COBALT")
 if(ENABLE_COBALT)
+  message(FATAL_ERROR "not supported: cobalt_starboard")
+
   find_package(cobalt_starboard_headers_only REQUIRED)
   if(TARGET cobalt_starboard_headers_only::cobalt_starboard_headers_only-static)
     set(cobalt_starboard_headers_only_LIB cobalt_starboard_headers_only::cobalt_starboard_headers_only-static)
@@ -343,9 +345,13 @@ if(TARGET_LINUX)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect_atomic32_support.cmake)
 endif(TARGET_LINUX)
 
+if(ENABLE_COBALT)
+  list(APPEND BASE_SOURCES
+    ${COBALT_port_base_SOURCES})
+endif(ENABLE_COBALT)
+
 add_library(${STATIC_LIB_NAME} STATIC
   ${BASE_SOURCES}
-  ${COBALT_port_base_SOURCES}
 )
 
 if(NOT DEFINED ENABLE_COMPACT_ENC_DET)
@@ -474,10 +480,9 @@ endif(NOT DEFINED dynamic_annotations_LIB)
 #  ${EXTRA_STARBOARD_DEFINES}
 #)
 
-if(NOT DEFINED ENABLE_COBALT)
-  message(FATAL_ERROR "NOT DEFINED: ENABLE_COBALT")
-endif(NOT DEFINED ENABLE_COBALT)
 if(ENABLE_COBALT)
+  message(FATAL_ERROR "not supported: cobalt_starboard")
+
   if(NOT DEFINED cobalt_starboard_LIB)
     message(FATAL_ERROR "NOT DEFINED: cobalt_starboard_LIB")
   endif(NOT DEFINED cobalt_starboard_LIB)
@@ -540,7 +545,15 @@ if(USE_TEST_SUPPORT)
 
   target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
     IS_BASE_TEST_IMPL=1
+  )
+
+  target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
+    UNIT_TEST=1
     #PERF_TEST=1
+  )
+
+  target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+    ${dynamic_annotations_LIB}
   )
 endif(USE_TEST_SUPPORT)
 
@@ -623,12 +636,12 @@ if(ENABLE_COBALT)
     STARBOARD_IMPLEMENTATION=1
     COBALT_IMPLEMENTATION=1
   )
-endif(ENABLE_COBALT)
 
-target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
-  # TODO
-  ${COBALT_COMMON_DEFINES}
-)
+  target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
+    # TODO
+    ${COBALT_COMMON_DEFINES}
+  )
+endif(ENABLE_COBALT)
 
 target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
   # was #include "testing/gtest/include/gtest/gtest.h"
@@ -668,7 +681,23 @@ if(NOT MSVC OR IS_CLANG_CL)
     -Wno-implicit-function-declaration
     -Wno-c++11-narrowing
     -Wno-builtin-macro-redefined
+    #  format string is not a string literal
+    -Wno-format-nonliteral
     -fno-exceptions # disabling exceptions
+    # definition of implicit copy assignment operator
+    # for 'Location' is deprecated because it has a user-declared copy constructor
+    -Wno-deprecated-copy
+    # trace_event.h: warning: unused function template 'AddMetadataEvent'
+    -Wno-unused-template
+    # warning: empty expression statement has no effect; remove unnecessary ';'
+    # to silence this warning [-Wextra-semi-stmt]
+    # TRACE_EVENT0("toplevel", "PluginManager::shutdown()");
+    -Wno-extra-semi-stmt
+    -Wno-unused-parameter
+    -Wno-old-style-cast
+    # frame.h: warning: definition of implicit copy constructor for 'Frame'
+    # is deprecated because it has a user-declared destructor
+    -Wno-deprecated-copy-dtor
   )
   target_compile_options(${STATIC_LIB_NAME} PUBLIC
     # fixes base/logging.h:406:65: warning: token pasting of ',' and __VA_ARGS__ is a GNU extension [-Wgnu-zero-variadic-macro-arguments]

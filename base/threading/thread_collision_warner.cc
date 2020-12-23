@@ -61,4 +61,6 @@ void ThreadCollisionWarner::Leave() {
   }
 }
 
+AsserterBase::~AsserterBase(){}
+
 }  // namespace base

@@ -93,6 +93,21 @@
 // These macros are not available in official builds.
 #endif  // !defined(OFFICIAL_BUILD)
 
+// This is a wrapper around `__has_cpp_attribute`, which can be used to test for
+// the presence of an attribute. In case the compiler does not support this
+// macro it will simply evaluate to 0.
+//
+// References:
+// https://wg21.link/sd6#testing-for-the-presence-of-an-attribute-__has_cpp_attribute
+// https://wg21.link/cpp.cond#:__has_cpp_attribute
+#ifndef HAS_CPP_ATTRIBUTE
+#if defined(__has_cpp_attribute)
+#define HAS_CPP_ATTRIBUTE(x) __has_cpp_attribute(x)
+#else
+#define HAS_CPP_ATTRIBUTE(x) 0
+#endif
+#endif // HAS_CPP_ATTRIBUTE
+
 /// \note Use `UNREFERENCED_PARAMETER(x)` for ignoring function parameter.
 /// \note Use `ignore_result(x)` for ignoring result of function call.
 /// \note Use `ALLOW_UNUSED_LOCAL(x)` for ignoring local variable.
@@ -172,6 +187,20 @@
 #define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #else
 #define WARN_UNUSED_RESULT
+#endif
+
+// In case the compiler supports it NO_UNIQUE_ADDRESS evaluates to the C++20
+// attribute [[no_unique_address]]. This allows annotating data members so that
+// they need not have an address distinct from all other non-static data members
+// of its class.
+//
+// References:
+// * https://en.cppreference.com/w/cpp/language/attributes/no_unique_address
+// * https://wg21.link/dcl.attr.nouniqueaddr
+#if HAS_CPP_ATTRIBUTE(no_unique_address)
+#define NO_UNIQUE_ADDRESS [[no_unique_address]]
+#else
+#define NO_UNIQUE_ADDRESS
 #endif
 
 // Tell the compiler a function is using a printf-style format string.
@@ -323,5 +352,64 @@
 #define HAVE_MIPS_MSA_INTRINSICS 1
 #endif
 #endif
+
+#if defined(__clang__) && __has_attribute(uninitialized)
+// Attribute "uninitialized" disables -ftrivial-auto-var-init=pattern for
+// the specified variable.
+// Library-wide alternative is
+// 'configs -= [ "//build/config/compiler:default_init_stack_vars" ]' in .gn
+// file.
+//
+// See "init_stack_vars" in build/config/compiler/BUILD.gn and
+// http://crbug.com/977230
+// "init_stack_vars" is enabled for non-official builds and we hope to enable it
+// in official build in 2020 as well. The flag writes fixed pattern into
+// uninitialized parts of all local variables. In rare cases such initialization
+// is undesirable and attribute can be used:
+//   1. Degraded performance
+// In most cases compiler is able to remove additional stores. E.g. if memory is
+// never accessed or properly initialized later. Preserved stores mostly will
+// not affect program performance. However if compiler failed on some
+// performance critical code we can get a visible regression in a benchmark.
+//   2. memset, memcpy calls
+// Compiler may replaces some memory writes with memset or memcpy calls. This is
+// not -ftrivial-auto-var-init specific, but it can happen more likely with the
+// flag. It can be a problem if code is not linked with C run-time library.
+//
+// Note: The flag is security risk mitigation feature. So in future the
+// attribute uses should be avoided when possible. However to enable this
+// mitigation on the most of the code we need to be less strict now and minimize
+// number of exceptions later. So if in doubt feel free to use attribute, but
+// please document the problem for someone who is going to cleanup it later.
+// E.g. platform, bot, benchmark or test name in patch description or next to
+// the attribute.
+#define STACK_UNINITIALIZED __attribute__((uninitialized))
+#else
+#define STACK_UNINITIALIZED
+#endif
+// The ANALYZER_ASSUME_TRUE(bool arg) macro adds compiler-specific hints
+// to Clang which control what code paths are statically analyzed,
+// and is meant to be used in conjunction with assert & assert-like functions.
+// The expression is passed straight through if analysis isn't enabled.
+//
+// ANALYZER_SKIP_THIS_PATH() suppresses static analysis for the current
+// codepath and any other branching codepaths that might follow.
+#if defined(__clang_analyzer__)
+inline constexpr bool AnalyzerNoReturn() __attribute__((analyzer_noreturn)) {
+  return false;
+}
+inline constexpr bool AnalyzerAssumeTrue(bool arg) {
+  // AnalyzerNoReturn() is invoked and analysis is terminated if |arg| is
+  // false.
+  return arg || AnalyzerNoReturn();
+}
+#define ANALYZER_ASSUME_TRUE(arg) ::AnalyzerAssumeTrue(!!(arg))
+#define ANALYZER_SKIP_THIS_PATH() static_cast<void>(::AnalyzerNoReturn())
+#define ANALYZER_ALLOW_UNUSED(var) static_cast<void>(var);
+#else  // !defined(__clang_analyzer__)
+#define ANALYZER_ASSUME_TRUE(arg) (arg)
+#define ANALYZER_SKIP_THIS_PATH()
+#define ANALYZER_ALLOW_UNUSED(var) static_cast<void>(var);
+#endif  // defined(__clang_analyzer__)
 
 #endif  // BASE_COMPILER_SPECIFIC_H_
