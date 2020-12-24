@@ -4,8 +4,8 @@
 
 #include "base/strings/utf_string_conversions.h"
 
-#include <limits.h>
-#include <stdint.h>
+#include <climits>
+#include <cstdint>
 
 #include <type_traits>
 

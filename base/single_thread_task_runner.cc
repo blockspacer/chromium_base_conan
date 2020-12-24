@@ -19,8 +19,6 @@
 
 namespace base {
 
-// TODO
-#if defined(STARBOARD)
 namespace {
 
 // Runs the given task, and then signals the given WaitableEvent.
@@ -53,6 +51,5 @@ void SingleThreadTaskRunner::PostBlockingTask(const base::Location& from_here,
   task_finished.Wait();
 #endif
 }
-#endif // STARBOARD
 
 }  // namespace base

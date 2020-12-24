@@ -20,12 +20,10 @@ BASE_EXPORT void Base64Encode(const StringPiece& input, std::string* output);
 // be done in-place.
 BASE_EXPORT bool Base64Decode(const StringPiece& input, std::string* output);
 
-#if defined(STARBOARD)
 // Decodes the base64 input string. Returns true if successful and false
 // otherwise.  The output vector is only modified if successful.
 BASE_EXPORT bool Base64Decode(const StringPiece& input,
                               std::vector<uint8_t>* output);
-#endif
 
 }  // namespace base
 

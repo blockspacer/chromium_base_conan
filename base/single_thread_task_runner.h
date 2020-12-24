@@ -28,8 +28,6 @@ class BASE_EXPORT SingleThreadTaskRunner : public SequencedTaskRunner {
   // A more explicit alias to RunsTasksInCurrentSequence().
   bool BelongsToCurrentThread() const { return RunsTasksInCurrentSequence(); }
 
-// TODO
-#if defined(STARBOARD)
   // Like PostTask, but blocks until the posted task completes. Returns false
   // and does not block if task was not posted.
   virtual void PostBlockingTask(const base::Location& from_here,
@@ -46,7 +44,6 @@ class BASE_EXPORT SingleThreadTaskRunner : public SequencedTaskRunner {
     };
     PostBlockingTask(FROM_HERE, base::Bind(&Fence::Task));
   }
-#endif // STARBOARD
 
  protected:
   ~SingleThreadTaskRunner() override = default;

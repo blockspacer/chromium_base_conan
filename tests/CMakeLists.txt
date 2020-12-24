@@ -404,8 +404,9 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   #tests_add_executable(${ROOT_PROJECT_NAME}-buffer_iterator_unittest
   #  "${BASE_SOURCES_PATH}containers/buffer_iterator_unittest.nc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  tests_add_executable(${ROOT_PROJECT_NAME}-contiguous_iterator_unittest
-    "${BASE_SOURCES_PATH}containers/contiguous_iterator_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  # TODO: FIXME
+  #tests_add_executable(${ROOT_PROJECT_NAME}-contiguous_iterator_unittest
+  #  "${BASE_SOURCES_PATH}containers/contiguous_iterator_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   tests_add_executable(${ROOT_PROJECT_NAME}-any_internal_unittest
     "${BASE_SOURCES_PATH}containers/any_internal_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -481,8 +482,8 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
 
   # TODO: ThreadSanitizer: data race
   # in ScheduleWorkTest.ThreadTimeToIOFromTwoThreads
-  # tests_add_executable(${ROOT_PROJECT_NAME}-message_pump_perftest
-  #   "${BASE_SOURCES_PATH}message_loop/message_pump_perftest.cc" "${GTEST_TEST_ARGS}" "${test_main_perftest}")
+  #tests_add_executable(${ROOT_PROJECT_NAME}-message_pump_perftest
+  #  "${BASE_SOURCES_PATH}message_loop/message_pump_perftest.cc" "${GTEST_TEST_ARGS}" "${test_main_perftest}")
 
   # TODO
   #tests_add_executable(${ROOT_PROJECT_NAME}-message_pump_mac_unittest
@@ -559,10 +560,8 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-activity_tracker_unittest
     "${BASE_SOURCES_PATH}debug/activity_tracker_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  # TODO: ThreadSanitizer: unlock of an unlocked mutex
-  # eztime.cc(159)] Not implemented reached in bool EzTimeValueExplode
-  # tests_add_executable(${ROOT_PROJECT_NAME}-crash_logging_unittest
-  #   "${BASE_SOURCES_PATH}debug/crash_logging_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  tests_add_executable(${ROOT_PROJECT_NAME}-crash_logging_unittest
+    "${BASE_SOURCES_PATH}debug/crash_logging_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   tests_add_executable(${ROOT_PROJECT_NAME}-scoped_clear_last_error_unittest
     "${BASE_SOURCES_PATH}scoped_clear_last_error_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -630,9 +629,9 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-thread_local_storage_unittest
     "${BASE_SOURCES_PATH}threading/thread_local_storage_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  # TODO: ThreadSanitizer: data race
-  # tests_add_executable(${ROOT_PROJECT_NAME}-watchdog_unittest
-  #   "${BASE_SOURCES_PATH}threading/watchdog_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  # TODO: ThreadSanitizer: data race on vptr (ctor/dtor vs virtual call)
+  #tests_add_executable(${ROOT_PROJECT_NAME}-watchdog_unittest
+  #  "${BASE_SOURCES_PATH}threading/watchdog_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   # TODO
   #tests_add_executable(${ROOT_PROJECT_NAME}-platform_thread_win_unittest
@@ -1062,7 +1061,7 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
     "${BASE_SOURCES_PATH}tuple_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   # base::allocator shims are not available for memory sampling.
-  if(NOT USE_ALLOC_SHIM)
+  if(USE_ALLOC_SHIM)
     tests_add_executable(${ROOT_PROJECT_NAME}-module_cache_unittest
       "${BASE_SOURCES_PATH}sampling_heap_profiler/module_cache_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
@@ -1071,7 +1070,7 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
 
     tests_add_executable(${ROOT_PROJECT_NAME}-lock_free_address_hash_set_unittest
       "${BASE_SOURCES_PATH}sampling_heap_profiler/lock_free_address_hash_set_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
-  endif(NOT USE_ALLOC_SHIM)
+  endif(USE_ALLOC_SHIM)
 
   tests_add_executable(${ROOT_PROJECT_NAME}-template_util_unittest
     "${BASE_SOURCES_PATH}template_util_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -1162,11 +1161,17 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-observer_list_unittest
     "${BASE_SOURCES_PATH}observer_list_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
+  tests_add_executable(${ROOT_PROJECT_NAME}-city_hash_unittest
+    "${BASE_SOURCES_PATH}hash/city_hash_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
   tests_add_executable(${ROOT_PROJECT_NAME}-hash_unittest
     "${BASE_SOURCES_PATH}hash/hash_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   tests_add_executable(${ROOT_PROJECT_NAME}-md5_unittest
     "${BASE_SOURCES_PATH}hash/md5_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+  tests_add_executable(${ROOT_PROJECT_NAME}-md5_constexpr_unittest
+    "${BASE_SOURCES_PATH}hash/md5_constexpr_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   tests_add_executable(${ROOT_PROJECT_NAME}-sha1_unittest
     "${BASE_SOURCES_PATH}hash/sha1_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -1210,12 +1215,8 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-environment_unittest
     "${BASE_SOURCES_PATH}environment_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  # TODO: SUMMARY: ThreadSanitizer: unlock of an unlocked mutex (or by a wrong thread)
-  # cobalt/starboard/shared/pthread/mutex_release.cc:26:20 in SbMutexRelease
-  # eztime.cc(159) Not implemented reached in
-  # bool EzTimeValueExplode
-  # tests_add_executable(${ROOT_PROJECT_NAME}-logging_unittest
-  #   "${BASE_SOURCES_PATH}logging_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  tests_add_executable(${ROOT_PROJECT_NAME}-logging_unittest
+    "${BASE_SOURCES_PATH}logging_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   tests_add_executable(${ROOT_PROJECT_NAME}-version_unittest
     "${BASE_SOURCES_PATH}version_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -1230,8 +1231,9 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-enumerated_unittest
     "${BASE_SOURCES_PATH}ranges/enumerated_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  tests_add_executable(${ROOT_PROJECT_NAME}-pipelined_unittest
-    "${BASE_SOURCES_PATH}ranges/pipelined_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  # TODO
+  # tests_add_executable(${ROOT_PROJECT_NAME}-pipelined_unittest
+  #   "${BASE_SOURCES_PATH}ranges/pipelined_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   tests_add_executable(${ROOT_PROJECT_NAME}-algorithm_unittest
     "${BASE_SOURCES_PATH}ranges/algorithm_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")

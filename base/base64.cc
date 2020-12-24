@@ -36,7 +36,6 @@ bool Base64Decode(const StringPiece& input, std::string* output) {
   return true;
 }
 
-#if defined(STARBOARD)
 // Cobalt uses different C++ types for different corresponding JavaScript types
 // and we want to have the flexibility to base64 decode string into types like
 // std::vector<uint8_t>.
@@ -63,6 +62,5 @@ bool Base64DecodeInternal(const StringPiece& input, Container* output) {
 bool Base64Decode(const StringPiece& input, std::vector<uint8_t>* output) {
   return Base64DecodeInternal(input, output);
 }
-#endif  // STARBOARD
 
 }  // namespace base

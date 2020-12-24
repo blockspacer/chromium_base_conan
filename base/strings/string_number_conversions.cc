@@ -384,7 +384,6 @@ base::string16 NumberToString16(double value) {
   return base::string16(&buffer[0], &buffer[strlen(buffer)]);
 }
 
-#if defined(STARBOARD)
 bool StringToInt32(StringPiece input, int32_t* output) {
   return StringToIntImpl(input, output);
 }
@@ -392,7 +391,6 @@ bool StringToInt32(StringPiece input, int32_t* output) {
 bool StringToUint32(StringPiece input, uint32_t* output) {
   return StringToIntImpl(input, output);
 }
-#endif
 
 bool StringToInt(StringPiece input, int* output) {
   return StringToIntImpl(input, output);

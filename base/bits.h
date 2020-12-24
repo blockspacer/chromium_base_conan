@@ -7,8 +7,9 @@
 #ifndef BASE_BITS_H_
 #define BASE_BITS_H_
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
+#include <climits>
 
 #include <type_traits>
 

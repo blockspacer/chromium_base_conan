@@ -7,8 +7,6 @@
 
 #include "base/compiler_specific.h"
 
-//#include "base/cpp14oncpp11.h"
-
 #include <stddef.h>
 
 #if defined(STARBOARD)

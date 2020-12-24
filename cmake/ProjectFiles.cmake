@@ -409,12 +409,16 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}functional/invoke.h
   ${BASE_SOURCES_PATH}functional/not_fn.h
   ${BASE_SOURCES_PATH}ranges/enumerated.h
-  ${BASE_SOURCES_PATH}ranges/pipelined.h
+  # FIXME:
+  # expected body of lambda expression
+  # return std::apply([&]<typename... Bs>(Bs&&... bound_args)
+  # ${BASE_SOURCES_PATH}ranges/pipelined.h
   ${BASE_SOURCES_PATH}ranges/algorithm.h
   ${BASE_SOURCES_PATH}ranges/functional.h
   ${BASE_SOURCES_PATH}ranges/ranges.h
   ${BASE_SOURCES_PATH}containers/contains.h
-  ${BASE_SOURCES_PATH}containers/contiguous_iterator.h
+  # TODO: FIXME
+  #${BASE_SOURCES_PATH}containers/contiguous_iterator.h
   # TODO: FIXME
   #${BASE_SOURCES_PATH}containers/fixed_flat_set.h
   # TODO: FIXME
@@ -519,8 +523,12 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}guid.h
   ${BASE_SOURCES_PATH}hash/hash.cc
   ${BASE_SOURCES_PATH}hash/hash.h
+  ${BASE_SOURCES_PATH}hash/city_hash.cc
+  ${BASE_SOURCES_PATH}hash/city_hash.h
   ${BASE_SOURCES_PATH}hash/md5.cc
   ${BASE_SOURCES_PATH}hash/md5.h
+  ${BASE_SOURCES_PATH}hash/md5_constexpr.h
+  ${BASE_SOURCES_PATH}hash/md5_constexpr_internal.h
   ${BASE_SOURCES_PATH}hash/sha1.cc
   ${BASE_SOURCES_PATH}hash/sha1.h
   #${BASE_SOURCES_PATH}ios/block_types.h
@@ -541,6 +549,7 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}lazy_instance_helpers.h
   ${BASE_SOURCES_PATH}location.cc
   ${BASE_SOURCES_PATH}location.h
+  ${BASE_SOURCES_PATH}basictypes.h
   ${BASE_SOURCES_PATH}logging.cc
   ${BASE_SOURCES_PATH}logging.h
   #${BASE_SOURCES_PATH}mac/authorization_util.h

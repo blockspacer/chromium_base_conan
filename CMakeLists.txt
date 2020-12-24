@@ -517,6 +517,7 @@ target_link_libraries(${STATIC_LIB_NAME} PRIVATE
   #${FOUND_OPENGL_LIBRARIES}
   # ${GLEW_LIBRARY}
   ${PTHREADS_LIBS} # note: not set for emscripten
+  ${CMAKE_DL_LIBS} # https://cmake.org/cmake/help/v3.13/variable/CMAKE_DL_LIBS.html
 )
 
 list(APPEND USED_3DPARTY_LIBS

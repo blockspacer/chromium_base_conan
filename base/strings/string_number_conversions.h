@@ -60,7 +60,6 @@ BASE_EXPORT string16 NumberToString16(unsigned long long value);
 BASE_EXPORT std::string NumberToString(double value);
 BASE_EXPORT string16 NumberToString16(double value);
 
-#if defined(STARBOARD)
 // Type-specific naming for backwards compatibility.
 //
 // TODO(brettw) these should be removed and callers converted to the overloaded
@@ -77,7 +76,6 @@ inline std::string UintToString(unsigned value) {
 inline string16 UintToString16(unsigned value) {
   return NumberToString16(value);
 }
-
 inline std::string Int32ToString(int32_t value) {
   return NumberToString(value);
 }
@@ -90,9 +88,6 @@ inline std::string Int64ToString(int64_t value) {
 inline string16 Int64ToString16(int64_t value) {
   return NumberToString16(value);
 }
-
-//#define IntToString NumberToString
-#endif
 
 // String -> number conversions ------------------------------------------------
 
@@ -121,10 +116,8 @@ BASE_EXPORT bool StringToUint(StringPiece16 input, unsigned* output);
 BASE_EXPORT bool StringToInt64(StringPiece input, int64_t* output);
 BASE_EXPORT bool StringToInt64(StringPiece16 input, int64_t* output);
 
-#if defined(STARBOARD)
 BASE_EXPORT bool StringToInt32(StringPiece input, int32_t* output);
 BASE_EXPORT bool StringToUint32(StringPiece input, uint32_t* output);
-#endif
 
 BASE_EXPORT bool StringToUint64(StringPiece input, uint64_t* output);
 BASE_EXPORT bool StringToUint64(StringPiece16 input, uint64_t* output);

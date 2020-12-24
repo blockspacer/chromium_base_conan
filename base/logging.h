@@ -25,6 +25,7 @@
 #include "base/scoped_clear_last_error.h"
 #include "base/strings/string_piece_forward.h"
 #include "base/template_util.h"
+#include "base/basictypes.h"
 #include "build/build_config.h"
 
 #if defined(OS_EMSCRIPTEN)

@@ -181,14 +181,8 @@ class BASE_EXPORT MessageLoop {
   // TODO(alexclarke): Make this const when MessageLoopImpl goes away.
   bool IsIdleForTesting();
 
-#if defined(STARBOARD)
-  // Starboard main requires the ability to force shut down.
-
-  //void Quit() override;
-
   // For testing purpose only.
   void RunUntilIdleForTesting();
-#endif
 
   //----------------------------------------------------------------------------
  protected:

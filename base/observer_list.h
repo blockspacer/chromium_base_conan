@@ -351,7 +351,6 @@ using ReentrantObserverList = ObserverList<ObserverType, check_empty, true>;
 
 }  // namespace base
 
-#if defined(STARBOARD)
 #define FOR_EACH_OBSERVER(ObserverType, observer_list, func)          \
   do {                                                                \
     if ((observer_list).might_have_observers()) {                     \
@@ -361,6 +360,5 @@ using ReentrantObserverList = ObserverList<ObserverType, check_empty, true>;
       }                                                               \
     }                                                                 \
   } while (0)
-#endif
 
 #endif  // BASE_OBSERVER_LIST_H_

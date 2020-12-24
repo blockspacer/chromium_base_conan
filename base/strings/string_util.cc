@@ -551,7 +551,6 @@ static inline bool DoLowerCaseEqualsASCII(BasicStringPiece<Str> str,
   return true;
 }
 
-//#if defined(STARBOARD)
 bool LowerCaseEqualsASCII(const char* a_begin,
                           const char* a_end,
                           const char* b) {
@@ -561,7 +560,6 @@ bool LowerCaseEqualsASCII(const char* a_begin,
   }
   return *b == 0;
 }
-//#endif
 
 bool LowerCaseEqualsASCII(StringPiece str, StringPiece lowercase_ascii) {
   return DoLowerCaseEqualsASCII<std::string>(str, lowercase_ascii);

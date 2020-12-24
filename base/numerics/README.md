@@ -44,6 +44,12 @@ used for cases where a conversion failure should result in program termination:
 size_t buff_size = checked_cast<size_t>(signed_value);
 ```
 
+## TODO
+
+implement user-defined bounds (i.e. int that can be only in some range 1-99 or hold only some values 1,4,11)
+
+provide more examples for floating point types
+
 ### Performing saturated (clamped) arithmetic type conversions
 
 The `saturated_cast` template converts between arbitrary arithmetic types, and

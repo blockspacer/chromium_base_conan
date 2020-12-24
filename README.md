@@ -35,6 +35,9 @@ CONAN_REVISIONS_ENABLED=1 \
         --build cascade \
         -e chromium_base:enable_tests=True \
         -o openssl:shared=True
+
+# clean build cache
+conan remove "*" --build --force
 ```
 
 ## HOW TO BUILD WITH SANITIZERS ENABLED
@@ -63,6 +66,9 @@ CONAN_REVISIONS_ENABLED=1 \
         -o chromium_base:use_alloc_shim=False \
         -o chromium_tcmalloc:use_alloc_shim=False \
         -o openssl:shared=True
+
+# clean build cache
+conan remove "*" --build --force
 ```
 
 ## HOW TO INSTALL FROM CONAN

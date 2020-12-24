@@ -46,7 +46,6 @@
 // Pop effects of innermost MSVC_PUSH_* macro.
 #define MSVC_POP_WARNING() __pragma(warning(pop))
 
-#if defined(STARBOARD)
 // Allows |this| to be passed as an argument in constructor initializer lists.
 // This uses push/pop instead of the seemingly simpler suppress feature to avoid
 // having the warning be disabled for more than just |code|.
@@ -59,7 +58,6 @@
 #define ALLOW_THIS_IN_INITIALIZER_LIST(code) \
   MSVC_PUSH_DISABLE_WARNING(4355)            \
   code MSVC_POP_WARNING()
-#endif
 
 #else  // Not MSVC
 
@@ -69,9 +67,7 @@
 #define MSVC_DISABLE_OPTIMIZE()
 #define MSVC_ENABLE_OPTIMIZE()
 
-#if defined(STARBOARD)
 #define ALLOW_THIS_IN_INITIALIZER_LIST(code) code
-#endif
 
 #endif  // COMPILER_MSVC
 
