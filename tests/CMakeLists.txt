@@ -15,7 +15,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${${ROOT_PROJECT_NAME
 
 # NOTE: you can run single test manually like so:
 # gdb -ex r -ex bt -ex q \
-#   --args $HOME/chromium_base_conan/build/Debug/tests/chromium_base-tests/chromium_base-string_search_unittest \
+#   --args $HOME/chromium_base_conan/build/Debug/tests/chromium_base-tests/chromium_base-output_parameter_unittest \
 #   --single-process-tests \
 #   --gtest_filter=* \
 #   --test-data-dir="$HOME/chromium_base_conan/tests/data/"
@@ -521,6 +521,9 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-one_shot_event_unittest
     "${BASE_SOURCES_PATH}one_shot_event_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
+  tests_add_executable(${ROOT_PROJECT_NAME}-output_parameter_unittest
+    "${BASE_SOURCES_PATH}output_parameter_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
   tests_add_executable(${ROOT_PROJECT_NAME}-thread_annotations_unittest
     "${BASE_SOURCES_PATH}thread_annotations_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
@@ -920,6 +923,9 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
 
   tests_add_executable(${ROOT_PROJECT_NAME}-safe_numerics_unittest
     "${BASE_SOURCES_PATH}safe_numerics_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+  tests_add_executable(${ROOT_PROJECT_NAME}-double_summation_test
+    "${BASE_SOURCES_PATH}numerics/double_summation_test.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   # TODO
   #tests_add_executable(${ROOT_PROJECT_NAME}-mach_port_broker_unittest

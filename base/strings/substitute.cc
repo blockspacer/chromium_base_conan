@@ -55,7 +55,7 @@ SubstituteArg::SubstituteArg(const std::string& value)
   : text_(value) {}
 
 SubstituteArg::SubstituteArg(std::string&& value)
-  : text_(base::rvalue_cast(value)) {}
+  : text_(RVALUE_CAST(value)) {}
 
 SubstituteArg::SubstituteArg(const base::string16& value)
   : text_(base::UTF16ToASCII(value)) {}
@@ -108,7 +108,7 @@ SubstituteArg16::SubstituteArg16(const base::string16& value)
   : text_(value) {}
 
 SubstituteArg16::SubstituteArg16(base::string16&& value)
-  : text_(base::rvalue_cast(value)) {}
+  : text_(RVALUE_CAST(value)) {}
 
 SubstituteArg16::SubstituteArg16(const StringPiece& value)
   : text_(base::ASCIIToUTF16(value.data())) {}
@@ -150,8 +150,8 @@ SubstituteArg16::SubstituteArg16(bool value)
   if(arg_name != base::nullopt)  \
   { \
     vec_name.emplace_back( \
-      base::rvalue_cast( \
-        base::rvalue_cast(arg_name.value()) \
+      RVALUE_CAST( \
+        RVALUE_CAST(arg_name.value()) \
           .value()) \
     ); \
   }
@@ -206,16 +206,16 @@ void SubstituteAndAppend(
   internal::OptArg16&& arg9)
 {
   SubstituteAndAppendInternal(output, format,
-                              base::rvalue_cast(arg0),
-                              base::rvalue_cast(arg1),
-                              base::rvalue_cast(arg2),
-                              base::rvalue_cast(arg3),
-                              base::rvalue_cast(arg4),
-                              base::rvalue_cast(arg5),
-                              base::rvalue_cast(arg6),
-                              base::rvalue_cast(arg7),
-                              base::rvalue_cast(arg8),
-                              base::rvalue_cast(arg9));
+                              RVALUE_CAST(arg0),
+                              RVALUE_CAST(arg1),
+                              RVALUE_CAST(arg2),
+                              RVALUE_CAST(arg3),
+                              RVALUE_CAST(arg4),
+                              RVALUE_CAST(arg5),
+                              RVALUE_CAST(arg6),
+                              RVALUE_CAST(arg7),
+                              RVALUE_CAST(arg8),
+                              RVALUE_CAST(arg9));
 }
 
 base::string16 Substitute(
@@ -233,16 +233,16 @@ base::string16 Substitute(
 {
   base::string16 result;
   SubstituteAndAppend(&result, format,
-                      base::rvalue_cast(arg0),
-                      base::rvalue_cast(arg1),
-                      base::rvalue_cast(arg2),
-                      base::rvalue_cast(arg3),
-                      base::rvalue_cast(arg4),
-                      base::rvalue_cast(arg5),
-                      base::rvalue_cast(arg6),
-                      base::rvalue_cast(arg7),
-                      base::rvalue_cast(arg8),
-                      base::rvalue_cast(arg9));
+                      RVALUE_CAST(arg0),
+                      RVALUE_CAST(arg1),
+                      RVALUE_CAST(arg2),
+                      RVALUE_CAST(arg3),
+                      RVALUE_CAST(arg4),
+                      RVALUE_CAST(arg5),
+                      RVALUE_CAST(arg6),
+                      RVALUE_CAST(arg7),
+                      RVALUE_CAST(arg8),
+                      RVALUE_CAST(arg9));
   return result;
 }
 
@@ -262,16 +262,16 @@ void SubstituteAndAppend(
 {
   return SubstituteAndAppendInternal(output,
                     format,
-                    base::rvalue_cast(arg0),
-                    base::rvalue_cast(arg1),
-                    base::rvalue_cast(arg2),
-                    base::rvalue_cast(arg3),
-                    base::rvalue_cast(arg4),
-                    base::rvalue_cast(arg5),
-                    base::rvalue_cast(arg6),
-                    base::rvalue_cast(arg7),
-                    base::rvalue_cast(arg8),
-                    base::rvalue_cast(arg9));
+                    RVALUE_CAST(arg0),
+                    RVALUE_CAST(arg1),
+                    RVALUE_CAST(arg2),
+                    RVALUE_CAST(arg3),
+                    RVALUE_CAST(arg4),
+                    RVALUE_CAST(arg5),
+                    RVALUE_CAST(arg6),
+                    RVALUE_CAST(arg7),
+                    RVALUE_CAST(arg8),
+                    RVALUE_CAST(arg9));
 }
 
 std::string Substitute(
@@ -289,16 +289,16 @@ std::string Substitute(
 {
   std::string result;
   SubstituteAndAppend(&result, format,
-                      base::rvalue_cast(arg0),
-                      base::rvalue_cast(arg1),
-                      base::rvalue_cast(arg2),
-                      base::rvalue_cast(arg3),
-                      base::rvalue_cast(arg4),
-                      base::rvalue_cast(arg5),
-                      base::rvalue_cast(arg6),
-                      base::rvalue_cast(arg7),
-                      base::rvalue_cast(arg8),
-                      base::rvalue_cast(arg9));
+                      RVALUE_CAST(arg0),
+                      RVALUE_CAST(arg1),
+                      RVALUE_CAST(arg2),
+                      RVALUE_CAST(arg3),
+                      RVALUE_CAST(arg4),
+                      RVALUE_CAST(arg5),
+                      RVALUE_CAST(arg6),
+                      RVALUE_CAST(arg7),
+                      RVALUE_CAST(arg8),
+                      RVALUE_CAST(arg9));
   return result;
 }
 

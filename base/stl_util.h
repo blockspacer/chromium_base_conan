@@ -16,10 +16,12 @@
 #include <list>
 #include <map>
 #include <set>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <numeric>
 
 #include "base/logging.h"
 #include "base/optional.h"
@@ -595,6 +597,238 @@ T* OptionalOrNullptr(base::Optional<T>& optional) {
 template <class T>
 const T* OptionalOrNullptr(const base::Optional<T>& optional) {
   return optional.has_value() ? &optional.value() : nullptr;
+}
+
+// Map is a higher-order function that applies a function
+// to the elements of a range and
+// returns a new range in the same order.
+//
+// USAGE
+//
+// auto vnums =
+//   std::vector<int>{0, 2, -3, 5, -1, 6, 8, -4, 9};
+// auto r = mapf([](int const i) {
+//   return std::abs(i); }, vnums);
+// // r = {0, 2, 3, 5, 1, 6, 8, 4, 9}
+//
+// auto lnums = std::list<int>{1, 2, 3, 4, 5};
+// auto l = mapf([](int const i) {
+//   return i*i; }, lnums);
+// // l = {1, 4, 9, 16, 25}
+//
+// template<class T = double>
+// struct fround
+// {
+//   typename std::enable_if_t<
+//   std::is_floating_point_v<T>, T>
+//   operator()(const T& value) const
+//   {
+//     return std::round(value);
+//   }
+// };
+// auto amounts =
+//   std::array<double, 5> {10.42, 2.50, 100.0, 23.75, 12.99};
+// auto a = mapf(fround<>(), amounts);
+// // a = {10.0, 3.0, 100.0, 24.0, 13.0}
+//
+// auto words = std::map<std::string, int>{
+//  {"one", 1}, {"two", 2}, {"three", 3}
+// };
+// auto m =   mapf(
+//  [](std::pair<std::string, int> const kvp) {
+//    return std::make_pair(
+//    mapf(toupper, kvp.first),
+//    kvp.second);
+//  }, words);
+// // m = {{"ONE", 1}, {"TWO", 2}, {"THREE", 3}}
+//
+// auto priorities = std::queue<int>();
+// priorities.push(10);
+// priorities.push(20);
+// priorities.push(30);
+// priorities.push(40);
+// priorities.push(50);
+// auto p = mapf(
+//   [](int const i) { return i > 30 ? 2 : 1; },
+//   priorities);
+// // p = {1, 1, 1, 2, 2}
+//
+template <typename F, typename R>
+R mapf(F&& func, R range)
+{
+  std::transform(std::begin(range), std::end(range), std::begin(range)
+    , std::forward<F>(func));
+  return range;
+}
+
+template<typename F, typename T, typename U>
+std::map<T, U> mapf(F&& func, std::map<T, U> const & m)
+{
+ std::map<T, U> r;
+ for (auto const kvp : m)
+   r.insert(func(kvp));
+ return r;
+}
+
+template<typename F, typename T>
+std::queue<T> mapf(F&& func, std::queue<T> q)
+{
+  std::queue<T> r;
+  while (!q.empty())
+  {
+    r.push(func(q.front()));
+    q.pop();
+  }
+  return r;
+}
+
+// Fold is a higher-order function that applies a combining function to the elements
+// of the range to produce a single result. Since the order of the processing can be
+// important, there are usually two versions of this function. One is foldleft, which
+// processes elements from left to right, while the other is foldright, which combines
+// the elements from right to left.
+//
+// As an example, the mapping operation could transform a range of strings into a
+// range of integers representing the length of each string. The fold operation could
+// then add these lengths to determine the combined length of all the strings.
+//
+// USAGE
+//
+// auto vnums =
+//   std::vector<int>{0, 2, -3, 5, -1, 6, 8, -4, 9};
+// auto s1 = foldleft(
+//   [](const int s, const int n) {return s + n; },
+//   vnums, 0); // s1 = 22
+// auto s2 = foldleft(
+//   std::plus<>(), vnums, 0); // s2 = 22
+//
+// auto texts =
+//   std::vector<std::string>{"hello"s, " "s, "world"s, "!"s};
+// auto txt1 = foldleft(
+//   [](std::string const & s, std::string const & n) {
+//   return s + n;}, texts, ""s); // txt1 = "hello world!"
+//
+// char chars[] = {'c','i','v','i','c'};
+// auto str1 = foldleft(std::plus<>(), chars, ""s);
+// // str1 = "civic"
+//
+// auto words = std::map<std::string, int>{
+//   {"one", 1}, {"two", 2}, {"three", 3} };
+// auto count = foldleft(
+//   [](int const s, std::pair<std::string, int> const kvp) {
+//   return s + kvp.second; }, words, 0); // count = 6
+//
+// auto vnums = std::vector<int>{ 0, 2, -3, 5, -1, 6, 8, -4, 9 };
+// auto s = foldleft(
+//   std::plus<>(),
+//   mapf( [](int const i) {return i*i; },
+//   mapf( [](int const i) {return std::abs(i); },
+//   vnums)),
+//   0); // s = 236
+//
+template <typename F, typename R, typename T>
+constexpr T foldleft(F&& func, R&& range, T init)
+{
+  return std::accumulate(
+  std::begin(range), std::end(range),
+  std::move(init),
+  std::forward<F>(func));
+}
+
+// foldright combines the elements from right to left.
+//
+// USAGE
+//
+// auto vnums =
+//   std::vector<int>{0, 2, -3, 5, -1, 6, 8, -4, 9};
+// auto s3 = foldright(
+//   [](const int s, const int n) {return s + n; },
+//   vnums, 0); // s3 = 22
+//
+// auto texts =
+//   std::vector<std::string>{"hello"s, " "s, "world"s, "!"s};
+// auto txt2 = foldright(
+//   [](std::string const & s, std::string const & n) {
+//   return s + n; }, texts, ""s); // txt2 = "!world hello"
+//
+// char chars[] = {'c','i','v','i','c'};
+// auto str2 = foldright(std::plus<>(), chars, ""s);
+// // str2 = "civic"
+//
+template <typename F, typename R, typename T>
+constexpr T foldright(F&& func, R&& range, T init)
+{
+  return std::accumulate(
+  std::rbegin(range), std::rend(range),
+  std::move(init),
+  std::forward<F>(func));
+}
+
+template <typename F, typename T>
+constexpr T foldleft(F&& func, std::queue<T> q, T init)
+{
+  while (!q.empty())
+  {
+    init = func(init, q.front());
+    q.pop();
+  }
+  return init;
+}
+
+// USAGE
+//
+// auto s1 = foldleft(std::plus<>(), 1, 2, 3, 4, 5);
+// // s1 = 15
+// auto s2 = foldleft(std::plus<>(), "hello"s, ' ', "world"s, '!');
+// // s2 = "hello world!"
+// auto s3 = foldleft(std::plus<>(), 1); // error, too few arguments
+//
+template <typename F, typename T1, typename T2>
+auto foldleft(F&&f, T1 arg1, T2 arg2)
+{
+  return f(arg1, arg2);
+}
+
+template <typename F, typename T, typename... Ts>
+auto foldleft(F&& f, T head, Ts... rest)
+{
+  return f(head, foldleft(std::forward<F>(f), rest...));
+}
+
+// compose functions into a higher-order function
+//
+// USAGE
+//
+// auto v = compose(
+//   [](int const n) {return std::to_string(n); },
+//   [](int const n) {return n * n; })(-3); // v = "9"
+//
+template <typename F, typename G>
+auto compose(F&& f, G&& g)
+{
+  return [=](auto x) { return f(g(x)); };
+}
+
+// USAGE
+//
+// auto n = compose(
+//   [](int const n) {return std::to_string(n); },
+//   [](int const n) {return n * n; },
+//   [](int const n) {return n + n; },
+//   [](int const n) {return std::abs(n); })(-3); // n = "36"
+//
+// auto s = compose(
+//   [](std::vector<int> const & v) {
+//   return foldleft(std::plus<>(), v, 0); },
+//   [](std::vector<int> const & v) {
+//   return mapf([](int const i) {return i + i; }, v); },
+//   [](std::vector<int> const & v) {
+//   return mapf([](int const i) {return std::abs(i); }, v); })(vnums);
+//
+template <typename F, typename... R>
+auto compose(F&& f, R&&... r)
+{
+  return [=](auto x) { return f(compose(r...)(x)); };
 }
 
 }  // namespace base

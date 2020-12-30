@@ -116,3 +116,13 @@ Bug: 959508, 960626
 Change-Id: I2663e5acddec0d9f88a78842c093c594fb57acb8
 Reviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/1609024
 ```
+
+## Disclaimer
+
+That open source project based on the Google Chromium project.
+
+This is not official Google product.
+
+Portions Copyright (c) Google Inc.
+
+See LICENSE files.

@@ -376,6 +376,8 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}auto_reset.h
   ${BASE_SOURCES_PATH}barrier_closure.cc
   ${BASE_SOURCES_PATH}barrier_closure.h
+  ${BASE_SOURCES_PATH}numerics/double_summation.cc
+  ${BASE_SOURCES_PATH}numerics/double_summation.h
   ${BASE_SOURCES_PATH}crc32.cc
   ${BASE_SOURCES_PATH}crc32.h
   ${BASE_SOURCES_PATH}base64.cc
@@ -744,6 +746,7 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}observer_list_types.h
   ${BASE_SOURCES_PATH}one_shot_event.cc
   ${BASE_SOURCES_PATH}one_shot_event.h
+  ${BASE_SOURCES_PATH}output_parameter.h
   ${BASE_SOURCES_PATH}optional.h
   #${BASE_SOURCES_PATH}os_compat_android.cc
   #${BASE_SOURCES_PATH}os_compat_android.h

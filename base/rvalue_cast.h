@@ -47,4 +47,19 @@ constexpr typename std::remove_reference<T>::type&&
    return std::move(t);
 }
 
+// BEFORE:
+// std::forward<Args>(args)...
+// std::forward<CallbackT>(task)
+//
+// AFTER:
+// FORWARD(args)...
+// FORWARD(task)
+//
+#define FORWARD(...) \
+  static_cast<decltype(__VA_ARGS__)&&>(__VA_ARGS__)
+
+// safe alternative to `std::move()`
+#define RVALUE_CAST(x) \
+  ::base::rvalue_cast(x)
+
 }  // namespace base

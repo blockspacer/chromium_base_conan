@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_MESSAGE_LOOP_WORK_ID_PROVIDER_H_
-#define BASE_MESSAGE_LOOP_WORK_ID_PROVIDER_H_
+#pragma once
 
 #include <atomic>
 
@@ -11,10 +10,13 @@
 #include "base/threading/thread_checker.h"
 
 namespace base {
+
 namespace sequence_manager {
+
 namespace internal {
 class ThreadControllerWithMessagePumpImpl;
 }
+
 }  // namespace sequence_manager
 
 // WorkIdProvider associates with the current thread (via TLS) an id state
@@ -65,5 +67,3 @@ class BASE_EXPORT WorkIdProvider {
 };
 
 }  // namespace base
-
-#endif  // BASE_MESSAGE_LOOP_WORK_ID_PROVIDER_H_
