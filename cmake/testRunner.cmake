@@ -11,19 +11,16 @@ macro(add_test_command_targets target)
       COMMAND ${CMAKE_COMMAND} -E echo CMD=${CMAKE_CTEST_COMMAND} -C $<CONFIG>
       COMMAND ${CMAKE_COMMAND} -E echo ----------------------------------
       COMMAND ${CMAKE_COMMAND} -E env CTEST_OUTPUT_ON_FAILURE=1 ${CMAKE_CTEST_COMMAND}
-        --repeat-until-fail 1 # Require each test to run <n> times without failing in order to pass.
         --build-target ${target}
         --target ${target}
         --config $<CONFIG>
       COMMAND ${CMAKE_COMMAND} -E echo ----------------------------------
-      #DEPENDS ${target} gloer
   )
 
   # Run tests with verbose output
   add_custom_target(${target}_check_verbose
       COMMAND ${CMAKE_COMMAND} -E echo ----------------------------------
       COMMAND ${CMAKE_CTEST_COMMAND}
-          --repeat-until-fail 1 # Require each test to run <n> times without failing in order to pass.
           --build-target ${target}
           --force-new-ctest-process
           --verbose
@@ -31,9 +28,7 @@ macro(add_test_command_targets target)
           --target ${target}
           --config $<CONFIG>
           --parallel ${NUM_PROCESSORS}
-          #--test-action test
       COMMAND ${CMAKE_COMMAND} -E echo ----------------------------------
-      #DEPENDS ${target} gloer
   )
 
   list(APPEND ALL_TESTS_LIST ${target})
@@ -47,6 +42,5 @@ macro(add_test_autostarter target)
   add_custom_command(TARGET ${target}
     POST_BUILD
     COMMAND  ${CMAKE_COMMAND} --build . --target ${target}_check_verbose --config $<CONFIG>
-    #DEPENDS ${target} gloer
   )
 endmacro()

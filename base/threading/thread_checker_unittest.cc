@@ -230,6 +230,10 @@ class ThreadCheckerMacroTest : public testing::Test {
 }  // namespace
 
 TEST_F(ThreadCheckerMacroTest, Macros) {
+  // The default style "fast" does not support multi-threaded tests
+  // (introduces deadlock on Linux).
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+
   THREAD_CHECKER(my_thread_checker);
 
   RunCallbackOnNewThreadSynchronously(Bind(
