@@ -1633,7 +1633,7 @@ T checkNotNull(
 //
 // Unlike `CHECK(x != nullptr) << "..."` can be used in constructor.
 //
-// Also checks that object is alive if you use memory tool like ASAN.
+/// \note Also checks that object is alive if you use memory tool like ASAN.
 //
 // EXAMPLE
 //
@@ -1650,14 +1650,61 @@ T checkNotNull(
   ::internal::checkNotNull(__FILE__, __LINE__, #val, (val))
 #endif
 
-#ifndef DCHECK_PTR
+// In debug builds checks that pointer is valid
+// or returns pointer without any checks (in other build types).
+//
+/// \note Also checks that object is alive if you use memory tool like ASAN.
+//
+// BAD:
+//
+// DCHECK_VALID_PTR_OR(switch_interface);
+// switch_interface->doSmth();
+//
+// GOOD:
+//
+// DCHECK_VALID_PTR_OR(switch_interface)->doSmth();
+//
+#ifndef DCHECK_VALID_PTR_OR
 #if DCHECK_IS_ON()
-#define DCHECK_PTR(val) \
+#define DCHECK_VALID_PTR_OR(val) \
   ::internal::checkNotNull(__FILE__, __LINE__, #val, (val))
 #else // DCHECK_IS_ON()
-#define DCHECK_PTR(val) \
+#define DCHECK_VALID_PTR_OR(val) \
   val
 #endif // DCHECK_IS_ON()
+#endif
+
+#define CHECK_BETWEEN(val, lower_bound, upper_bound) \
+  do { CHECK_GE(val, lower_bound); CHECK_LE(val, upper_bound); } while(false)
+
+#ifndef NDEBUG
+#define DCHECK_BETWEEN(val, lower_bound, upper_bound) CHECK_BETWEEN(val, lower_bound, upper_bound)
+#else
+#define DCHECK_BETWEEN(val, lower_bound, upper_bound) \
+  MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    MSVC_POP_WARNING() CHECK_BETWEEN(val, lower_bound, upper_bound)
+#endif
+
+// Helper for CHECK_STRxx(s1,s2) macros.
+#define CHECK_STROP(s1, s2, sense)                                         \
+  if (LIKELY((strcmp(s1, s2) == 0) == sense))                              \
+    ;                                                                      \
+  else                                                                     \
+    LOG(FATAL) << "Check failed: "                                         \
+               << "\"" << s1 << "\""                                       \
+               << (sense ? " == " : " != ") << "\"" << s2 << "\""
+
+// Check for string (const char*) equality between s1 and s2, LOG(FATAL) if not.
+#define CHECK_STREQ(s1, s2) CHECK_STROP(s1, s2, true)
+#define CHECK_STRNE(s1, s2) CHECK_STROP(s1, s2, false)
+
+#ifndef NDEBUG
+#define DCHECK_STREQ(s1, s2) CHECK_STREQ(s1, s2)
+#define DCHECK_STRNE(s1, s2) CHECK_STRNE(s1, s2)
+#else
+#define DCHECK_STREQ(s1, s2)
+#define DCHECK_STRNE(s1, s2)
 #endif
 
 #endif  // BASE_LOGGING_H_

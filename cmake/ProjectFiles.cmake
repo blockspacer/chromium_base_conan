@@ -32,23 +32,28 @@ if(USE_ALLOC_SHIM)
     ${BASE_SOURCES_PATH}allocator/allocator_shim.cc
   )
   if(TARGET_WINDOWS)
+    message(STATUS "Enabled allocator shim for Windows")
     list(APPEND BASE_SOURCES
       ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_winheap.cc
       ${BASE_SOURCES_PATH}allocator/winheap_stubs_win.cc
     )
   elseif(TARGET_LINUX)
     if(ALLOCATOR_TCMALLOC)
+      message(STATUS "Enabled TCMALLOC allocator shim for Linux")
       list(APPEND BASE_SOURCES
         ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_tcmalloc.cc
         ${BASE_SOURCES_PATH}allocator/allocator_shim_override_glibc_weak_symbols.h
       )
     elseif(ALLOCATOR_NONE)
+      message(STATUS "Enabled glibc allocator shim for Linux")
       list(APPEND BASE_SOURCES
         ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_glibc.cc
       )
     else()
       message(FATAL_ERROR "You must specify allocator")
     endif()
+  else()
+    message(FATAL_ERROR "Platform not supported")
   endif()
 endif(USE_ALLOC_SHIM)
 

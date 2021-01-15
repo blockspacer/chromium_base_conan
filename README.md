@@ -34,6 +34,8 @@ CONAN_REVISIONS_ENABLED=1 \
         --build missing \
         --build cascade \
         -e chromium_base:enable_tests=True \
+        -o chromium_base:use_alloc_shim=True \
+        -o chromium_tcmalloc:use_alloc_shim=True \
         -o openssl:shared=True
 
 # clean build cache

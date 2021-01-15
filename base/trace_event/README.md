@@ -65,6 +65,8 @@ If you want to know more about tracing, see:
 * https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/trace-event-reading
 * https://github.com/mbbill/libTraceEvent
 * https://habr.com/ru/post/256907/
+* https://medium.com/flutter/profiling-flutter-applications-using-the-timeline-a1a434964af3
+* https://github.com/couchbase/phosphor
 
 Use ``::base::trace_event` for performance instrumentation and logging like Chrome Trace Events, memory-infra memory dumps, netlog, etc.
 
@@ -112,6 +114,8 @@ void doSomethingCostly() {
   ...
 }
 ```
+
+Thread ID and the time duration are automatically collected.
 
 The "MY_SUBSYSTEM" argument is a logical category for the trace event.
 
@@ -198,7 +202,15 @@ TRACE_COUNTER_WITH_FLAG1(
 
 ## Asynchronous Events
 
+Note: our tools can't always determine the correct BEGIN/END pairs unless
+these are used in the same scope. Use ASYNC_BEGIN/ASYNC_END macros if you
+need them to be in separate scopes.
+
+Async events can occur across multiple threads/processes.
+
 Sometimes, you will have an asynchronous event that you want to track.
+
+They are useful for tracing operations like texture loads that can start activity on other threads.
 
 For this, use TRACE_EVENT_ASYNC_BEGINx and TRACE_EVENT_ASYNC_ENDx. For example:
 
@@ -232,10 +244,21 @@ TRACE_EVENT_BEGIN0("headless", "App:MESSAGE_LOOP");
 TRACE_EVENT_END0("headless", "App:MESSAGE_LOOP");
 ```
 
-## Instant Events
+## Instant Events (ie. no duration)
+
+Instant events are used for events that do not conceptually have a duration.
+
+Unlike `TRACE_EVENT0` for `TRACE_EVENT_INSTANT0` time duration is NOT automatically collected.
+
+Instant events are great for tossing extra information into the stream to mark actions or events, such as LoadComplete, or StartedSendData.
+
+Instant markers in the timeline appear as small triangles. The visual difference is crucial when scrubbing over large portions of data.
 
 ```cpp
 TRACE_EVENT_INSTANT0("MY_SUBSYSTEM", "SomeImportantEvent")
+
+TRACE_EVENT_INSTANT0("android_webview", "EarlyOut_EmptySize",
+                     TRACE_EVENT_SCOPE_THREAD)
 ```
 
 ## Track memory usage in the heap profiler
@@ -318,17 +341,31 @@ overhead.
 ```cpp
 const int kThreadId = 42;
 const int kAsyncId = 5;
-    TRACE_EVENT_COPY_BEGIN_WITH_ID_TID_AND_TIMESTAMP0("all",
-        "TRACE_EVENT_COPY_BEGIN_WITH_ID_TID_AND_TIMESTAMP0 call",
-        kAsyncId, kThreadId, TimeTicks::FromInternalValue(12345));
-    TRACE_EVENT_COPY_END_WITH_ID_TID_AND_TIMESTAMP0("all",
-        "TRACE_EVENT_COPY_END_WITH_ID_TID_AND_TIMESTAMP0 call",
-        kAsyncId, kThreadId, TimeTicks::FromInternalValue(23456));
+TRACE_EVENT_COPY_BEGIN_WITH_ID_TID_AND_TIMESTAMP0("all",
+    "TRACE_EVENT_COPY_BEGIN_WITH_ID_TID_AND_TIMESTAMP0 call",
+    kAsyncId, kThreadId, TimeTicks::FromInternalValue(12345));
+TRACE_EVENT_COPY_END_WITH_ID_TID_AND_TIMESTAMP0("all",
+    "TRACE_EVENT_COPY_END_WITH_ID_TID_AND_TIMESTAMP0 call",
+    kAsyncId, kThreadId, TimeTicks::FromInternalValue(23456));
 ```
 
 Notes: The category must always be in a long-lived char* (i.e. static const).
        The |arg_values|, when used, are always deep copied with the _COPY
        macros.
+
+Use TRACE_STR_COPY to force copying of a const char*:
+
+```cpp
+TRACE_EVENT1("category", "name",
+             "arg1", TRACE_STR_COPY("string will be copied"));
+```
+
+std::string arg_values are always copied:
+
+```cpp
+TRACE_EVENT1("category", "name",
+             "arg1", std::string("string will be copied"));
+```
 
 ## Thread Safety
 
@@ -524,3 +561,13 @@ MemoryAllocatorDump* DBTracker::GetOrCreateAllocatorDump(
   return leveldb_chrome::GetEnvAllocatorDump(pmd, tracked_memenv);
 }
 ```
+
+## Inspiration
+
+The Chromium Project’s event profiler (https://www.chromium.org/developers/how-tos/trace-event-profiling-tool) provides a lot of desirable functionality. Chromium’s event profiler is comprised of two parts: C++ code tooling for generating traces, and a trace viewer.
+
+The code tooling is a simple macro-driven API (https://code.google.com/p/chromium/codesearch#chromium/src/base/trace_event/common/trace_event_common.h) that stores traces to an in-memory buffer when triggered. The API is minimalistic and where possible uses RAII to prevent repetition (e.g. function entry/return). This buffer can be dumped to a JSON format (https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/edit?pli=1) when required.
+
+The event viewer is embedded into Chrome (chrome://tracing/) and reads traces in the aforementioned trace format. The code for the event viewer is stored separately as part of the Catapult project (https://github.com/catapult-project/catapult/tree/master/tracing) and could be adapted to work with other browsers with minimal work.
+
+There is also an alternative tracing framework (Also by Google) http://google.github.io/tracing-framework/ that comes with some simple C++ tooling. The main advantage of this is the improved UI interactions but does not have proper support for asynchronous events.

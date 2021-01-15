@@ -66,6 +66,8 @@ if(BASE_NEED_GEN_BUILD_DATE)
     endif()
 endif(BASE_NEED_GEN_BUILD_DATE)
 
+# Compile with Control Flow Integrity to protect virtual calls and casts.
+# See http://clang.llvm.org/docs/ControlFlowIntegrity.html
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/cfi_buildflags.h.inc
   OUTPUT ${BASE_SOURCES_PATH}cfi_buildflags.h
@@ -92,6 +94,33 @@ if(TARGET_WINDOWS)
     TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/base_win_buildflags.tmp)
 endif(TARGET_WINDOWS)
 
+string(TOLOWER "${CMAKE_BUILD_TYPE}" cmake_build_type_tolower)
+
+# NOTE: Prefer to use Profiling with Release builds.
+# In order to enable cpu profiling, run with the environment variable CPUPROFILE
+# and use "profiling-flush" flag
+set(USE_PROFILING "(0)")
+if(ALLOCATOR_TCMALLOC)
+  set(USE_PROFILING "(1)")
+endif(ALLOCATOR_TCMALLOC)
+set(CAN_UNWIND_WITH_FRAME_POINTERS "(0)")
+if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
+  set(CAN_UNWIND_WITH_FRAME_POINTERS "(1)")
+endif()
+# TODO: enable for android if using_sanitizer || enable_profiling || is_debug
+set(CAN_UNWIND_WITH_CFI_TABLE "(0)")
+set(ENABLE_MEMORY_TASK_PROFILER "(0)")
+if(USE_ALLOC_SHIM AND cmake_build_type_tolower MATCHES "debug")
+  set(ENABLE_MEMORY_TASK_PROFILER "(1)")
+endif()
+set(ENABLE_GDBINIT_WARNING "(0)")
+if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
+  set(ENABLE_GDBINIT_WARNING "(1)")
+endif()
+set(IS_UNSAFE_DEVELOPER_BUILD "(0)")
+if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
+  set(IS_UNSAFE_DEVELOPER_BUILD "(1)")
+endif()
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/debugging_buildflags.h.inc
   OUTPUT ${BASE_SOURCES_PATH}debug/debugging_buildflags.h

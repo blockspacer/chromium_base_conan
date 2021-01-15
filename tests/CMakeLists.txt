@@ -14,7 +14,7 @@ set( ${PROJECT_NAME}_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "${P
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${${ROOT_PROJECT_NAME}_CMAKE_MODULE_PATH}")
 
 # NOTE: you can run single test manually like so:
-# gdb -ex r -ex bt -ex q \
+# BASE_GDBINIT_SOURCED=1 gdb -ex r -ex bt -ex q \
 #   --args $HOME/chromium_base_conan/build/Debug/tests/chromium_base-tests/chromium_base-output_parameter_unittest \
 #   --single-process-tests \
 #   --gtest_filter=* \
@@ -421,9 +421,8 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   #tests_add_executable(${ROOT_PROJECT_NAME}-span_unittest
   #  "${BASE_SOURCES_PATH}containers/span_unittest.nc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  # TODO FIXME
-  #tests_add_executable(${ROOT_PROJECT_NAME}-span_unittest
-  #  "${BASE_SOURCES_PATH}containers/span_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  tests_add_executable(${ROOT_PROJECT_NAME}-span_unittest
+    "${BASE_SOURCES_PATH}containers/span_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   tests_add_executable(${ROOT_PROJECT_NAME}-circular_deque_unittest
     "${BASE_SOURCES_PATH}containers/circular_deque_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")

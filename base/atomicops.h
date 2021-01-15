@@ -51,6 +51,8 @@
 namespace base {
 namespace subtle {
 
+typedef bool AtomicBool;
+
 typedef int32_t Atomic32;
 #ifdef ARCH_CPU_64_BITS
 // We need to be able to go between Atomic64 and AtomicWord implicitly.  This
@@ -66,13 +68,7 @@ typedef intptr_t Atomic64;
 
 // Use AtomicWord for a machine-sized pointer.  It will use the Atomic32 or
 // Atomic64 routines below, depending on your architecture.
-//typedef intptr_t AtomicWord;
-
-#if defined(OS_EMSCRIPTEN)
-typedef Atomic32 AtomicWord;
-#else
 typedef intptr_t AtomicWord;
-#endif
 
 // Atomically execute:
 //      result = *ptr;

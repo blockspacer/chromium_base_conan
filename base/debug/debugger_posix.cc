@@ -189,7 +189,7 @@ void VerifyDebugger() {
 #endif
 
   // Quick check before potentially slower GetDebuggerProcess().
-  if (Environment::Create()->HasVar("CHROMIUM_GDBINIT_SOURCED"))
+  if (Environment::Create()->HasVar("BASE_GDBINIT_SOURCED"))
     return;
 
   Process proc = GetDebuggerProcess();
@@ -214,7 +214,7 @@ void VerifyDebugger() {
          "https://chromium.googlesource.com/chromium/src/+/master/docs/"
          "gdbinit.md\n"
          "To continue anyway, type 'continue' in gdb.  To always skip this "
-         "check, define an environment variable CHROMIUM_GDBINIT_SOURCED=1";
+         "check, define an environment variable BASE_GDBINIT_SOURCED=1";
 #endif
 }
 

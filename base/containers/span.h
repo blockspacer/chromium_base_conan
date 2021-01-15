@@ -357,16 +357,58 @@ class span : public internal::ExtentStorage<Extent> {
     return {data() + Offset, Count != dynamic_extent ? Count : size() - Offset};
   }
 
+  // USAGE
+  //
+  // int array[] = {1, 2, 3};
+  // span<int> span(array);
+  // auto subspan = span.first(2); // subspan = {1, 2}
+  //
   constexpr span<T, dynamic_extent> first(size_t count) const noexcept {
     // Note: CHECK_LE is not constexpr, hence regular CHECK must be used.
-    CHECK(count <= size());
+    CHECK_LE(count, size());
     return {data(), count};
   }
 
+  // USAGE
+  //
+  // int array[] = {1, 2, 3};
+  // span<int> span(array);
+  // auto subspan = span.last(2); // subspan = {2, 3}
+  //
   constexpr span<T, dynamic_extent> last(size_t count) const noexcept {
     // Note: CHECK_LE is not constexpr, hence regular CHECK must be used.
-    CHECK(count <= size());
+    CHECK_LE(count, size());
     return {data() + (size() - count), count};
+  }
+
+  // USAGE
+  //
+  // int array[] = {1, 2, 3};
+  // span<int> span(array);
+  // auto subspan = span.without_prefix(2); // subspan = {3}
+  //
+  constexpr span<T, dynamic_extent> without_prefix(size_t n) const noexcept {
+    return last(size() - n);
+  }
+
+  // same as first(n)
+  constexpr span<T, dynamic_extent> prefix(size_t n) const noexcept {
+    return first(n);
+  }
+
+  // USAGE
+  //
+  // int array[] = {1, 2, 3};
+  // span<int> span(array);
+  // auto subspan = span.without_suffix(2); // subspan = {1}
+  //
+  constexpr span<T, dynamic_extent> without_suffix(size_t n) const noexcept {
+    return first(size() - n);
+  }
+
+  // same as last(n)
+  constexpr span<T, dynamic_extent> suffix(size_t n) const noexcept {
+    return last(n);
   }
 
   constexpr span<T, dynamic_extent> subspan(size_t offset,
