@@ -39,6 +39,12 @@
 #include "base/strings/string_piece.h"
 #include "base/value_iterators.h"
 
+// A universal value class, with JSON encoding and decoding.
+//
+// UniValue is an abstract data type that may be a null, boolean, string, number, array container, or a key/value dictionary container, nested to an arbitrary depth.
+//
+// see https://github.com/jgarzik/univalue
+//
 namespace base {
 
 class DictionaryValue;

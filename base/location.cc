@@ -49,6 +49,7 @@ std::string Location::ToString() const {
 }
 
 #if defined(OS_EMSCRIPTEN)
+/// \todo use emscripten_return_address
 #define RETURN_ADDRESS() nullptr
 #elif defined(COMPILER_MSVC)
 #define RETURN_ADDRESS() _ReturnAddress()

@@ -14,7 +14,7 @@ set( ${PROJECT_NAME}_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "${P
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${${ROOT_PROJECT_NAME}_CMAKE_MODULE_PATH}")
 
 # NOTE: you can run single test manually like so:
-# BASE_GDBINIT_SOURCED=1 gdb -ex r -ex bt -ex q \
+# HEAPCHECK=draconian BASE_GDBINIT_SOURCED=1 gdb -ex r -ex bt -ex q \
 #   --args $HOME/chromium_base_conan/build/Debug/tests/chromium_base-tests/chromium_base-output_parameter_unittest \
 #   --single-process-tests \
 #   --gtest_filter=* \
