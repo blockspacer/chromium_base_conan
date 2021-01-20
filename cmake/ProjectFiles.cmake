@@ -532,6 +532,10 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}hash/hash.h
   ${BASE_SOURCES_PATH}hash/city_hash.cc
   ${BASE_SOURCES_PATH}hash/city_hash.h
+  ${BASE_SOURCES_PATH}hash/murmurhash.cc
+  ${BASE_SOURCES_PATH}hash/murmurhash.h
+  ${BASE_SOURCES_PATH}hash/xxhash.cc
+  ${BASE_SOURCES_PATH}hash/xxhash.h
   ${BASE_SOURCES_PATH}hash/md5.cc
   ${BASE_SOURCES_PATH}hash/md5.h
   ${BASE_SOURCES_PATH}hash/md5_constexpr.h

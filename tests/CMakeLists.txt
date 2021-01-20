@@ -1179,6 +1179,12 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-md5_constexpr_unittest
     "${BASE_SOURCES_PATH}hash/md5_constexpr_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
+  tests_add_executable(${ROOT_PROJECT_NAME}-murmurhash_unittest
+    "${BASE_SOURCES_PATH}hash/murmurhash_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+  tests_add_executable(${ROOT_PROJECT_NAME}-xxhash_unittest
+    "${BASE_SOURCES_PATH}hash/xxhash_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
   tests_add_executable(${ROOT_PROJECT_NAME}-sha1_unittest
     "${BASE_SOURCES_PATH}hash/sha1_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 

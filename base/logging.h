@@ -543,6 +543,11 @@ const LogSeverity LOG_0 = LOG_ERROR;
 #define VLOG_IF_EVERY_N_US(verbose_level, condition, periodInMicroseconds)                  \
   INTERNAL_LOG_IF_EVERY_N_US_IMPL(VLOG_IF, verbose_level, condition, periodInMicroseconds)
 
+#define VLOG_EVERY_N_MS(verbose_level, periodInMilliseconds)                             \
+  VLOG_EVERY_N_US(verbose_level, ((periodInMilliseconds) * 1000.0) )
+#define VLOG_IF_EVERY_M_US(verbose_level, condition, periodInMilliseconds)                       \
+  VLOG_IF_EVERY_N_US(verbose_level, condition, ((periodInMilliseconds) * 1000.0) )
+
 #if defined (OS_WIN)
 #define VPLOG_STREAM(verbose_level) \
   ::logging::Win32ErrorLogMessage(__FILE__, __LINE__, -verbose_level, \
@@ -1025,6 +1030,10 @@ DEFINE_CHECK_OP_IMPL(GT, > )
   INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVLOG_IF, verbose_level, true, periodInMicroseconds)
 #define DVLOG_IF_EVERY_N_US(verbose_level, condition, periodInMicroseconds)                       \
   INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVLOG_IF, verbose_level, condition, periodInMicroseconds)
+#define DVLOG_EVERY_N_MS(verbose_level, periodInMilliseconds)                             \
+  DVLOG_EVERY_N_US(verbose_level, ((periodInMilliseconds) * 1000.0) )
+#define DVLOG_IF_EVERY_M_US(verbose_level, condition, periodInMilliseconds)                       \
+  DVLOG_IF_EVERY_N_US(verbose_level, condition, ((periodInMilliseconds) * 1000.0) )
 
 #define DVPLOG(verboselevel) DVPLOG_IF(verboselevel, true)
 
@@ -1042,10 +1051,14 @@ DEFINE_CHECK_OP_IMPL(GT, > )
   INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DVPLOG_IF, verbose_level, true)
 #define DVPLOG_IF_EVERY_SECOND(verbose_level, condition)                       \
   INTERNAL_LOG_IF_EVERY_SECOND_IMPL(DVPLOG_IF, verbose_level, condition)
-#define DVPLOG_EVERY_N_US(verbose_level)                             \
-  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVPLOG_IF, verbose_level, true)
-#define DVPLOG_IF_EVERY_N_US(verbose_level, condition)                       \
-  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVPLOG_IF, verbose_level, condition)
+#define DVPLOG_EVERY_N_US(verbose_level, periodInMicroseconds)                             \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVPLOG_IF, verbose_level, true, periodInMicroseconds)
+#define DVPLOG_IF_EVERY_N_US(verbose_level, condition, periodInMicroseconds)                       \
+  INTERNAL_LOG_IF_EVERY_N_US_IMPL(DVPLOG_IF, verbose_level, condition, periodInMicroseconds)
+#define DVPLOG_EVERY_N_MS(verbose_level, periodInMilliseconds)                             \
+  DVPLOG_EVERY_N_US(verbose_level, ((periodInMilliseconds) * 1000.0) )
+#define DVPLOG_IF_EVERY_M_US(verbose_level, condition, periodInMilliseconds)                       \
+  DVPLOG_IF_EVERY_N_US(verbose_level, condition, ((periodInMilliseconds) * 1000.0) )
 
 // Definitions for DCHECK et al.
 
@@ -1562,6 +1575,56 @@ inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
   INTERNAL_LOG_IF_EVERY_N_US_IMPL(LOG_IF, severity, condition, periodInMicroseconds)
 #endif
 
+// USAGE
+//
+// #include "base/command_line.h"
+// #include "base/strings/string_number_conversions.h"
+//
+// // ... in my_switches.hpp ...
+//
+// namespace switches {
+//
+// extern const char kMyLogFreq[];
+//
+// }  // namespace switches
+//
+// // ... in my_switches.cc ...
+//
+// namespace switches {
+//
+// // Total number of shards. Must be the same for all shards.
+// const char switches::kMyLogFreqMs[] =
+//     "my-log-freq-ms";
+//
+// }  // namespace switches
+//
+// // ... in my_code.cc ...
+//
+// const CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+//
+// int my_log_freq_ms = 0;
+//
+// if (command_line->HasSwitch(switches::kMyLogFreqMs)) {
+//     if (!base::StringToInt(
+//             command_line->GetSwitchValueASCII(
+//                 switches::kMyLogFreqMs),
+//             &my_log_freq_ms)) {
+//       LOG(ERROR)
+//          << "Invalid value for " << switches::kMyLogFreqMs
+//          << " Fallback to " << my_log_freq_ms;
+//       return false;
+//     }
+// }
+//
+// LOG_EVERY_N_MS(INFO, my_log_freq_ms) << "My logs";
+//
+#ifndef LOG_EVERY_N_MS
+# define LOG_EVERY_N_MS(severity, periodInMilliseconds)                                \
+  LOG_EVERY_N_US(severity, ((periodInMilliseconds) * 1000.0))
+# define LOG_IF_EVERY_N_MS(severity, condition, periodInMilliseconds)                \
+  LOG_IF_EVERY_N_US(severity, condition, ((periodInMilliseconds) * 1000.0))
+#endif
+
 #ifndef PLOG_EVERY_N_TIMES
 # define PLOG_EVERY_N_TIMES(severity, N)                               \
   INTERNAL_LOG_IF_EVERY_N_TIMES_IMPL(PLOG_IF, severity, true, N)
@@ -1593,6 +1656,13 @@ inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
   INTERNAL_LOG_IF_EVERY_N_US_IMPL(PLOG_IF, severity, true, periodInMicroseconds)
 # define PLOG_IF_EVERY_N_US(severity, condition, periodInMicroseconds)                       \
   INTERNAL_LOG_IF_EVERY_N_US_IMPL(PLOG_IF, severity, condition, periodInMicroseconds)
+#endif
+
+#ifndef PLOG_EVERY_N_MS
+# define PLOG_EVERY_N_MS(severity, periodInMilliseconds)                             \
+  PLOG_EVERY_N_US(severity, ((periodInMilliseconds) * 1000.0) )
+# define PLOG_IF_EVERY_N_MS(severity, condition, periodInMilliseconds )                       \
+  PLOG_IF_EVERY_N_US(severity, condition, ((periodInMilliseconds) * 1000.0) )
 #endif
 
 // DEBUG_MODE is for uses like
