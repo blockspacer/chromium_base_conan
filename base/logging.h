@@ -1676,7 +1676,7 @@ inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
 enum { DEBUG_MODE = DCHECK_IS_ON() };
 
 namespace internal {
-// Helper for `CHECK_PTR`.
+// Helper for `CHECK_VALID_PTR_OR`.
 /// \note checks that object is alive if you use memory tool like ASAN
 template <typename T>
 // do not add `MUST_USE_RESULT` here
@@ -1711,13 +1711,18 @@ T checkNotNull(
 //                          AuthPolicyChecker* auth_policy_checker,
 //                          ErrorBuffer* error_buffer)
 //     : mode_(mode),
-//       switch_interface_(CHECK_PTR(switch_interface)),
-//       auth_policy_checker_(CHECK_PTR(auth_policy_checker)),
-//       error_buffer_(CHECK_PTR(error_buffer)) {}
+//       switch_interface_(CHECK_VALID_PTR_OR(switch_interface)),
+//       auth_policy_checker_(CHECK_VALID_PTR_OR(auth_policy_checker)),
+//       error_buffer_(CHECK_VALID_PTR_OR(error_buffer)) {}
 //
-#ifndef CHECK_PTR
-#define CHECK_PTR(val) \
+#ifndef CHECK_VALID_PTR_OR
+#define CHECK_VALID_PTR_OR(val) \
   ::internal::checkNotNull(__FILE__, __LINE__, #val, (val))
+#endif
+
+#ifndef CHECK_VALID_PTR
+#define CHECK_VALID_PTR(val) \
+  ignore_result(::internal::checkNotNull(__FILE__, __LINE__, #val, (val)))
 #endif
 
 // In debug builds checks that pointer is valid
@@ -1741,6 +1746,15 @@ T checkNotNull(
 #else // DCHECK_IS_ON()
 #define DCHECK_VALID_PTR_OR(val) \
   val
+#endif // DCHECK_IS_ON()
+#endif
+
+#ifndef DCHECK_VALID_PTR
+#if DCHECK_IS_ON()
+#define DCHECK_VALID_PTR(val) \
+  ignore_result(::internal::checkNotNull(__FILE__, __LINE__, #val, (val)))
+#else // DCHECK_IS_ON()
+#define DCHECK_VALID_PTR(val) ((void)(0))
 #endif // DCHECK_IS_ON()
 #endif
 

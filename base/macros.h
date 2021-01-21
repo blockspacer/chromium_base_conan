@@ -765,6 +765,8 @@ inline void ignore_result(const T&) {
 // as if constructed using moved-from object the constructor.
 /// \example boost.org/doc/libs/1_54_0/doc/html/boost_asio/reference/basic_stream_socket/basic_stream_socket/overload5.html
 /// i.e. it does not actually destroy |stream| by |move|
+/// \note unlike `COPY_OR_MOVE` it documents
+/// that value will not be moved for sure.
 #define COPY_ON_MOVE(x) x
 
 /// \note prefer basis::AccessVerifier or `RUN_ON` to `LIVES_ON`
@@ -955,7 +957,7 @@ inline void ignore_result(const T&) {
 #define NOT_THREAD_SAFE_FUNCTION(x)
 
 /// \note requires `#include <basis/scoped_checks.hpp>`
-/// due to usage of `GUARD_MEMBER_OF_UNKNOWN_THREAD`
+/// due to usage of `GUARD_NOT_THREAD_BOUND_MEMBER`
 // Creates `weak_ptr_factory_` and `weak_this_`.
 // base::WeakPtr can be used to ensure that any callback bound
 // to an object is canceled when that object is destroyed
@@ -969,14 +971,16 @@ inline void ignore_result(const T&) {
 // thread according to weak_ptr.h (versus calling
 // |weak_ptr_factory_.GetWeakPtr() which is not).
 #define SET_WEAK_POINTERS(Name) \
+  CREATE_NOT_THREAD_BOUND_GUARD(weak_ptr_factory_); \
   base::WeakPtrFactory<Name> weak_ptr_factory_ \
-    GUARD_MEMBER_OF_UNKNOWN_THREAD(weak_ptr_factory_); \
+    GUARDED_BY(NOT_THREAD_BOUND_GUARD(weak_ptr_factory_)); \
+  CREATE_NOT_THREAD_BOUND_GUARD(weak_this_); \
   const base::WeakPtr<Name> weak_this_ \
-    GUARD_MEMBER_OF_UNKNOWN_THREAD(weak_this_)
+    GUARDED_BY(NOT_THREAD_BOUND_GUARD(weak_this_))
 
 // Creates `weakSelf()` function.
 /// \note requires `#include <basis/scoped_checks.hpp>`
-/// due to usage of `DCHECK_MEMBER_OF_UNKNOWN_THREAD`
+/// due to usage of `DCHECK_NOT_THREAD_BOUND_GUARD`
 // It is thread-safe to copy |base::WeakPtr|.
 // Weak pointers may be passed safely between sequences, but must always be
 // dereferenced and invalidated on the same SequencedTaskRunner otherwise
@@ -985,7 +989,7 @@ inline void ignore_result(const T&) {
   MUST_USE_RETURN_VALUE \
   base::WeakPtr<Name> weakSelf() const NO_EXCEPTION \
   { \
-    DCHECK_MEMBER_OF_UNKNOWN_THREAD(weak_this_); \
+    DCHECK_NOT_THREAD_BOUND_GUARD(weak_this_); \
     return weak_this_; \
   }
 
@@ -1061,6 +1065,7 @@ inline void ignore_result(const T&) {
 /// \note use it to annotate arguments that are bound to function
 #define SHARED_LIFETIME(x) x
 
+/// \note Prefer to use |DEBUG_BIND_CHECKS|, |bindChecked*|
 // Documents that value has external storage
 // i.e. that object lifetime not conrolled.
 // If you found lifetime-related bug,
