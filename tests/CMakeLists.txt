@@ -15,10 +15,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${${ROOT_PROJECT_NAME
 
 # NOTE: you can run single test manually like so:
 # HEAPCHECK=draconian BASE_GDBINIT_SOURCED=1 gdb -ex r -ex bt -ex q \
-#   --args $HOME/chromium_base_conan/build/Debug/tests/chromium_base-tests/chromium_base-output_parameter_unittest \
+#   --args ~/chromium_base_conan/build/Debug/tests/chromium_base-tests/chromium_base-output_parameter_unittest \
 #   --single-process-tests \
 #   --gtest_filter=* \
-#   --test-data-dir="$HOME/chromium_base_conan/tests/data/"
+#   --test-data-dir="~/chromium_base_conan/tests/data/"
 set( GTEST_TEST_ARGS
   "--gtest_shuffle"
   "--test-data-dir=${CMAKE_CURRENT_SOURCE_DIR}/data/")

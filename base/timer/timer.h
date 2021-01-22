@@ -3,8 +3,11 @@
 // found in the LICENSE file.
 
 // OneShotTimer, RepeatingTimer and RetainingOneShotTimer provide a simple timer
-// API.  As the names suggest, OneShotTimer calls you back once after a time
+// API.
+// As the names suggest, OneShotTimer calls you back once after a time
 // delay expires.
+// It uses `PostDelayedTask` on provided custom task runner
+// or `base::SequencedTaskRunnerHandle::Get()` (if custom task runner not provided).
 // RepeatingTimer on the other hand calls you back periodically with the
 // prescribed time interval.
 // RetainingOneShotTimer doesn't repeat the task itself like RepeatingTimer, but

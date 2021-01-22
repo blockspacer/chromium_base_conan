@@ -1681,7 +1681,7 @@ namespace internal {
 template <typename T>
 // do not add `MUST_USE_RESULT` here
 // because we also want to use it outside of constructor (similar to `CHECK`)
-T checkNotNull(
+T sanitizedCheckNotNull(
   const char* file
   , int line
   , const char* exprtext
@@ -1717,12 +1717,12 @@ T checkNotNull(
 //
 #ifndef CHECK_VALID_PTR_OR
 #define CHECK_VALID_PTR_OR(val) \
-  ::internal::checkNotNull(__FILE__, __LINE__, #val, (val))
+  ::internal::sanitizedCheckNotNull(__FILE__, __LINE__, #val, (val))
 #endif
 
 #ifndef CHECK_VALID_PTR
 #define CHECK_VALID_PTR(val) \
-  ignore_result(::internal::checkNotNull(__FILE__, __LINE__, #val, (val)))
+  ignore_result(::internal::sanitizedCheckNotNull(__FILE__, __LINE__, #val, (val)))
 #endif
 
 // In debug builds checks that pointer is valid
@@ -1742,7 +1742,7 @@ T checkNotNull(
 #ifndef DCHECK_VALID_PTR_OR
 #if DCHECK_IS_ON()
 #define DCHECK_VALID_PTR_OR(val) \
-  ::internal::checkNotNull(__FILE__, __LINE__, #val, (val))
+  ::internal::sanitizedCheckNotNull(__FILE__, __LINE__, #val, (val))
 #else // DCHECK_IS_ON()
 #define DCHECK_VALID_PTR_OR(val) \
   val
@@ -1752,10 +1752,38 @@ T checkNotNull(
 #ifndef DCHECK_VALID_PTR
 #if DCHECK_IS_ON()
 #define DCHECK_VALID_PTR(val) \
-  ignore_result(::internal::checkNotNull(__FILE__, __LINE__, #val, (val)))
+  ignore_result(::internal::sanitizedCheckNotNull(__FILE__, __LINE__, #val, (val)))
 #else // DCHECK_IS_ON()
 #define DCHECK_VALID_PTR(val) ((void)(0))
 #endif // DCHECK_IS_ON()
+#endif
+
+// Same as `CHECK_VALID_PTR(ptr)`, but documents that pointer is not owned.
+// Use it is `MyClass` destructor that has unowned objects
+// that must outlive `MyClass`.
+#ifndef CHECK_UNOWNED_PTR
+#define CHECK_UNOWNED_PTR(...) CHECK_VALID_PTR(__VA_ARGS__)
+#endif
+
+// Same as `DCHECK_VALID_PTR(ptr)`, but documents that pointer is not owned.
+// Use it is `MyClass` destructor that has unowned objects
+// that must outlive `MyClass`.
+#ifndef DCHECK_UNOWNED_PTR
+#define DCHECK_UNOWNED_PTR(...) DCHECK_VALID_PTR(__VA_ARGS__)
+#endif
+
+// Same as `DCHECK_VALID_PTR(&ref)`, but documents that reference is not owned.
+// Use it is `MyClass` destructor that has unowned objects
+// that must outlive `MyClass`.
+#ifndef CHECK_UNOWNED_REF
+#define CHECK_UNOWNED_REF(x) CHECK_VALID_PTR(&x)
+#endif
+
+// Same as `DCHECK_VALID_PTR(&ref)`, but documents that reference is not owned.
+// Use it is `MyClass` destructor that has unowned objects
+// that must outlive `MyClass`.
+#ifndef DCHECK_UNOWNED_REF
+#define DCHECK_UNOWNED_REF(x) DCHECK_VALID_PTR(&x)
 #endif
 
 #define CHECK_BETWEEN(val, lower_bound, upper_bound) \

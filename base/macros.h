@@ -985,6 +985,38 @@ inline void ignore_result(const T&) {
 // Weak pointers may be passed safely between sequences, but must always be
 // dereferenced and invalidated on the same SequencedTaskRunner otherwise
 // checking the pointer would be racey.
+//
+// USAGE (`MaybeValid()` can be used from other thread)
+//
+//  std::unique_ptr<AppState> appState
+//    = std::make_unique<AppState>(AppState::UNINITIALIZED);
+//
+//  // ...
+//
+//  ::base::WeakPtr<AppState> weakAppState
+//    = appState->weakSelf();
+//
+//  appState.reset();
+//
+//  auto runner = ::base::ThreadPool::GetInstance()->
+//    CreateSequencedTaskRunnerWithTraits(
+//      ::base::TaskTraits{
+//        ::base::TaskPriority::BEST_EFFORT
+//        , ::base::MayBlock()
+//        , ::base::TaskShutdownBehavior::BLOCK_SHUTDOWN
+//      }
+//    );
+//
+//  ::base::PostPromise(FROM_HERE
+//    , runner.get()
+//    , ::base::BindOnce([
+//        ](::base::WeakPtr<AppState> weakPtr){
+//          EXPECT_FALSE(weakPtr.MaybeValid());
+//        }
+//        , weakAppState
+//      )
+//  );
+//
 #define SET_WEAK_SELF(Name) \
   MUST_USE_RETURN_VALUE \
   base::WeakPtr<Name> weakSelf() const NO_EXCEPTION \

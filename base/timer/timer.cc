@@ -130,9 +130,6 @@ void TimerBase::Stop() {
 }
 
 void TimerBase::Reset() {
-
-  /// TODO: !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-
   DCHECK(origin_sequence_checker_.CalledOnValidSequence());
 
   // If there's no pending task, start one up and return.
