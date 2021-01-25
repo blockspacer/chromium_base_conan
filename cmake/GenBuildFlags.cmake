@@ -99,6 +99,7 @@ string(TOLOWER "${CMAKE_BUILD_TYPE}" cmake_build_type_tolower)
 # NOTE: Prefer to use Profiling with Release builds.
 # In order to enable cpu profiling, run with the environment variable CPUPROFILE
 # and use "profiling-flush" flag
+set(ENABLE_LOCATION_SOURCE "(1)")
 set(USE_PROFILING "(0)")
 if(ALLOCATOR_TCMALLOC)
   set(USE_PROFILING "(1)")

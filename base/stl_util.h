@@ -259,7 +259,6 @@ const typename Collection::value_type::second_type& FindWithDefault(
   return it->second;
 }
 
-
 // Inserts the given key-value pair into the collection. Returns true if and
 // only if the key from the given pair didn't previously exist. Otherwise, the
 // value in the map is replaced with the value from the given pair.
