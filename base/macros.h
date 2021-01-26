@@ -1826,7 +1826,7 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 // EXAMPLE
 //
 // #define NOTE(str) \
-//   message(__FILE__ "(" BOOST_PP_STRINGIZE(__LINE__) ") : " str) \
+//   message(__FILE__ "(" STRINGIFY(__LINE__) ") : " str) \
 //   /**/
 #ifndef STRINGIFY
 #define STRINGIFY(X) #X
