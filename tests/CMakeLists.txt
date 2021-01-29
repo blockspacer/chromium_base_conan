@@ -18,6 +18,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${${ROOT_PROJECT_NAME
 #   --args ~/chromium_base_conan/build/Debug/tests/chromium_base-tests/chromium_base-output_parameter_unittest \
 #   --single-process-tests \
 #   --gtest_filter=* \
+#   --vmodule=*=9999 \
 #   --test-data-dir="~/chromium_base_conan/tests/data/"
 set( GTEST_TEST_ARGS
   "--gtest_shuffle"

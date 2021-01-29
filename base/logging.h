@@ -680,7 +680,8 @@ class CheckOpResult {
 //   continuable exception after the actual trap instruction.
 // - Don't cause too much binary bloat.
 #if defined(__EMSCRIPTEN__)
-  #define TRAP_SEQUENCE() ((void)(0))
+  // see emscripten/bits/signal.h
+  #define TRAP_SEQUENCE() raise(SIGTRAP)
 #elif defined(COMPILER_GCC)
 
 #if defined(ARCH_CPU_X86_FAMILY) && !defined(OS_NACL)

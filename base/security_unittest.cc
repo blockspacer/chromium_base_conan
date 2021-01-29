@@ -38,7 +38,7 @@ namespace {
 // as something we don't need (see the comment with calloc below).
 template <typename Type>
 NOINLINE Type HideValueFromCompiler(volatile Type value) {
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__EMSCRIPTEN__)
   // In a GCC compatible compiler (GCC or Clang), make this compiler barrier
   // more robust than merely using "volatile".
   __asm__ volatile ("" : "+r" (value));
