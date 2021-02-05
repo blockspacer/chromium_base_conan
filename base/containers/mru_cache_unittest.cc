@@ -247,11 +247,28 @@ TEST(MRUCacheTest, AutoEvict) {
     cache.Put(kItem1Key, std::make_unique<CachedItem>(20));
     cache.Put(kItem2Key, std::make_unique<CachedItem>(21));
     cache.Put(kItem3Key, std::make_unique<CachedItem>(22));
+
+    // exceed kMaxSize, will prune `kItem1Key`
     cache.Put(kItem4Key, std::make_unique<CachedItem>(23));
 
     // The cache should only have kMaxSize items in it even though we inserted
     // more.
     EXPECT_EQ(kMaxSize, cache.size());
+
+    {
+      auto iter = cache.Get(kItem2Key);
+      EXPECT_TRUE(iter != cache.end());
+    }
+
+    {
+      auto iter = cache.Get(kItem3Key);
+      EXPECT_TRUE(iter != cache.end());
+    }
+
+    {
+      auto iter = cache.Get(kItem4Key);
+      EXPECT_TRUE(iter != cache.end());
+    }
   }
 
   // There should be no objects leaked.

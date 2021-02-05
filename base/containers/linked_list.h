@@ -6,7 +6,18 @@
 #define BASE_CONTAINERS_LINKED_LIST_H_
 
 #include "base/macros.h"
+#include "base/logging.h"
 
+/// \note It is Doubly linked list, unlike `std::list`
+///
+/// \note Node can not be used in multiple lists at same time.
+/// LinkedList<MyNodeType> list1;
+/// LinkedList<MyNodeType> list2;
+/// MyNodeType n1(1);
+/// list1.Append(&n1); // will set `n1.next_`
+/// list2.Append(&n1); // WRONG: will override `n1.next_`
+/// n1.RemoveFromList(); // WRONG: will be removed from `list1` or `list2` ?
+//
 // Simple LinkedList type. (See the Q&A section to understand how this
 // differs from std::list).
 //
@@ -104,22 +115,28 @@ class LinkNode {
 
   // Insert |this| into the linked list, before |e|.
   void InsertBefore(LinkNode<T>* e) {
+    DCHECK(e);
     this->next_ = e;
     this->previous_ = e->previous_;
+    DCHECK(e->previous_);
     e->previous_->next_ = this;
     e->previous_ = this;
   }
 
   // Insert |this| into the linked list, after |e|.
   void InsertAfter(LinkNode<T>* e) {
+    DCHECK(e);
     this->next_ = e->next_;
     this->previous_ = e;
+    DCHECK(e->next_);
     e->next_->previous_ = this;
     e->next_ = this;
   }
 
   // Remove |this| from the linked list.
   void RemoveFromList() {
+    DCHECK(this->previous_);
+    DCHECK(this->next_);
     this->previous_->next_ = this->next_;
     this->next_->previous_ = this->previous_;
     // next() and previous() return non-null if and only this node is not in any
@@ -163,6 +180,13 @@ class LinkedList {
   // Appends |e| to the end of the linked list.
   void Append(LinkNode<T>* e) {
     e->InsertBefore(&root_);
+    DCHECK(!empty());
+  }
+
+  // Appends |e| to the start of the linked list.
+  void Prepend(LinkNode<T>* e) {
+    e->InsertAfter(&root_);
+    DCHECK(!empty());
   }
 
   LinkNode<T>* head() const {
@@ -178,6 +202,14 @@ class LinkedList {
   }
 
   bool empty() const { return head() == end(); }
+
+  void clear() {
+    while(!empty()) {
+      DCHECK(head());
+      head()->RemoveFromList();
+    }
+    DCHECK(empty());
+  }
 
  private:
   LinkNode<T> root_;

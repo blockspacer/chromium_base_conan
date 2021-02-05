@@ -656,6 +656,31 @@ inline void ignore_result(const T&) {
     char x[8] __attribute__((aligned(8)));   \
   } name
 
+#define ANNOTATE_NEW_BUFFER(buffer, capacity, newSize)                       \
+  if (buffer) {                                                              \
+    __sanitizer_annotate_contiguous_container(buffer, (buffer) + (capacity), \
+                                              (buffer) + (capacity),         \
+                                              (buffer) + (newSize));         \
+  }
+
+#define ANNOTATE_DELETE_BUFFER(buffer, capacity, oldSize)                    \
+  if (buffer) {                                                              \
+    __sanitizer_annotate_contiguous_container(buffer, (buffer) + (capacity), \
+                                              (buffer) + (oldSize),          \
+                                              (buffer) + (capacity));        \
+  }
+
+#define ANNOTATE_CHANGE_SIZE(buffer, capacity, oldSize, newSize)             \
+  if (buffer) {                                                              \
+    __sanitizer_annotate_contiguous_container(buffer, (buffer) + (capacity), \
+                                              (buffer) + (oldSize),          \
+                                              (buffer) + (newSize));         \
+  }
+
+#define ANNOTATE_CHANGE_CAPACITY(buffer, oldCapacity, bufferSize, newCapacity) \
+  ANNOTATE_DELETE_BUFFER(buffer, oldCapacity, bufferSize);                     \
+  ANNOTATE_NEW_BUFFER(buffer, newCapacity, bufferSize);
+
 #else
 
 #define NO_SANITIZE_ADDRESS
@@ -663,6 +688,14 @@ inline void ignore_result(const T&) {
 #define ANNOTATE_CONTIGUOUS_CONTAINER(beg, end, old_mid, new_mid)  // empty
 
 #define ADDRESS_SANITIZER_REDZONE(name) static_assert(true, "")
+
+#define ANNOTATE_NEW_BUFFER(buffer, capacity, newSize)
+
+#define ANNOTATE_DELETE_BUFFER(buffer, capacity, oldSize)
+
+#define ANNOTATE_CHANGE_SIZE(buffer, capacity, oldSize, newSize)
+
+#define ANNOTATE_CHANGE_CAPACITY(buffer, oldCapacity, bufferSize, newCapacity)
 
 #endif // ADDRESS_SANITIZER
 
@@ -1894,6 +1927,15 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 #define GEN_CAT_II(p, res) res
 #endif
 
+// Uses `__COUNTER__` to generate unique name.
+//
+// USAGE
+//
+// /// \note variable names do not collide
+// int GEN_UNIQUE_NAME(my_variable_group) = 1;
+// int GEN_UNIQUE_NAME(my_variable_group) = 2;
+// int GEN_UNIQUE_NAME(my_variable_group) = 3;
+//
 #ifndef GEN_UNIQUE_NAME
 #define GEN_UNIQUE_NAME(base) GEN_CAT(base, __COUNTER__)
 #endif
@@ -1901,3 +1943,20 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 // Lazily-initialized boolean value.
 // Similar to BOOST_TRIBOOL.
 enum TriBool { kNotSet = -1, kFalse = 0, kTrue = 1 };
+
+// DEFINE_COMPARISON_OPERATORS_WITH_REFERENCES
+// Allow equality comparisons of Objects by reference or pointer,
+// interchangeably.  This can be only used on types whose equality makes no
+// other sense than pointer equality.
+#define DEFINE_COMPARISON_OPERATORS_WITH_REFERENCES(Type)                    \
+  inline bool operator==(const Type& a, const Type& b) { return &a == &b; }  \
+  inline bool operator==(const Type& a, const Type* b) { return &a == b; }   \
+  inline bool operator==(const Type* a, const Type& b) { return a == &b; }   \
+  inline bool operator!=(const Type& a, const Type& b) { return !(a == b); } \
+  inline bool operator!=(const Type& a, const Type* b) { return !(a == b); } \
+  inline bool operator!=(const Type* a, const Type& b) { return !(a == b); }
+
+// Check at compile time that related enums stay in sync.
+#define STATIC_ASSERT_ENUM_EQ(a, b)                            \
+  static_assert(static_cast<int>(a) == static_cast<int>(b), \
+                "mismatching enum: " #a)

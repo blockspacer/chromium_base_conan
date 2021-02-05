@@ -37,12 +37,66 @@
 
 // Many scientific applications require accuracy greater than
 // that provided by �double precision�.
+// See 2Sum and Fast2Sum formulas for implementation details.
+// 2Sum computes the floating-point sum and the floating-point error.
+// See:
+// * Handbook of Floating-Point Arithmetic
+// * Techniques for Floating-Point Arithmetic
+//   https://indico.cern.ch/event/313684/contributions/1687773/attachments/600513/826490/FPArith-Part2.pdf
+// * Workshop on Numerical Computing Floating-Point Arithmetic
+//   https://indico.cern.ch/event/166141/sessions/125684/attachments/201414/282782/Arnold-FPWorkshop-Print.pdf
+// * D.E. Knuth. "The Art of Computer Programming: Seminumerical Algorithms". Volume 2. 1981
 //
 namespace base {
 
 using DoubleDouble = std::pair<double, double>;
 
 /**
+ * Assuming |b| <= |a|, returns exact unevaluated sum of a and b,
+ * where the first member is the
+ * double nearest the sum (ties to even) and the second member is the remainder.
+ *
+ * T. J. Dekker. A floating-point technique for extending the available precision.
+ * Numerische Mathematik, 18(3):224–242, 1971.
+ */
+inline DoubleDouble computeFast2Sum(double a, double b, bool auto_swap = false) {
+  if(auto_swap && std::fabs(b) > std::fabs(a)) {
+    double tmp = a;
+    b = a;
+    a = tmp;
+  } else {
+    DCHECK_LE(b, a);
+  }
+  double s = a + b;
+  double z = s - a;
+  double t = b - z;
+  return {s, t};
+}
+
+/**
+ * TwoSum is usually faster on modern processors than Fast2Sum.
+ * returns exact unevaluated sum of a and b,
+ * where the first member is the double nearest the
+ * sum (ties to even) and the second member is the remainder.
+ *
+ * O. Møller. Quasi double-precision in floating-point addition. BIT, 5:37–50, 1965.
+ * D. Knuth. The Art of Computer Programming, vol 2. Addison-Wesley, Reading, MA, 3rd ed, 1998.
+ */
+inline DoubleDouble compute2Sum(double a, double b) {
+  double s = a + b;
+  double aPrime = s - b;
+  double bPrime = s - aPrime;
+  double deltaA = a - aPrime;
+  double deltaB = b - bPrime;
+  double t = deltaA + deltaB;
+  return {s, t};
+}
+
+/**
+ * Compensated Summation Based on FastTwoSum and TwoSum techniques
+ * Knowledge of the exact rounding error in a
+ * floating-point addition is used to correct the summation
+ *
  * Class to accurately sum series of numbers using a 2Sum and Fast2Sum formulas to maintain an
  * unevaluated sum of two numbers: a rounded-to-nearest _sum and an _addend.
  * See Sylvie Boldo, Stef Graillat, Jean-Michel Muller. On the robustness of the 2Sum and Fast2Sum
@@ -54,10 +108,14 @@ public:
    * Adds x to the sum, keeping track of a compensation amount to be subtracted later.
    */
   void addDouble(double x) {
-    _special += x;                                 // Keep a simple sum to use in case of NaN
-    std::tie(x, _addend) = _fast2Sum(x, _addend);  // Compensated add: _addend tinier than _sum
-    std::tie(_sum, x) = _2Sum(_sum, x);            // Compensated add: x maybe larger than _sum
-    _addend += x;                                  // Store away lowest part of sum
+    // Keep a simple sum to use in case of NaN
+    _special += x;
+    // Compensated add: _addend tinier than _sum
+    std::tie(x, _addend) = computeFast2Sum(x, _addend);
+    // Compensated add: x maybe larger than _sum
+    std::tie(_sum, x) = compute2Sum(_sum, x);
+    // Store away lowest part of sum
+    _addend += x;
   }
 
   /**
@@ -106,41 +164,11 @@ public:
   long long getLong() const;
 
 private:
-  /**
-   * Assuming |b| <= |a|, returns exact unevaluated sum of a and b, where the first member is the
-   * double nearest the sum (ties to even) and the second member is the remainder.
-   *
-   * T. J. Dekker. A floating-point technique for extending the available precision. Numerische
-   * Mathematik, 18(3):224–242, 1971.
-   */
-  DoubleDouble _fast2Sum(double a, double b) {
-    double s = a + b;
-    double z = s - a;
-    double t = b - z;
-    return {s, t};
-  }
-
-  /**
-   * returns exact unevaluated sum of a and b, where the first member is the double nearest the
-   * sum (ties to even) and the second member is the remainder.
-   *
-   * O. Møller. Quasi double-precision in floating-point addition. BIT, 5:37–50, 1965.
-   * D. Knuth. The Art of Computer Programming, vol 2. Addison-Wesley, Reading, MA, 3rd ed, 1998.
-   */
-  DoubleDouble _2Sum(double a, double b) {
-    double s = a + b;
-    double aPrime = s - b;
-    double bPrime = s - aPrime;
-    double deltaA = a - aPrime;
-    double deltaB = b - bPrime;
-    double t = deltaA + deltaB;
-    return {s, t};
-  }
-
   double _sum = 0.0;
   double _addend = 0.0;
 
-  // Simple sum to be returned if _sum is NaN. This addresses infinities turning into NaNs when
+  // Simple sum to be returned if _sum is NaN.
+  // This addresses infinities turning into NaNs when
   // using compensated addition.
   double _special = 0.0;
 };

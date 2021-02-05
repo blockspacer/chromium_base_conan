@@ -5,6 +5,7 @@
 #include "base/strings/escape.h" // IWYU pragma: associated
 
 #include "base/strings/string_util.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/strings/utf_string_conversion_utils.h"
 #include "base/third_party/icu/icu_utf.h"
 
@@ -438,6 +439,398 @@ bool ContainsEncodedBytes(StringPiece escaped_text,
   }
 
   return false;
+}
+
+namespace {
+
+template <typename CharType>
+size_t RequiredSizeForCRLF(const CharType* data, size_t length) {
+  size_t new_len = 0;
+  const CharType* p = data;
+  while (p < data + length) {
+    CharType c = *p++;
+    if (c == '\r') {
+      if (p >= data + length || *p != '\n') {
+        // Turn CR into CRLF.
+        new_len += 2;
+      } else {
+        // We already have \r\n. We don't count this \r, and the
+        // following \n will count 2.
+      }
+    } else if (c == '\n') {
+      // Turn LF into CRLF.
+      new_len += 2;
+    } else {
+      // Leave other characters alone.
+      new_len += 1;
+    }
+  }
+  return new_len;
+}
+
+template <typename CharType>
+void NormalizeToCRLF(const CharType* src, size_t src_length, CharType* q) {
+  const CharType* p = src;
+  while (p < src + src_length) {
+    CharType c = *p++;
+    if (c == '\r') {
+      if (p >= src + src_length || *p != '\n') {
+        // Turn CR into CRLF.
+        *q++ = '\r';
+        *q++ = '\n';
+      }
+    } else if (c == '\n') {
+      // Turn LF into CRLF.
+      *q++ = '\r';
+      *q++ = '\n';
+    } else {
+      // Leave other characters alone.
+      *q++ = c;
+    }
+  }
+}
+
+#if defined(OS_WIN)
+void InternalNormalizeLineEndingsToCRLF(const std::string& from,
+                                        std::vector<char>& buffer) {
+  size_t new_len = RequiredSizeForCRLF(from.c_str(), from.length());
+  if (new_len < from.length())
+    return;
+
+  if (new_len == from.length()) {
+    std::copy(buffer.begin(), buffer.end(), std::back_inserter(buffer));
+    return;
+  }
+
+  size_t old_buffer_size = buffer.size();
+  buffer.resize(old_buffer_size + new_len);
+  char* write_position = buffer.data() + old_buffer_size;
+  NormalizeToCRLF(from.c_str(), from.length(), write_position);
+}
+#endif  // defined(OS_WIN)
+
+}  // namespace
+
+void NormalizeLineEndingsToLF(const std::string& from, std::vector<char>& result) {
+  // Compute the new length.
+  size_t new_len = 0;
+  bool need_fix = false;
+  const char* p = from.c_str();
+  char from_ending_char = '\r';
+  char to_ending_char = '\n';
+  while (p < from.c_str() + from.length()) {
+    char c = *p++;
+    if (c == '\r' && *p == '\n') {
+      // Turn CRLF into CR or LF.
+      p++;
+      need_fix = true;
+    } else if (c == from_ending_char) {
+      // Turn CR/LF into LF/CR.
+      need_fix = true;
+    }
+    new_len += 1;
+  }
+
+  // Grow the result buffer.
+  p = from.c_str();
+  size_t old_result_size = result.size();
+  result.resize(old_result_size + new_len);
+  char* q = result.data() + old_result_size;
+
+  // If no need to fix the string, just copy the string over.
+  if (!need_fix) {
+    memcpy(q, p, from.length());
+    return;
+  }
+
+  // Make a copy of the string.
+  while (p < from.c_str() + from.length()) {
+    char c = *p++;
+    if (c == '\r' && *p == '\n') {
+      // Turn CRLF or CR into CR or LF.
+      p++;
+      *q++ = to_ending_char;
+    } else if (c == from_ending_char) {
+      // Turn CR/LF into LF/CR.
+      *q++ = to_ending_char;
+    } else {
+      // Leave other characters alone.
+      *q++ = c;
+    }
+  }
+}
+
+std::string NormalizeLineEndingsToCRLF(const std::string& src) {
+  size_t length = src.length();
+  if (length == 0)
+    return src;
+  if (base::IsStringASCII(src)) {
+    size_t new_length = RequiredSizeForCRLF(src.c_str(), length);
+    if (new_length == length)
+      return src;
+    std::vector<char> buffer(new_length);
+    NormalizeToCRLF(src.c_str(), length, buffer.data());
+    return std::string{buffer.begin(), buffer.end()};
+  } else {
+    NOTIMPLEMENTED();
+  }
+  return "";
+}
+
+void NormalizeLineEndingsToNative(const std::string& from,
+                                  std::vector<char>& result) {
+#if defined(OS_WIN)
+  InternalNormalizeLineEndingsToCRLF(from, result);
+#else
+  NormalizeLineEndingsToLF(from, result);
+#endif
+}
+
+namespace {
+
+const char kHexString[] = "0123456789ABCDEF";
+inline char IntToHex(int i) {
+  DCHECK_GE(i, 0) << i << " not a hex value";
+  DCHECK_LE(i, 15) << i << " not a hex value";
+  return kHexString[i];
+}
+
+// A fast bit-vector map for ascii characters.
+//
+// Internally stores 256 bits in an array of 8 ints.
+// Does quick bit-flicking to lookup needed characters.
+struct Charmap {
+  bool Contains(unsigned char c) const {
+    return ((map[c >> 5] & (1 << (c & 31))) != 0);
+  }
+
+  uint32_t map[8];
+};
+
+// Given text to escape and a Charmap defining which values to escape,
+// return an escaped string.  If use_plus is true, spaces are converted
+// to +, otherwise, if spaces are in the charmap, they are converted to
+// %20. And if keep_escaped is true, %XX will be kept as it is, otherwise, if
+// '%' is in the charmap, it is converted to %25.
+std::string Escape(base::StringPiece text,
+                   const Charmap& charmap,
+                   bool use_plus,
+                   bool keep_escaped = false) {
+  std::string escaped;
+  escaped.reserve(text.length() * 3);
+  for (unsigned int i = 0; i < text.length(); ++i) {
+    unsigned char c = static_cast<unsigned char>(text[i]);
+    if (use_plus && ' ' == c) {
+      escaped.push_back('+');
+    } else if (keep_escaped && '%' == c && i + 2 < text.length() &&
+               base::IsHexDigit(text[i + 1]) && base::IsHexDigit(text[i + 2])) {
+      escaped.push_back('%');
+    } else if (charmap.Contains(c)) {
+      escaped.push_back('%');
+      escaped.push_back(IntToHex(c >> 4));
+      escaped.push_back(IntToHex(c & 0xf));
+    } else {
+      escaped.push_back(c);
+    }
+  }
+  return escaped;
+}
+
+// Convert a character |c| to a form that will not be mistaken as HTML.
+template <class str>
+void AppendEscapedCharForHTMLImpl(typename str::value_type c, str* output) {
+  static constexpr struct {
+    char key;
+    base::StringPiece replacement;
+  } kCharsToEscape[] = {
+      {'<', "&lt;"},   {'>', "&gt;"},   {'&', "&amp;"},
+      {'"', "&quot;"}, {'\'', "&#39;"},
+  };
+  for (const auto& char_to_escape : kCharsToEscape) {
+    if (c == char_to_escape.key) {
+      output->append(std::begin(char_to_escape.replacement),
+                     std::end(char_to_escape.replacement));
+      return;
+    }
+  }
+  output->push_back(c);
+}
+
+// Convert |input| string to a form that will not be interpreted as HTML.
+template <class str>
+str EscapeForHTMLImpl(base::BasicStringPiece<str> input) {
+  str result;
+  result.reserve(input.size());  // Optimize for no escaping.
+
+  for (auto c : input) {
+    AppendEscapedCharForHTMLImpl(c, &result);
+  }
+
+  return result;
+}
+
+// Everything except alphanumerics and -._~
+// See RFC 3986 for the list of unreserved characters.
+static const Charmap kUnreservedCharmap = {
+    {0xffffffffL, 0xfc009fffL, 0x78000001L, 0xb8000001L, 0xffffffffL,
+     0xffffffffL, 0xffffffffL, 0xffffffffL}};
+
+// Everything except alphanumerics and !'()*-._~
+// See RFC 2396 for the list of reserved characters.
+static const Charmap kQueryCharmap = {{
+  0xffffffffL, 0xfc00987dL, 0x78000001L, 0xb8000001L,
+  0xffffffffL, 0xffffffffL, 0xffffffffL, 0xffffffffL
+}};
+
+// non-printable, non-7bit, and (including space)  "#%:<>?[\]^`{|}
+static const Charmap kPathCharmap = {{
+  0xffffffffL, 0xd400002dL, 0x78000000L, 0xb8000001L,
+  0xffffffffL, 0xffffffffL, 0xffffffffL, 0xffffffffL
+}};
+
+#if defined(OS_APPLE)
+// non-printable, non-7bit, and (including space)  "#%<>[\]^`{|}
+static const Charmap kNSURLCharmap = {{
+  0xffffffffL, 0x5000002dL, 0x78000000L, 0xb8000001L,
+  0xffffffffL, 0xffffffffL, 0xffffffffL, 0xffffffffL
+}};
+#endif  // defined(OS_APPLE)
+
+// non-printable, non-7bit, and (including space) ?>=<;+'&%$#"![\]^`{|}
+static const Charmap kUrlEscape = {{
+  0xffffffffL, 0xf80008fdL, 0x78000001L, 0xb8000001L,
+  0xffffffffL, 0xffffffffL, 0xffffffffL, 0xffffffffL
+}};
+
+// non-7bit, as well as %.
+static const Charmap kNonASCIICharmapAndPercent = {
+    {0x00000000L, 0x00000020L, 0x00000000L, 0x00000000L, 0xffffffffL,
+     0xffffffffL, 0xffffffffL, 0xffffffffL}};
+
+// non-7bit
+static const Charmap kNonASCIICharmap = {{0x00000000L, 0x00000000L, 0x00000000L,
+                                          0x00000000L, 0xffffffffL, 0xffffffffL,
+                                          0xffffffffL, 0xffffffffL}};
+
+// Everything except alphanumerics, the reserved characters(;/?:@&=+$,) and
+// !'()*-._~#[]
+static const Charmap kExternalHandlerCharmap = {{
+  0xffffffffL, 0x50000025L, 0x50000000L, 0xb8000001L,
+  0xffffffffL, 0xffffffffL, 0xffffffffL, 0xffffffffL
+}};
+
+}  // namespace
+
+std::string EscapeAllExceptUnreserved(base::StringPiece text) {
+  return Escape(text, kUnreservedCharmap, false);
+}
+
+std::string EscapeQueryParamValue(base::StringPiece text, bool use_plus) {
+  return Escape(text, kQueryCharmap, use_plus);
+}
+
+std::string EscapePath(base::StringPiece path) {
+  return Escape(path, kPathCharmap, false);
+}
+
+#if defined(OS_APPLE)
+std::string EscapeNSURLPrecursor(base::StringPiece precursor) {
+  return Escape(precursor, kNSURLCharmap, false, true);
+}
+#endif  // defined(OS_APPLE)
+
+std::string EscapeUrlEncodedData(base::StringPiece path, bool use_plus) {
+  return Escape(path, kUrlEscape, use_plus);
+}
+
+std::string EscapeNonASCIIAndPercent(base::StringPiece input) {
+  return Escape(input, kNonASCIICharmapAndPercent, false);
+}
+
+std::string EscapeNonASCII(base::StringPiece input) {
+  return Escape(input, kNonASCIICharmap, false);
+}
+
+std::string EscapeExternalHandlerValue(base::StringPiece text) {
+  return Escape(text, kExternalHandlerCharmap, false, true);
+}
+
+void AppendEscapedCharForHTML(char c, std::string* output) {
+  AppendEscapedCharForHTMLImpl(c, output);
+}
+
+std::string EscapeForHTML(base::StringPiece input) {
+  return EscapeForHTMLImpl(input);
+}
+
+base::string16 EscapeForHTML(base::StringPiece16 input) {
+  return EscapeForHTMLImpl(input);
+}
+
+base::string16 UnescapeForHTML(base::StringPiece16 input) {
+  static const struct {
+    const char* ampersand_code;
+    const char replacement;
+  } kEscapeToChars[] = {
+      {"&lt;", '<'},   {"&gt;", '>'},   {"&amp;", '&'},
+      {"&quot;", '"'}, {"&#39;", '\''},
+  };
+  constexpr size_t kEscapeToCharsCount = base::size(kEscapeToChars);
+
+  if (input.find(base::ASCIIToUTF16("&")) == std::string::npos)
+    return base::string16(input);
+
+  base::string16 ampersand_chars[kEscapeToCharsCount];
+  base::string16 text(input);
+  for (base::string16::iterator iter = text.begin();
+       iter != text.end(); ++iter) {
+    if (*iter == '&') {
+      // Potential ampersand encode char.
+      size_t index = iter - text.begin();
+      for (size_t i = 0; i < base::size(kEscapeToChars); i++) {
+        if (ampersand_chars[i].empty()) {
+          ampersand_chars[i] =
+              base::ASCIIToUTF16(kEscapeToChars[i].ampersand_code);
+        }
+        if (text.find(ampersand_chars[i], index) == index) {
+          text.replace(iter, iter + ampersand_chars[i].length(),
+                       1, kEscapeToChars[i].replacement);
+          break;
+        }
+      }
+    }
+  }
+  return text;
+}
+
+std::string PercentEscapeString(const std::string& unescaped_string) {
+  std::ostringstream escaped_oss;
+  for (char c : unescaped_string) {
+    if (c == '"') {
+      escaped_oss << "%22";
+    } else if (c == 0x0a) {
+      escaped_oss << "%0A";
+    } else if (c == 0x0d) {
+      escaped_oss << "%0D";
+    } else {
+      escaped_oss << c;
+    }
+  }
+  return escaped_oss.str();
+}
+
+std::string ComputeUrlEncodedBody(const std::vector<std::string>& names,
+                                  const std::vector<std::string>& values) {
+  if (names.size() != values.size() || names.size() == 0)
+    return "";
+  std::ostringstream application_body_oss;
+  application_body_oss << base::EscapeUrlEncodedData(names[0], true) << "="
+                       << base::EscapeUrlEncodedData(values[0], true);
+  for (size_t i = 1; i < names.size(); i++)
+    application_body_oss << "&" << base::EscapeUrlEncodedData(names[i], true)
+                         << "=" << base::EscapeUrlEncodedData(values[i], true);
+
+  return application_body_oss.str();
 }
 
 }  // namespace base

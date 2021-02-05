@@ -35,6 +35,29 @@ class SequencedTaskRunner;
 //
 // Also note that ImportantFileWriter can be *really* slow (cf. File::Flush()
 // for details) and thus please don't block shutdown on ImportantFileWriter.
+//
+// USAGE (WriteFileAtomically)
+//
+// const base::FilePath reports_path = ...
+// const base::FilePath& file = ...
+// DCHECK(reports_path.IsParent(file));
+// if (!base::DirectoryExists(reports_path)) {
+//   base::File::Error error;
+//   if (!base::CreateDirectoryAndGetError(reports_path, &error))
+//     return;
+// }
+// if (!base::ImportantFileWriter::WriteFileAtomically(file, encrypted_data)) {
+//   LOG(ERROR) << "Failed to write into file.";
+// }
+//
+// USAGE (WriteNow)
+//
+// writer_ = std::make_unique<base::ImportantFileWriter>(tokens_file_path,
+//                                                       task_runner_);
+// // Schedule (immediately) a non-blocking write.
+// DCHECK(writer_);
+// writer_->WriteNow(std::make_unique<std::string>(GetSerializedAccounts()));
+//
 class BASE_EXPORT ImportantFileWriter {
  public:
   // Used by ScheduleSave to lazily provide the data to be saved. Allows us

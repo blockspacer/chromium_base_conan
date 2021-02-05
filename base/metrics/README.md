@@ -52,9 +52,19 @@ UMA_HISTOGRAM_COUNTS_100("App.TestCounts", 11);
 
 UMA_HISTOGRAM_LONG_TIMES("App.TimeNow()", ::base::TimeDelta::FromMinutes(5));
 
+base::UmaHistogramMicrosecondsTimes(
+    "AccountManager.InitializationTime",
+    base::TimeTicks::Now() - initialization_start_time);
+
 UMA_HISTOGRAM_ENUMERATION("Login", OFFLINE_AND_ONLINE, NUM_SUCCESS_REASONS);
 
+base::UmaHistogramEnumeration("AccountManager.TokenLoadStatus",
+                              token_load_status);
+
 ::base::UmaHistogramMemoryLargeMB("HeapProfiler.Malloc", malloc_usage_mb);
+
+base::UmaHistogramExactLinear(kNumAccountsMetricName, num_accounts,
+                              kMaxNumAccountsMetric + 1);
 
 UMA_HISTOGRAM_MEMORY_MB("SourceBufferStream.MemoryLimit", memory_limit_ / (1024 * 1024));
 

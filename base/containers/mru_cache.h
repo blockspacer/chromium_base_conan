@@ -74,6 +74,13 @@ class MRUCacheBase {
   typedef typename PayloadList::reverse_iterator reverse_iterator;
   typedef typename PayloadList::const_reverse_iterator const_reverse_iterator;
 
+  // Pass NO_AUTO_EVICT to not restrict the cache size.
+  //
+  // USAGE
+  //
+  // typedef base::MRUCache<int, CachedItem> Cache;
+  // Cache cache(Cache::NO_AUTO_EVICT);
+  //
   enum { NO_AUTO_EVICT = 0 };
 
   // The max_size is the size at which the cache will prune its members to when
@@ -219,6 +226,18 @@ class MRUCacheBase {
 
 // A container that does not do anything to free its data. Use this when storing
 // value types (as opposed to pointers) in the list.
+//
+// USAGE
+//
+// const size_t kMaxSize = 2;
+// MRUCache<uint16_t, String> my_cache(kMaxSize);
+// my_cache.Put(13, "first string");
+// my_cache.Put(42, "second string");
+// my_cache.Put(256, "third string"); // exceed kMaxSize, will prune `13`
+// my_cache.Get(13) // -> nullptr, has been removed due to kMaxSize == 2.
+// my_cache.Get(42) // -> String* "second string"
+// my_cache.Get(256) // -> String* "third_string"
+//
 template <class KeyType,
           class PayloadType,
           class CompareType = std::less<KeyType>>

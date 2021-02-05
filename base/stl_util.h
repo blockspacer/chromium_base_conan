@@ -1398,6 +1398,62 @@ auto compose(F&& f, R&&... r)
   return [=](auto x) { return f(compose(r...)(x)); };
 }
 
+// Clamp the value to make sure it is in the range [low, high].
+//
+template <typename T>
+inline const T& Clamp(const T& value, const T& low, const T& high) {
+#if __cplusplus >= 201703L
+  return std::clamp(value, low, high);
+#else
+  DCHECK( !(high < low) );
+  return value < low ? low : (value > high ? high : value);
+#endif
+}
+
+// Count the elements of [first, last).
+//
+template <typename Iterator>
+int CountElements(Iterator first, Iterator last) {
+  auto n = std::distance(first, last);
+  DCHECK_GE(n, 0);
+  DCHECK_LE(n, std::numeric_limits<int>::max())
+    << "We only support INT_MAX elements at most.";
+
+  return static_cast<int>(n);
+}
+
+// Sorting and keeping track of indexes
+//
+// Get the sorted indices of [first, last)
+//
+// For example, vector of samples A : [5, 2, 1, 4, 3].
+// I want to sort these to be B : [1,2,3,4,5],
+// but I also want to remember the original indexes of the values,
+// so I can get another set which would be: C : [2, 1, 4, 3, 0 ],
+// which corresponds to the index of each element in 'B', in the original 'A'.
+//
+// USAGE
+//
+// std::vector<std::string> data{"G", "A", "C", "B"};
+// std::vector<size_t> sorted_indexes;
+// base::IndexSort(data.begin(), data.end(), &sorted_indexes);
+template <typename Iterator, typename Compare =
+          std::less<typename std::iterator_traits<Iterator>::value_type> >
+void IndexSort(Iterator first, Iterator last, std::vector<size_t>* indices) {
+  DCHECK(indices);
+
+  auto n = std::distance(first, last);
+  indices->resize(n);
+  // initialize original index locations
+  std::iota(indices->begin(), indices->end(), 0);
+
+  Compare compare;
+  // sort indexes based on comparing values
+  std::sort(indices->begin(), indices->end(), [&](size_t a, size_t b) {
+            return compare(first[a], first[b]);
+  });
+}
+
 }  // namespace base
 
 #endif  // BASE_STL_UTIL_H_

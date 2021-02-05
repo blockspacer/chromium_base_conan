@@ -1820,4 +1820,33 @@ T sanitizedCheckNotNull(
 #define DCHECK_STRNE(s1, s2)
 #endif
 
+#define DCHECK_AT(assertion, file, line)                            \
+  LAZY_STREAM(logging::LogMessage(file, line, #assertion).stream(), \
+              DCHECK_IS_ON() ? !(assertion) : false)
+
+// Users must test "#if ENABLE_SECURITY_ASSERT", which helps ensure that code
+// testing this macro has included this header.
+#if defined(ADDRESS_SANITIZER) || DCHECK_IS_ON()
+#define ENABLE_SECURITY_ASSERT 1
+#else
+#define ENABLE_SECURITY_ASSERT 0
+#endif
+
+// SECURITY_DCHECK and SECURITY_CHECK
+// Use in places where failure of the assertion indicates a possible security
+// vulnerability. Classes of these vulnerabilities include bad casts, out of
+// bounds accesses, use-after-frees, etc. Please be sure to file bugs for these
+// failures using the security template:
+//    https://bugs.chromium.org/p/chromium/issues/entry?template=Security%20Bug
+#if ENABLE_SECURITY_ASSERT
+#define SECURITY_DCHECK(condition) \
+  LOG_IF(DCHECK, !(condition)) << "Security DCHECK failed: " #condition ". "
+// A SECURITY_CHECK failure is actually not vulnerable.
+#define SECURITY_CHECK(condition) \
+  LOG_IF(FATAL, !(condition)) << "Security CHECK failed: " #condition ". "
+#else
+#define SECURITY_DCHECK(condition) ((void)0)
+#define SECURITY_CHECK(condition) CHECK(condition)
+#endif
+
 #endif  // BASE_LOGGING_H_

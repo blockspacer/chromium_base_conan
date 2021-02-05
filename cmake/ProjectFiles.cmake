@@ -1093,6 +1093,8 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}time/tick_clock.h
   ${BASE_SOURCES_PATH}time/time.cc
   ${BASE_SOURCES_PATH}time/time.h
+  ${BASE_SOURCES_PATH}time/time_util.cc
+  ${BASE_SOURCES_PATH}time/time_util.h
   ${BASE_SOURCES_PATH}time/time_override.cc
   ${BASE_SOURCES_PATH}time/time_override.h
   ${BASE_SOURCES_PATH}time/time_to_iso8601.cc

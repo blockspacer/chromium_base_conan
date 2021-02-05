@@ -4,6 +4,10 @@ Some usage examples.
 
 ## FAQ
 
+* How to prevent not fully written files due to crash?
+
+See `important_file_writer.h`
+
 * How to store file path literals?
 
 ```cpp

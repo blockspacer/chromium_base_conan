@@ -116,6 +116,84 @@ BASE_EXPORT bool UnescapeBinaryURLComponentSafe(StringPiece escaped_text,
 BASE_EXPORT bool ContainsEncodedBytes(StringPiece escaped_text,
                                       const std::set<unsigned char>& bytes);
 
+// Normalize all line-endings in the given string to CRLF.
+BASE_EXPORT std::string NormalizeLineEndingsToCRLF(const std::string& from);
+
+// Normalize all line-endings in the given string to LF and append the result to
+// the given buffer.
+BASE_EXPORT void NormalizeLineEndingsToLF(const std::string& from,
+                                         std::vector<char>& result);
+
+// Normalize all line-endings in the given string to the native line-endings and
+// append the result to the given buffer.
+// (Normalize to CRLF on Windows and normalize to LF on all other platforms.)
+BASE_EXPORT void NormalizeLineEndingsToNative(const std::string& from,
+                                             std::vector<char>& result);
+
+// Escapes all characters except unreserved characters. Unreserved characters,
+// as defined in RFC 3986, include alphanumerics and -._~
+BASE_EXPORT std::string EscapeAllExceptUnreserved(base::StringPiece text);
+
+// Escapes characters in text suitable for use as a query parameter value.
+// We %XX everything except alphanumerics and -_.!~*'()
+// Spaces change to "+" unless you pass usePlus=false.
+// This is basically the same as encodeURIComponent in javascript.
+BASE_EXPORT std::string EscapeQueryParamValue(base::StringPiece text,
+                                             bool use_plus);
+
+// Escapes a partial or complete file/pathname.  This includes:
+// non-printable, non-7bit, and (including space)  "#%:<>?[\]^`{|}
+BASE_EXPORT std::string EscapePath(base::StringPiece path);
+
+#if defined(OS_APPLE)
+// Escapes characters as per expectations of NSURL. This includes:
+// non-printable, non-7bit, and (including space)  "#%<>[\]^`{|}
+BASE_EXPORT std::string EscapeNSURLPrecursor(base::StringPiece precursor);
+#endif  // defined(OS_APPLE)
+
+// Escapes application/x-www-form-urlencoded content.  This includes:
+// non-printable, non-7bit, and (including space)  ?>=<;+'&%$#"![\]^`{|}
+// Space is escaped as + (if use_plus is true) and other special characters
+// as %XX (hex).
+BASE_EXPORT std::string EscapeUrlEncodedData(base::StringPiece path,
+                                            bool use_plus);
+
+// Escapes all non-ASCII input, as well as escaping % to %25.
+BASE_EXPORT std::string EscapeNonASCIIAndPercent(base::StringPiece input);
+
+// Escapes all non-ASCII input. Note this function leaves % unescaped, which
+// means the unescaping the resulting string will not give back the original
+// input.
+BASE_EXPORT std::string EscapeNonASCII(base::StringPiece input);
+
+// Escapes characters in text suitable for use as an external protocol handler
+// command.
+// We %XX everything except alphanumerics and -_.!~*'() and the restricted
+// characters (;/?:@&=+$,#[]) and a valid percent escape sequence (%XX).
+BASE_EXPORT std::string EscapeExternalHandlerValue(base::StringPiece text);
+
+// Appends the given character to the output string, escaping the character if
+// the character would be interpreted as an HTML delimiter.
+BASE_EXPORT void AppendEscapedCharForHTML(char c, std::string* output);
+
+// Escapes chars that might cause this text to be interpreted as HTML tags.
+BASE_EXPORT std::string EscapeForHTML(base::StringPiece text);
+BASE_EXPORT base::string16 EscapeForHTML(base::StringPiece16 text);
+
+// Unescaping ------------------------------------------------------------------
+
+// Unescapes the following ampersand character codes from |text|:
+// &lt; &gt; &amp; &quot; &#39;
+BASE_EXPORT base::string16 UnescapeForHTML(base::StringPiece16 text);
+
+// Return a string as a quoted value, escaping quotes and line breaks.
+BASE_EXPORT std::string PercentEscapeString(const std::string& unescaped_string);
+
+// Compute and return application/x-www-form-urlencoded POST body for share
+// target.
+BASE_EXPORT std::string ComputeUrlEncodedBody(const std::vector<std::string>& names,
+                                  const std::vector<std::string>& values);
+
 }  // namespace base
 
 #endif  // BASE_STRINGS_ESCAPE_H_
