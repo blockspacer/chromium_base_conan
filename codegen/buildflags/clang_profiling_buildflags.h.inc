@@ -1,0 +1,7 @@
+#pragma once
+
+#include "build/buildflag.h"
+
+#define BUILDFLAG_INTERNAL_CLANG_PROFILING() (0)
+#define BUILDFLAG_INTERNAL_CLANG_PROFILING_INSIDE_SANDBOX() (0)
+#define BUILDFLAG_INTERNAL_USE_CLANG_COVERAGE() (0)

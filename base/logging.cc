@@ -548,22 +548,6 @@ LogMessageHandlerFunction GetLogMessageHandler() {
   return log_message_handler;
 }
 
-// Explicit instantiations for commonly used comparisons.
-template std::string* MakeCheckOpString<int, int>(
-    const int&, const int&, const char* names);
-template std::string* MakeCheckOpString<unsigned long, unsigned long>(
-    const unsigned long&, const unsigned long&, const char* names);
-template std::string* MakeCheckOpString<unsigned long, unsigned int>(
-    const unsigned long&, const unsigned int&, const char* names);
-template std::string* MakeCheckOpString<unsigned int, unsigned long>(
-    const unsigned int&, const unsigned long&, const char* names);
-template std::string* MakeCheckOpString<std::string, std::string>(
-    const std::string&, const std::string&, const char* name);
-
-void MakeCheckOpValueString(std::ostream* os, std::nullptr_t p) {
-  (*os) << "nullptr";
-}
-
 #if !defined(NDEBUG)
 // Displays a message box to the user with the error message in it.
 // Used for fatal messages, where we close the app simultaneously.
@@ -1082,7 +1066,7 @@ Win32ErrorLogMessage::Win32ErrorLogMessage(const char* file,
                                            LogSeverity severity,
                                            SystemErrorCode err)
     : err_(err),
-      log_message_(file, line, severity) {
+      LogMessage(file, line, severity) {
 }
 
 Win32ErrorLogMessage::~Win32ErrorLogMessage() {
@@ -1098,7 +1082,7 @@ ErrnoLogMessage::ErrnoLogMessage(const char* file,
                                  LogSeverity severity,
                                  SystemErrorCode err)
     : err_(err),
-      log_message_(file, line, severity) {
+      LogMessage(file, line, severity) {
 }
 
 ErrnoLogMessage::~ErrnoLogMessage() {
@@ -1168,11 +1152,6 @@ base::string16 GetLogFileFullPath() {
 }
 #endif
 
-BASE_EXPORT void LogErrorNotReached(const char* file, int line) {
-  LogMessage(file, line, LOG_ERROR).stream()
-      << "NOTREACHED() hit.";
-}
-
 LogStringStream& info(LogStringStream& ls)
 {
   ls
@@ -1188,5 +1167,22 @@ LogStringStream& info(LogStringStream& ls)
 }  // namespace logging
 
 std::ostream& std::operator<<(std::ostream& out, const wchar_t* wstr) {
-  return out << (wstr ? base::WideToUTF8(wstr) : std::string());
+  return out << (wstr ? base::WStringPiece(wstr) : base::WStringPiece());
+}
+
+std::ostream& std::operator<<(std::ostream& out, const std::wstring& wstr) {
+  return out << base::WStringPiece(wstr);
+}
+
+std::ostream& std::operator<<(std::ostream& out, const char16_t* str16) {
+  // TODO(crbug.com/911896): Drop cast once base::char16 is char16_t everywhere.
+  return out << (str16 ? base::StringPiece16(
+                             reinterpret_cast<const base::char16*>(str16))
+                       : base::StringPiece16());
+}
+
+std::ostream& std::operator<<(std::ostream& out, const std::u16string& str16) {
+  // TODO(crbug.com/911896): Drop cast once base::char16 is char16_t everywhere.
+  return out << base::StringPiece16(
+             reinterpret_cast<const base::char16*>(str16.data()), str16.size());
 }

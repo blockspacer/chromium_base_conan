@@ -96,6 +96,39 @@ class OnceCallback<R(Args...)> : public internal::CallbackBase {
         reinterpret_cast<PolymorphicInvoke>(cb.polymorphic_invoke());
     return f(cb.bind_state_.get(), std::forward<Args>(args)...);
   }
+
+  // Then() returns a new OnceCallback that receives the same arguments as
+  // |this|, and with the return type of |then|. The returned callback will:
+  // 1) Run the functor currently bound to |this| callback.
+  // 2) Run the |then| callback with the result from step 1 as its single
+  //    argument.
+  // 3) Return the value from running the |then| callback.
+  //
+  // Since this method generates a callback that is a replacement for `this`,
+  // `this` will be consumed and reset to a null callback to ensure the
+  // originally-bound functor can be run at most once.
+  template <typename ThenR, typename... ThenArgs>
+  OnceCallback<ThenR(Args...)> Then(OnceCallback<ThenR(ThenArgs...)> then) && {
+    CHECK(then);
+    return BindOnce(
+        internal::ThenHelper<
+            OnceCallback, OnceCallback<ThenR(ThenArgs...)>>::CreateTrampoline(),
+        std::move(*this), std::move(then));
+  }
+
+  // This overload is required; even though RepeatingCallback is implicitly
+  // convertible to OnceCallback, that conversion will not used when matching
+  // for template argument deduction.
+  template <typename ThenR, typename... ThenArgs>
+  OnceCallback<ThenR(Args...)> Then(
+      RepeatingCallback<ThenR(ThenArgs...)> then) && {
+    CHECK(then);
+    return BindOnce(
+        internal::ThenHelper<
+            OnceCallback,
+            RepeatingCallback<ThenR(ThenArgs...)>>::CreateTrampoline(),
+        std::move(*this), std::move(then));
+  }
 };
 
 template <typename R, typename... Args>
@@ -145,6 +178,40 @@ class RepeatingCallback<R(Args...)> : public internal::CallbackBaseCopyable {
     PolymorphicInvoke f =
         reinterpret_cast<PolymorphicInvoke>(cb.polymorphic_invoke());
     return f(cb.bind_state_.get(), std::forward<Args>(args)...);
+  }
+
+  // Then() returns a new RepeatingCallback that receives the same arguments as
+  // |this|, and with the return type of |then|. The
+  // returned callback will:
+  // 1) Run the functor currently bound to |this| callback.
+  // 2) Run the |then| callback with the result from step 1 as its single
+  //    argument.
+  // 3) Return the value from running the |then| callback.
+  //
+  // If called on an rvalue (e.g. std::move(cb).Then(...)), this method
+  // generates a callback that is a replacement for `this`. Therefore, `this`
+  // will be consumed and reset to a null callback to ensure the
+  // originally-bound functor will be run at most once.
+  template <typename ThenR, typename... ThenArgs>
+  RepeatingCallback<ThenR(Args...)> Then(
+      RepeatingCallback<ThenR(ThenArgs...)> then) const& {
+    CHECK(then);
+    return BindRepeating(
+        internal::ThenHelper<
+            RepeatingCallback,
+            RepeatingCallback<ThenR(ThenArgs...)>>::CreateTrampoline(),
+        *this, std::move(then));
+  }
+
+  template <typename ThenR, typename... ThenArgs>
+  RepeatingCallback<ThenR(Args...)> Then(
+      RepeatingCallback<ThenR(ThenArgs...)> then) && {
+    CHECK(then);
+    return BindRepeating(
+        internal::ThenHelper<
+            RepeatingCallback,
+            RepeatingCallback<ThenR(ThenArgs...)>>::CreateTrampoline(),
+        std::move(*this), std::move(then));
   }
 };
 

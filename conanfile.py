@@ -129,6 +129,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         if self.options.enable_ubsan:
             if self._is_tests_enabled():
               self.options["conan_gtest"].enable_ubsan = True
+              self.options["benchmark"].enable_ubsan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_ubsan = True
             if self.settings.os == "Linux":
@@ -143,6 +144,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         if self.options.enable_asan:
             if self._is_tests_enabled():
               self.options["conan_gtest"].enable_asan = True
+              self.options["benchmark"].enable_asan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_asan = True
             if self.settings.os == "Linux":
@@ -157,6 +159,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         if self.options.enable_msan:
             if self._is_tests_enabled():
               self.options["conan_gtest"].enable_msan = True
+              self.options["benchmark"].enable_msan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_msan = True
             if self.settings.os == "Linux":
@@ -171,6 +174,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         if self.options.enable_tsan:
             if self._is_tests_enabled():
               self.options["conan_gtest"].enable_tsan = True
+              self.options["benchmark"].enable_tsan = True
             if self._is_tests_enabled() or self.options.use_test_support:
               self.options["chromium_libxml"].enable_tsan = True
             if self.settings.os == "Linux":
@@ -206,6 +210,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         if self._is_tests_enabled() or self.options.use_test_support:
             self.requires("chromium_libxml/master@conan/stable")
             self.requires("conan_gtest/release-1.10.0@conan/stable")
+            self.requires("benchmark/v1.5.2@dev/stable")
 
         if self.settings.os == "Linux":
             self.requires("chromium_libevent/master@conan/stable")

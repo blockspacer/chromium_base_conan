@@ -19,8 +19,8 @@ UCollationResult CompareString16WithCollator(const icu::Collator& collator,
                                              const string16& rhs) {
   UErrorCode error = U_ZERO_ERROR;
   UCollationResult result = collator.compare(
-      icu::UnicodeString(FALSE, lhs.c_str(), static_cast<int>(lhs.length())),
-      icu::UnicodeString(FALSE, rhs.c_str(), static_cast<int>(rhs.length())),
+      icu::UnicodeString(false, lhs.c_str(), static_cast<int>(lhs.length())),
+      icu::UnicodeString(false, rhs.c_str(), static_cast<int>(rhs.length())),
       error);
   DCHECK(U_SUCCESS(error));
   return result;

@@ -25,7 +25,7 @@ set( GTEST_TEST_ARGS
   "--test-data-dir=${CMAKE_CURRENT_SOURCE_DIR}/data/")
 
 # Run ALL tests with verbose output
-# Usage: cmake --build build --target run_all_tests
+# Usage: cmake -E time cmake --build . --target chromium_base_run_all_tests
 add_custom_target(${ROOT_PROJECT_NAME}_run_all_tests
     DEPENDS ${ROOT_PROJECT_LIB}
 )
@@ -527,6 +527,15 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
 
   tests_add_executable(${ROOT_PROJECT_NAME}-thread_annotations_unittest
     "${BASE_SOURCES_PATH}thread_annotations_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+  tests_add_executable(${ROOT_PROJECT_NAME}-bind_post_task_unittest
+    "${BASE_SOURCES_PATH}/bind_post_task_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+  tests_add_executable(${ROOT_PROJECT_NAME}-check_unittest
+    "${BASE_SOURCES_PATH}/check_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+  tests_add_executable(${ROOT_PROJECT_NAME}-immediate_crash_unittest
+    "${BASE_SOURCES_PATH}/immediate_crash_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
   # TODO
   #tests_add_executable(${ROOT_PROJECT_NAME}-os_compat_android_unittest

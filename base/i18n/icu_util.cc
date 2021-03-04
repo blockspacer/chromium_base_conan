@@ -258,7 +258,7 @@ bool InitializeICUWithFileDescriptorInternal(
     // https://ssl.icu-project.org/trac/ticket/13208 .
     string16 timezone_id = android::GetDefaultTimeZoneId();
     icu::TimeZone::adoptDefault(icu::TimeZone::createTimeZone(
-        icu::UnicodeString(FALSE, timezone_id.data(), timezone_id.length())));
+        icu::UnicodeString(false, timezone_id.data(), timezone_id.length())));
   }
 #endif
   // Never try to load ICU data from files.
@@ -307,8 +307,6 @@ bool InitializeICUFromRawMemory(const uint8_t* raw_memory) {
 }
 
 #endif  // ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_FILE
-
-//  __EMSCRIPTEN__: https://github.com/blockspacer/cobalt-clone-28052019/blob/master/src/base/i18n/icu_util.cc
 
 bool InitializeICUWithPath(base::FilePath icuDataFileName) {
 #if DCHECK_IS_ON()

@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 #include "base/files/file_util.h"
+#include "base/logging.h"
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
@@ -21,7 +22,7 @@ namespace i18n {
 class FileUtilICUTest : public PlatformTest {
 };
 
-#if defined(OS_POSIX) && !defined(OS_MACOSX)
+#if defined(OS_POSIX) && !defined(OS_APPLE)
 
 // On linux, file path is parsed and filtered as UTF-8.
 static const struct GoodBadPairLinux {
@@ -84,14 +85,14 @@ static const struct goodbad_pair {
     {L".    ", L"-   -"}
 };
 
-#if defined(OS_WIN) || defined(OS_MACOSX) || defined(OS_POSIX)
+#if defined(OS_WIN) || defined(OS_APPLE) || defined(OS_POSIX)
 
 TEST_F(FileUtilICUTest, ReplaceIllegalCharactersInPathTest) {
   for (auto i : kIllegalCharacterCases) {
 #if defined(OS_WIN)
-    string16 bad_name(WideToUTF16(i.bad_name));
+    std::wstring bad_name = i.bad_name;
     ReplaceIllegalCharactersInPath(&bad_name, '-');
-    EXPECT_EQ(WideToUTF16(i.good_name), bad_name);
+    EXPECT_EQ(i.good_name, bad_name);
 #else
     std::string bad_name(WideToUTF8(i.bad_name));
     ReplaceIllegalCharactersInPath(&bad_name, '-');
@@ -114,29 +115,6 @@ TEST_F(FileUtilICUTest, IsFilenameLegalTest) {
       EXPECT_FALSE(IsFilenameLegal(bad_name)) << bad_name;
   }
 }
-
-#if defined(OS_CHROMEOS)
-static const struct normalize_name_encoding_test_cases {
-  const char* original_path;
-  const char* normalized_path;
-} kNormalizeFileNameEncodingTestCases[] = {
-  { "foo_na\xcc\x88me.foo", "foo_n\xc3\xa4me.foo"},
-  { "foo_dir_na\xcc\x88me/foo_na\xcc\x88me.foo",
-    "foo_dir_na\xcc\x88me/foo_n\xc3\xa4me.foo"},
-  { "", ""},
-  { "foo_dir_na\xcc\x88me/", "foo_dir_n\xc3\xa4me"}
-};
-
-TEST_F(FileUtilICUTest, NormalizeFileNameEncoding) {
-  for (size_t i = 0; i < size(kNormalizeFileNameEncodingTestCases); i++) {
-    FilePath path(kNormalizeFileNameEncodingTestCases[i].original_path);
-    NormalizeFileNameEncoding(&path);
-    EXPECT_EQ(FilePath(kNormalizeFileNameEncodingTestCases[i].normalized_path),
-              path);
-  }
-}
-
-#endif
 
 }  // namespace i18n
 }  // namespace base

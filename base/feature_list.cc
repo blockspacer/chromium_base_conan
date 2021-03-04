@@ -347,7 +347,7 @@ void FeatureList::RegisterOverridesFromCommandLine(
     // this splits off the field trial name and associates it with the override.
     std::string::size_type pos = feature_name.find('<');
     if (pos != std::string::npos) {
-      feature_name.set(value.data(), pos);
+      feature_name = StringPiece(value.data(), pos);
       trial = base::FieldTrialList::Find(value.substr(pos + 1).as_string());
     }
 

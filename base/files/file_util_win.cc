@@ -91,7 +91,7 @@ void RecordPostOperationState(const FilePath& path,
   }
 
   std::string histogram_name = "Windows.PostOperationState.";
-  operation.AppendToString(&histogram_name);
+  histogram_name.append(operation.data(), operation.size());
   UmaHistogramEnumeration(histogram_name, metric, PostOperationState::kCount);
 }
 
@@ -99,7 +99,7 @@ void RecordPostOperationState(const FilePath& path,
 // "Windows.FilesystemError.|operation|".
 void RecordFilesystemError(StringPiece operation, DWORD error) {
   std::string histogram_name = "Windows.FilesystemError.";
-  operation.AppendToString(&histogram_name);
+  histogram_name.append(operation.data(), operation.size());
   UmaHistogramSparse(histogram_name, error);
 }
 

@@ -563,6 +563,12 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}basictypes.h
   ${BASE_SOURCES_PATH}logging.cc
   ${BASE_SOURCES_PATH}logging.h
+  ${BASE_SOURCES_PATH}notreached.cc
+  ${BASE_SOURCES_PATH}notreached.h
+  ${BASE_SOURCES_PATH}check_op.cc
+  ${BASE_SOURCES_PATH}check_op.h
+  ${BASE_SOURCES_PATH}check.cc
+  ${BASE_SOURCES_PATH}check.h
   #${BASE_SOURCES_PATH}mac/authorization_util.h
   #${BASE_SOURCES_PATH}mac/authorization_util.mm
   #${BASE_SOURCES_PATH}mac/availability.h
@@ -853,6 +859,8 @@ list(APPEND BASE_SOURCES
   ${BASE_SOURCES_PATH}sequenced_task_runner_helpers.h
   ${BASE_SOURCES_PATH}single_thread_task_runner.h
   ${BASE_SOURCES_PATH}single_thread_task_runner.cc
+  ${BASE_SOURCES_PATH}bind_post_task.h
+  ${BASE_SOURCES_PATH}bind_post_task_internal.h
   ${BASE_SOURCES_PATH}stl_util.h
   ${BASE_SOURCES_PATH}strings/char_traits.h
   ${BASE_SOURCES_PATH}strings/latin1_string_conversions.cc
@@ -1437,6 +1445,7 @@ if(TARGET_WINDOWS)
   endif(BASE_USE_PARTITION_ALLOCATOR)
 
   list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}strings/string_split_win.cc
     ## TODO ##
     ${BASE_SOURCES_PATH}trace_event/trace_event_etw_export_win.cc
     ## TODO ##
@@ -1629,6 +1638,7 @@ if(TARGET_WINDOWS)
     ${BASE_SOURCES_PATH}sampling_heap_profiler/module_cache_win.cc
     ${BASE_SOURCES_PATH}scoped_clear_last_error_win.cc
     ${BASE_SOURCES_PATH}strings/string_util_win.h
+    ${BASE_SOURCES_PATH}strings/string_util_win.cc
     ${BASE_SOURCES_PATH}strings/sys_string_conversions_win.cc
     ${BASE_SOURCES_PATH}sync_socket_win.cc
     ${BASE_SOURCES_PATH}synchronization/condition_variable_win.cc

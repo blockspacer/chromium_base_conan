@@ -122,6 +122,17 @@ set(IS_UNSAFE_DEVELOPER_BUILD "(0)")
 if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
   set(IS_UNSAFE_DEVELOPER_BUILD "(1)")
 endif()
+set(ENABLE_LOG_ERROR_NOT_REACHED "(1)")
+configure_file_if_changed(
+  INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/logging_buildflags.h.inc
+  OUTPUT ${BASE_SOURCES_PATH}/logging_buildflags.h
+  TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/logging_buildflags.tmp)
+
+configure_file_if_changed(
+  INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/clang_profiling_buildflags.h.inc
+  OUTPUT ${BASE_SOURCES_PATH}/clang_profiling_buildflags.h
+  TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/clang_profiling_buildflags.tmp)
+
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/debugging_buildflags.h.inc
   OUTPUT ${BASE_SOURCES_PATH}debug/debugging_buildflags.h

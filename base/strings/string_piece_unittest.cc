@@ -190,7 +190,7 @@ TYPED_TEST(CommonStringPieceTest, CheckSTL) {
   ASSERT_TRUE(e.empty());
   ASSERT_EQ(e.begin(), e.end());
 
-  d.clear();
+  d = BasicStringPiece<TypeParam>();
   ASSERT_EQ(d.size(), 0U);
   ASSERT_TRUE(d.empty());
   ASSERT_EQ(d.data(), nullptr);
@@ -213,7 +213,7 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   BasicStringPiece<TypeParam> c(xyz);
   BasicStringPiece<TypeParam> d(foobar);
 
-  d.clear();
+  d = Piece();
   Piece e;
   TypeParam temp(TestFixture::as_string("123"));
   temp.push_back('\0');
@@ -269,12 +269,13 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   ASSERT_EQ(e.find(d, 4), std::string().find(std::string(), 4));
   ASSERT_EQ(e.find(e, 4), std::string().find(std::string(), 4));
 
+  constexpr typename TypeParam::value_type kNul = '\0';
   ASSERT_EQ(a.find('a'), 0U);
   ASSERT_EQ(a.find('c'), 2U);
   ASSERT_EQ(a.find('z'), 25U);
   ASSERT_EQ(a.find('$'), Piece::npos);
-  ASSERT_EQ(a.find('\0'), Piece::npos);
-  ASSERT_EQ(f.find('\0'), 3U);
+  ASSERT_EQ(a.find(kNul), Piece::npos);
+  ASSERT_EQ(f.find(kNul), 3U);
   ASSERT_EQ(f.find('3'), 2U);
   ASSERT_EQ(f.find('5'), 5U);
   ASSERT_EQ(g.find('o'), 4U);
@@ -282,14 +283,43 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   ASSERT_EQ(g.find('o', 5), 8U);
   ASSERT_EQ(a.find('b', 5), Piece::npos);
   // empty string nonsense
-  ASSERT_EQ(d.find('\0'), Piece::npos);
-  ASSERT_EQ(e.find('\0'), Piece::npos);
-  ASSERT_EQ(d.find('\0', 4), Piece::npos);
-  ASSERT_EQ(e.find('\0', 7), Piece::npos);
+  ASSERT_EQ(d.find(kNul), Piece::npos);
+  ASSERT_EQ(e.find(kNul), Piece::npos);
+  ASSERT_EQ(d.find(kNul, 4), Piece::npos);
+  ASSERT_EQ(e.find(kNul, 7), Piece::npos);
   ASSERT_EQ(d.find('x'), Piece::npos);
   ASSERT_EQ(e.find('x'), Piece::npos);
   ASSERT_EQ(d.find('x', 4), Piece::npos);
   ASSERT_EQ(e.find('x', 7), Piece::npos);
+
+  ASSERT_EQ(a.find(b.data(), 1, 0), 1U);
+  ASSERT_EQ(a.find(c.data(), 9, 0), 9U);
+  ASSERT_EQ(a.find(c.data(), Piece::npos, 0), Piece::npos);
+  ASSERT_EQ(b.find(c.data(), Piece::npos, 0), Piece::npos);
+  ASSERT_EQ(a.find(d.data(), 12, 0), 12U);
+  ASSERT_EQ(a.find(e.data(), 17, 0), 17U);
+  // empty string nonsense
+  ASSERT_EQ(d.find(b.data(), 4, 0), Piece::npos);
+  ASSERT_EQ(e.find(b.data(), 7, 0), Piece::npos);
+
+  ASSERT_EQ(a.find(b.data(), 1), Piece::npos);
+  ASSERT_EQ(a.find(c.data(), 9), 23U);
+  ASSERT_EQ(a.find(c.data(), Piece::npos), Piece::npos);
+  ASSERT_EQ(b.find(c.data(), Piece::npos), Piece::npos);
+  ASSERT_EQ(a.find(d.data(), 12), 12U);
+  ASSERT_EQ(a.find(e.data(), 17), 17U);
+  // empty string nonsense
+  ASSERT_EQ(d.find(b.data(), 4), Piece::npos);
+  ASSERT_EQ(e.find(b.data(), 7), Piece::npos);
+
+  ASSERT_EQ(d.find(d.data(), 4, 0),
+            std::string().find(std::string().data(), 4, 0));
+  ASSERT_EQ(d.find(e.data(), 4, 1),
+            std::string().find(std::string().data(), 4, 1));
+  ASSERT_EQ(e.find(d.data(), 4, 2),
+            std::string().find(std::string().data(), 4, 2));
+  ASSERT_EQ(e.find(e.data(), 4, 3),
+            std::string().find(std::string().data(), 4, 3));
 
   ASSERT_EQ(a.rfind(b), 0U);
   ASSERT_EQ(a.rfind(b, 1), 0U);
@@ -299,8 +329,8 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   ASSERT_EQ(a.rfind(c, 0U), Piece::npos);
   ASSERT_EQ(b.rfind(c), Piece::npos);
   ASSERT_EQ(b.rfind(c, 0U), Piece::npos);
-  ASSERT_EQ(a.rfind(d), static_cast<size_t>(a.as_string().rfind(TypeParam())));
-  ASSERT_EQ(a.rfind(e), a.as_string().rfind(TypeParam()));
+  ASSERT_EQ(a.rfind(d), static_cast<size_t>(a.rfind(TypeParam())));
+  ASSERT_EQ(a.rfind(e), a.rfind(TypeParam()));
   ASSERT_EQ(a.rfind(d), static_cast<size_t>(TypeParam(a).rfind(TypeParam())));
   ASSERT_EQ(a.rfind(e), TypeParam(a).rfind(TypeParam()));
   ASSERT_EQ(a.rfind(d, 12), 12U);
@@ -325,8 +355,8 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   ASSERT_EQ(g.rfind('o', 8), 8U);
   ASSERT_EQ(g.rfind('o', 7), 4U);
   ASSERT_EQ(g.rfind('o', 3), Piece::npos);
-  ASSERT_EQ(f.rfind('\0'), 3U);
-  ASSERT_EQ(f.rfind('\0', 12), 3U);
+  ASSERT_EQ(f.rfind(kNul), 3U);
+  ASSERT_EQ(f.rfind(kNul, 12), 3U);
   ASSERT_EQ(f.rfind('3'), 2U);
   ASSERT_EQ(f.rfind('5'), 5U);
   // empty string nonsense
@@ -334,6 +364,22 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   ASSERT_EQ(e.rfind('o'), Piece::npos);
   ASSERT_EQ(d.rfind('o', 4), Piece::npos);
   ASSERT_EQ(e.rfind('o', 7), Piece::npos);
+
+  ASSERT_EQ(a.rfind(b.data(), 1, 0), 1U);
+  ASSERT_EQ(a.rfind(c.data(), 22U, 0), 22U);
+  ASSERT_EQ(a.rfind(c.data(), 1U, 0), 1U);
+  ASSERT_EQ(a.rfind(c.data(), 0U, 0), 0U);
+  ASSERT_EQ(b.rfind(c.data(), 0U, 0), 0U);
+  ASSERT_EQ(a.rfind(d.data(), 12, 0), 12U);
+  ASSERT_EQ(a.rfind(e.data(), 17, 0), 17U);
+  ASSERT_EQ(d.rfind(b.data(), 4, 0), 0U);
+  ASSERT_EQ(e.rfind(b.data(), 7, 0), 0U);
+
+  // empty string nonsense
+  ASSERT_EQ(d.rfind(d.data(), 4), std::string().rfind(std::string()));
+  ASSERT_EQ(e.rfind(d.data(), 7), std::string().rfind(std::string()));
+  ASSERT_EQ(d.rfind(e.data(), 4), std::string().rfind(std::string()));
+  ASSERT_EQ(e.rfind(e.data(), 7), std::string().rfind(std::string()));
 
   TypeParam one_two_three_four(TestFixture::as_string("one,two:three;four"));
   TypeParam comma_colon(TestFixture::as_string(",:"));
@@ -382,16 +428,16 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   Piece h(equals);
   ASSERT_EQ(h.find_first_not_of('='), Piece::npos);
   ASSERT_EQ(h.find_first_not_of('=', 3), Piece::npos);
-  ASSERT_EQ(h.find_first_not_of('\0'), 0U);
+  ASSERT_EQ(h.find_first_not_of(kNul), 0U);
   ASSERT_EQ(g.find_first_not_of('x'), 2U);
-  ASSERT_EQ(f.find_first_not_of('\0'), 0U);
-  ASSERT_EQ(f.find_first_not_of('\0', 3), 4U);
-  ASSERT_EQ(f.find_first_not_of('\0', 2), 2U);
+  ASSERT_EQ(f.find_first_not_of(kNul), 0U);
+  ASSERT_EQ(f.find_first_not_of(kNul, 3), 4U);
+  ASSERT_EQ(f.find_first_not_of(kNul, 2), 2U);
   // empty string nonsense
   ASSERT_EQ(d.find_first_not_of('x'), Piece::npos);
   ASSERT_EQ(e.find_first_not_of('x'), Piece::npos);
-  ASSERT_EQ(d.find_first_not_of('\0'), Piece::npos);
-  ASSERT_EQ(e.find_first_not_of('\0'), Piece::npos);
+  ASSERT_EQ(d.find_first_not_of(kNul), Piece::npos);
+  ASSERT_EQ(e.find_first_not_of(kNul), Piece::npos);
 
   //  Piece g("xx not found bb");
   TypeParam fifty_six(TestFixture::as_string("56"));
@@ -465,20 +511,17 @@ TYPED_TEST(CommonStringPieceTest, CheckFind) {
   // empty string nonsense
   ASSERT_EQ(d.find_last_not_of('x'), Piece::npos);
   ASSERT_EQ(e.find_last_not_of('x'), Piece::npos);
-  ASSERT_EQ(d.find_last_not_of('\0'), Piece::npos);
-  ASSERT_EQ(e.find_last_not_of('\0'), Piece::npos);
+  ASSERT_EQ(d.find_last_not_of(kNul), Piece::npos);
+  ASSERT_EQ(e.find_last_not_of(kNul), Piece::npos);
 
   ASSERT_EQ(a.substr(0, 3), b);
   ASSERT_EQ(a.substr(23), c);
   ASSERT_EQ(a.substr(23, 3), c);
   ASSERT_EQ(a.substr(23, 99), c);
+  ASSERT_EQ(a.substr(), a);
   ASSERT_EQ(a.substr(0), a);
   ASSERT_EQ(a.substr(3, 2), TestFixture::as_string("de"));
-  // empty string nonsense
-  ASSERT_EQ(a.substr(99, 2), e);
-  ASSERT_EQ(d.substr(99), e);
   ASSERT_EQ(d.substr(0, 99), e);
-  ASSERT_EQ(d.substr(99, 99), e);
 }
 
 TYPED_TEST(CommonStringPieceTest, CheckCustom) {
@@ -511,21 +554,15 @@ TYPED_TEST(CommonStringPieceTest, CheckCustom) {
   c.remove_suffix(c.size());
   ASSERT_EQ(c, e);
 
-  // set
-  c.set(foobar.c_str());
+  // assignment
+  c = foobar.c_str();
   ASSERT_EQ(c, a);
-  c.set(foobar.c_str(), 6);
+  c = {foobar.c_str(), 6};
   ASSERT_EQ(c, a);
-  c.set(foobar.c_str(), 0);
+  c = {foobar.c_str(), 0};
   ASSERT_EQ(c, e);
-  c.set(foobar.c_str(), 7);  // Note, has an embedded NULL
+  c = {foobar.c_str(), 7};  // Note, has an embedded NULL
   ASSERT_NE(c, a);
-
-  // as_string
-  TypeParam s3(a.as_string().c_str(), 7);  // Note, has an embedded NULL
-  ASSERT_EQ(c, s3);
-  TypeParam s4(e.as_string());
-  ASSERT_TRUE(s4.empty());
 
   // operator STRING_TYPE()
   TypeParam s5(TypeParam(a).c_str(), 7);  // Note, has an embedded NULL
@@ -543,73 +580,21 @@ TEST(StringPieceTest, CheckCustom) {
   StringPiece e;
   std::string s2;
 
-  // CopyToString
-  a.CopyToString(&s2);
-  ASSERT_EQ(s2.size(), 6U);
-  ASSERT_EQ(s2, "foobar");
-  b.CopyToString(&s2);
-  ASSERT_EQ(s2.size(), 7U);
-  ASSERT_EQ(s1, s2);
-  e.CopyToString(&s2);
-  ASSERT_TRUE(s2.empty());
-
-  // AppendToString
-  s2.erase();
-  a.AppendToString(&s2);
-  ASSERT_EQ(s2.size(), 6U);
-  ASSERT_EQ(s2, "foobar");
-  a.AppendToString(&s2);
-  ASSERT_EQ(s2.size(), 12U);
-  ASSERT_EQ(s2, "foobarfoobar");
-
-  // starts_with
-  ASSERT_TRUE(a.starts_with(a));
-  ASSERT_TRUE(a.starts_with("foo"));
-  ASSERT_TRUE(a.starts_with(e));
-  ASSERT_TRUE(b.starts_with(s1));
-  ASSERT_TRUE(b.starts_with(b));
-  ASSERT_TRUE(b.starts_with(e));
-  ASSERT_TRUE(e.starts_with(""));
-  ASSERT_TRUE(!a.starts_with(b));
-  ASSERT_TRUE(!b.starts_with(a));
-  ASSERT_TRUE(!e.starts_with(a));
-
-  // ends with
-  ASSERT_TRUE(a.ends_with(a));
-  ASSERT_TRUE(a.ends_with("bar"));
-  ASSERT_TRUE(a.ends_with(e));
-  ASSERT_TRUE(b.ends_with(s1));
-  ASSERT_TRUE(b.ends_with(b));
-  ASSERT_TRUE(b.ends_with(e));
-  ASSERT_TRUE(e.ends_with(""));
-  ASSERT_TRUE(!a.ends_with(b));
-  ASSERT_TRUE(!b.ends_with(a));
-  ASSERT_TRUE(!e.ends_with(a));
-
   StringPiece c;
-  c.set("foobar", 6);
+  c = {"foobar", 6};
   ASSERT_EQ(c, a);
-  c.set("foobar", 0);
+  c = {"foobar", 0};
   ASSERT_EQ(c, e);
-  c.set("foobar", 7);
+  c = {"foobar", 7};
   ASSERT_NE(c, a);
 }
 
 TYPED_TEST(CommonStringPieceTest, CheckNULL) {
-  // we used to crash here, but now we don't.
-  BasicStringPiece<TypeParam> s(nullptr);
-  ASSERT_EQ(s.data(), nullptr);
-  ASSERT_EQ(s.size(), 0U);
-
-  s.set(nullptr);
+  BasicStringPiece<TypeParam> s;
   ASSERT_EQ(s.data(), nullptr);
   ASSERT_EQ(s.size(), 0U);
 
   TypeParam str(s);
-  ASSERT_EQ(str.length(), 0U);
-  ASSERT_EQ(str, TypeParam());
-
-  str = s.as_string();
   ASSERT_EQ(str.length(), 0U);
   ASSERT_EQ(str, TypeParam());
 }
@@ -629,21 +614,6 @@ TYPED_TEST(CommonStringPieceTest, CheckComparisons2) {
 
   ASSERT_TRUE(abc > BasicStringPiece<TypeParam>(alphabet_y));
   ASSERT_GT(abc.compare(BasicStringPiece<TypeParam>(alphabet_y)), 0);
-}
-
-// Test operations only supported by std::string version.
-TEST(StringPieceTest, CheckComparisons2) {
-  StringPiece abc("abcdefghijklmnopqrstuvwxyz");
-
-  // starts_with
-  ASSERT_TRUE(abc.starts_with(abc));
-  ASSERT_TRUE(abc.starts_with("abcdefghijklm"));
-  ASSERT_TRUE(!abc.starts_with("abcdefguvwxyz"));
-
-  // ends_with
-  ASSERT_TRUE(abc.ends_with(abc));
-  ASSERT_TRUE(!abc.ends_with("abcdefguvwxyz"));
-  ASSERT_TRUE(abc.ends_with("nopqrstuvwxyz"));
 }
 
 TYPED_TEST(CommonStringPieceTest, StringCompareNotAmbiguous) {
@@ -680,10 +650,7 @@ TEST(StringPiece16Test, CheckSTL) {
 TEST(StringPiece16Test, CheckConversion) {
   // Make sure that we can convert from UTF8 to UTF16 and back. We use a two
   // byte character (G clef) to test this.
-  ASSERT_EQ(
-      UTF16ToUTF8(
-          StringPiece16(UTF8ToUTF16("\xf0\x9d\x84\x9e")).as_string()),
-      "\xf0\x9d\x84\x9e");
+  ASSERT_EQ(UTF16ToUTF8(UTF8ToUTF16("\xf0\x9d\x84\x9e")), "\xf0\x9d\x84\x9e");
 }
 
 TYPED_TEST(CommonStringPieceTest, CheckConstructors) {
@@ -699,17 +666,14 @@ TYPED_TEST(CommonStringPieceTest, CheckConstructors) {
       BasicStringPiece<TypeParam>(
           str.c_str(),
           static_cast<typename BasicStringPiece<TypeParam>::size_type>(0)));
-  ASSERT_EQ(empty, BasicStringPiece<TypeParam>(nullptr));
+  ASSERT_EQ(empty, BasicStringPiece<TypeParam>());
   ASSERT_TRUE(
       empty ==
       BasicStringPiece<TypeParam>(
           nullptr,
           static_cast<typename BasicStringPiece<TypeParam>::size_type>(0)));
   ASSERT_EQ(empty, BasicStringPiece<TypeParam>());
-  ASSERT_EQ(str, BasicStringPiece<TypeParam>(str.begin(), str.end()));
-  ASSERT_EQ(empty, BasicStringPiece<TypeParam>(str.begin(), str.begin()));
   ASSERT_EQ(empty, BasicStringPiece<TypeParam>(empty));
-  ASSERT_EQ(empty, BasicStringPiece<TypeParam>(empty.begin(), empty.end()));
 }
 
 TEST(StringPieceTest, ConstexprCtor) {
@@ -754,6 +718,16 @@ TEST(StringPieceTest, OutOfBoundsDeath) {
     StringPiece piece;
     ASSERT_DEATH_IF_SUPPORTED(piece.remove_prefix(1), "");
   }
+
+  {
+    StringPiece piece;
+    ASSERT_DEATH_IF_SUPPORTED(piece.copy(nullptr, 0, 1), "");
+  }
+
+  {
+    StringPiece piece;
+    ASSERT_DEATH_IF_SUPPORTED(piece.substr(1), "");
+  }
 }
 
 TEST(StringPieceTest, ConstexprData) {
@@ -793,6 +767,14 @@ TEST(StringPieceTest, ConstexprSize) {
   }
 }
 
+TEST(StringPieceTest, ConstexprFront) {
+  static_assert(StringPiece("abc").front() == 'a', "");
+}
+
+TEST(StringPieceTest, ConstexprBack) {
+  static_assert(StringPiece("abc").back() == 'c', "");
+}
+
 TEST(StringPieceTest, Compare) {
   constexpr StringPiece piece = "def";
 
@@ -805,34 +787,73 @@ TEST(StringPieceTest, Compare) {
   static_assert(piece.compare("gh") == -1, "");
   static_assert(piece.compare("ghi") == -1, "");
   static_assert(piece.compare("ghij") == -1, "");
+
+  static_assert(piece.compare(0, 0, "") == 0, "");
+  static_assert(piece.compare(0, 1, "d") == 0, "");
+  static_assert(piece.compare(0, 2, "de") == 0, "");
+  static_assert(piece.compare(0, 3, "def") == 0, "");
+  static_assert(piece.compare(1, 0, "") == 0, "");
+  static_assert(piece.compare(1, 1, "e") == 0, "");
+  static_assert(piece.compare(1, 2, "ef") == 0, "");
+  static_assert(piece.compare(1, 3, "ef") == 0, "");
+  static_assert(piece.compare(2, 0, "") == 0, "");
+  static_assert(piece.compare(2, 1, "f") == 0, "");
+  static_assert(piece.compare(2, 2, "f") == 0, "");
+  static_assert(piece.compare(2, 3, "f") == 0, "");
+  static_assert(piece.compare(3, 0, "") == 0, "");
+  static_assert(piece.compare(3, 1, "") == 0, "");
+  static_assert(piece.compare(3, 2, "") == 0, "");
+  static_assert(piece.compare(3, 3, "") == 0, "");
+
+  static_assert(piece.compare(0, 0, "def", 0) == 0, "");
+  static_assert(piece.compare(0, 1, "def", 1) == 0, "");
+  static_assert(piece.compare(0, 2, "def", 2) == 0, "");
+  static_assert(piece.compare(0, 3, "def", 3) == 0, "");
+  static_assert(piece.compare(1, 0, "ef", 0) == 0, "");
+  static_assert(piece.compare(1, 1, "ef", 1) == 0, "");
+  static_assert(piece.compare(1, 2, "ef", 2) == 0, "");
+  static_assert(piece.compare(1, 3, "ef", 2) == 0, "");
+  static_assert(piece.compare(2, 0, "f", 0) == 0, "");
+  static_assert(piece.compare(2, 1, "f", 1) == 0, "");
+  static_assert(piece.compare(2, 2, "f", 1) == 0, "");
+  static_assert(piece.compare(2, 3, "f", 1) == 0, "");
+  static_assert(piece.compare(3, 0, "", 0) == 0, "");
+  static_assert(piece.compare(3, 1, "", 0) == 0, "");
+  static_assert(piece.compare(3, 2, "", 0) == 0, "");
+  static_assert(piece.compare(3, 3, "", 0) == 0, "");
+
+  static_assert(piece.compare(0, 0, "def", 0, 0) == 0, "");
+  static_assert(piece.compare(0, 1, "def", 0, 1) == 0, "");
+  static_assert(piece.compare(0, 2, "def", 0, 2) == 0, "");
+  static_assert(piece.compare(0, 3, "def", 0, 3) == 0, "");
+  static_assert(piece.compare(1, 0, "def", 1, 0) == 0, "");
+  static_assert(piece.compare(1, 1, "def", 1, 1) == 0, "");
+  static_assert(piece.compare(1, 2, "def", 1, 2) == 0, "");
+  static_assert(piece.compare(1, 3, "def", 1, 3) == 0, "");
+  static_assert(piece.compare(2, 0, "def", 2, 0) == 0, "");
+  static_assert(piece.compare(2, 1, "def", 2, 1) == 0, "");
+  static_assert(piece.compare(2, 2, "def", 2, 2) == 0, "");
+  static_assert(piece.compare(2, 3, "def", 2, 3) == 0, "");
+  static_assert(piece.compare(3, 0, "def", 3, 0) == 0, "");
+  static_assert(piece.compare(3, 1, "def", 3, 1) == 0, "");
+  static_assert(piece.compare(3, 2, "def", 3, 2) == 0, "");
+  static_assert(piece.compare(3, 3, "def", 3, 3) == 0, "");
 }
 
-TEST(StringPieceTest, StartsWith) {
-  constexpr StringPiece piece("abc");
+TEST(StringPieceTest, Substr) {
+  constexpr StringPiece piece = "abcdefghijklmnopqrstuvwxyz";
 
-  static_assert(piece.starts_with(""), "");
-  static_assert(piece.starts_with("a"), "");
-  static_assert(piece.starts_with("ab"), "");
-  static_assert(piece.starts_with("abc"), "");
-
-  static_assert(!piece.starts_with("b"), "");
-  static_assert(!piece.starts_with("bc"), "");
-
-  static_assert(!piece.starts_with("abcd"), "");
-}
-
-TEST(StringPieceTest, EndsWith) {
-  constexpr StringPiece piece("abc");
-
-  static_assert(piece.ends_with(""), "");
-  static_assert(piece.ends_with("c"), "");
-  static_assert(piece.ends_with("bc"), "");
-  static_assert(piece.ends_with("abc"), "");
-
-  static_assert(!piece.ends_with("a"), "");
-  static_assert(!piece.ends_with("ab"), "");
-
-  static_assert(!piece.ends_with("abcd"), "");
+  static_assert(piece.substr(0, 2) == "ab", "");
+  static_assert(piece.substr(0, 3) == "abc", "");
+  static_assert(piece.substr(0, 4) == "abcd", "");
+  static_assert(piece.substr(3, 2) == "de", "");
+  static_assert(piece.substr(3, 3) == "def", "");
+  static_assert(piece.substr(23) == "xyz", "");
+  static_assert(piece.substr(23, 3) == "xyz", "");
+  static_assert(piece.substr(23, 99) == "xyz", "");
+  static_assert(piece.substr() == piece, "");
+  static_assert(piece.substr(0) == piece, "");
+  static_assert(piece.substr(0, 99) == piece, "");
 }
 
 }  // namespace base
