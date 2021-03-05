@@ -32,7 +32,7 @@ The conversion priority for `Numeric` type coercions is:
 ## Common patterns and use-cases
 
 The following covers the preferred style for the most common uses of this
-library. Please don't cargo-cult from anywhere else. ðŸ˜‰
+library. Please don't cargo-cult from anywhere else. ?
 
 ### Performing checked arithmetic type conversions
 
@@ -44,12 +44,6 @@ used for cases where a conversion failure should result in program termination:
 size_t buff_size = checked_cast<size_t>(signed_value);
 ```
 
-## TODO
-
-implement user-defined bounds (i.e. int that can be only in some range 1-99 or hold only some values 1,4,11)
-
-provide more examples for floating point types
-
 ### Performing saturated (clamped) arithmetic type conversions
 
 The `saturated_cast` template converts between arbitrary arithmetic types, and
@@ -57,8 +51,24 @@ is used in cases where an out-of-bounds source value should be saturated to the
 corresponding maximum or minimum of the destination type:
 
 ```cpp
+// Cast to a smaller type, saturating as needed.
+int8_t eight_bit_value = saturated_cast<int8_t>(int_value);
+
 // Convert from float with saturation to INT_MAX, INT_MIN, or 0 for NaN.
 int int_value = saturated_cast<int>(floating_point_value);
+```
+
+`ClampCeil`, `ClampFloor`, and `ClampRound` provide similar functionality to the
+versions in `std::`, but saturate and return an integral type.  An optional
+template parameter specifies the desired destination type (`int` if
+unspecified).  These should be used for most floating-to-integral conversions.
+
+```cpp
+// Basically saturated_cast<int>(std::round(floating_point_value)).
+int int_value = ClampRound(floating_point_value);
+
+// A destination type can be explicitly specified.
+uint8_t byte_value = ClampFloor<uint8_t>(floating_point_value);
 ```
 
 ### Enforcing arithmetic type conversions at compile-time
@@ -105,7 +115,7 @@ of corner cases and employ various optimizations.
 
 ### Calculating a buffer size (checked arithmetic)
 
-When making exact calculationsâ€”such as for buffer lengthsâ€”it's often necessary
+When making exact calculations—such as for buffer lengths—it's often necessary
 to know when those calculations trigger an overflow, undefined behavior, or
 other boundary conditions. The `CheckedNumeric` template does this by storing
 a bit determining whether or not some arithmetic operation has occured that
@@ -126,7 +136,7 @@ if (!CheckAdd(kHeaderSize, CheckMul(count, kItemSize)).AssignIfValid(&size)) {
 
 ### Calculating clamped coordinates (non-sticky saturating arithmetic)
 
-Certain classes of calculationsâ€”such as coordinate calculationsâ€”require
+Certain classes of calculations—such as coordinate calculations—require
 well-defined semantics that always produce a valid result on boundary
 conditions. The `ClampedNumeric` template addresses this by providing
 performant, non-sticky saturating arithmetic operations.
@@ -185,16 +195,25 @@ performing a range of conversions, assignments, and tests.
 
 ### Other helper and conversion functions
 
-*   `IsValueInRangeForNumericType<>()` - A convenience function that returns
-    true if the type supplied as the template parameter can represent the value
-    passed as an argument to the function.
+*   `ClampCeil<>()` - A convenience function that computes the ceil of its floating-
+    point arg, then saturates to the destination type (template parameter,
+    defaults to `int`).
+*   `ClampFloor<>()` - A convenience function that computes the floor of its
+    floating-point arg, then saturates to the destination type (template
+    parameter, defaults to `int`).
 *   `IsTypeInRangeForNumericType<>()` - A convenience function that evaluates
     entirely at compile-time and returns true if the destination type (first
     template parameter) can represent the full range of the source type
     (second template parameter).
+*   `IsValueInRangeForNumericType<>()` - A convenience function that returns
+    true if the type supplied as the template parameter can represent the value
+    passed as an argument to the function.
 *   `IsValueNegative()` - A convenience function that will accept any
     arithmetic type as an argument and will return whether the value is less
     than zero. Unsigned types always return false.
+*   `ClampRound<>()` - A convenience function that rounds its floating-point arg,
+    then saturates to the destination type (template parameter, defaults to
+    `int`).
 *   `SafeUnsignedAbs()` - Returns the absolute value of the supplied integer
     parameter as an unsigned result (thus avoiding an overflow if the value
     is the signed, two's complement minimum).
@@ -232,6 +251,23 @@ promotions
 ](http://en.cppreference.com/w/cpp/language/implicit_conversion#Numeric_promotions)
 with the two differences being that *there is no default promotion to int*
 and *bitwise logical operations always return an unsigned of the wider type.*
+
+### Example
+
+```
+#include "base/numerics/checked_math.h"
+...
+CheckedNumeric<uint32_t> variable = 0;
+variable++;
+variable--;
+if (variable.ValueOrDie() == 0)
+  // Fine, |variable| still within valid range.
+
+variable--;
+variable++;
+if (variable.ValueOrDie() == 0)  // Breakpoint or configured CheckHandler
+  // Does not happen as variable underflowed.
+```
 
 ### Members
 
@@ -352,7 +388,7 @@ direction of the sign. The potentially unusual cases are:
 
 *   **Division:** Division by zero returns the saturated limit in the direction
     of sign of the dividend (first argument). The one exception is 0/0, which
-	returns zero (although logically is NaN).
+  returns zero (although logically is NaN).
 *   **Modulus:** Division by zero returns the dividend (first argument).
 *   **Left shift:** Non-zero values saturate in the direction of the signed
     limit (max/min), even for shifts larger than the bit width. 0 shifted any

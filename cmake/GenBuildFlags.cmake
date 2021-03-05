@@ -122,7 +122,18 @@ set(IS_UNSAFE_DEVELOPER_BUILD "(0)")
 if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
   set(IS_UNSAFE_DEVELOPER_BUILD "(1)")
 endif()
+# `NOTREACHED()` will log without crash
 set(ENABLE_LOG_ERROR_NOT_REACHED "(1)")
+set(EXPENSIVE_DCHECKS_ARE_ON "(0)")
+if(cmake_build_type_tolower MATCHES "debug")
+  set(ENABLE_LOG_ERROR_NOT_REACHED "(0)")
+  set(EXPENSIVE_DCHECKS_ARE_ON "(1)")
+endif()
+configure_file_if_changed(
+  INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/chromeos_buildflags.h.inc
+  OUTPUT ${BASE_SOURCES_PATH}/build/chromeos_buildflags.h
+  TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/chromeos_buildflags.tmp)
+
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/logging_buildflags.h.inc
   OUTPUT ${BASE_SOURCES_PATH}/logging_buildflags.h

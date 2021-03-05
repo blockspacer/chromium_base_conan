@@ -94,6 +94,8 @@ constexpr Instruction kOptionalFooter[] = {};
 
 #endif
 
+/// \note NativeLibrary loading
+#if 0
 // This function loads a shared library that defines two functions,
 // TestFunction1 and TestFunction2. It then returns the bytes of the body of
 // whichever of those functions happens to come first in the library.
@@ -142,6 +144,7 @@ void GetTestFunctionInstructions(std::vector<Instruction>* body) {
   for (const Instruction& instruction : make_span(start, end))
     body->push_back(instruction);
 }
+#endif
 
 base::Optional<std::vector<Instruction>> ExpectImmediateCrashInvocation(
     std::vector<Instruction> instructions) {
@@ -202,6 +205,8 @@ std::vector<Instruction> MaybeSkipCoverageHook(
 
 }  // namespace
 
+/// \note NativeLibrary loading
+#if 0
 // Attempts to verify the actual instructions emitted by IMMEDIATE_CRASH().
 // While the test results are highly implementation-specific, this allows macro
 // changes (e.g. CLs like https://crrev.com/671123) to be verified using the
@@ -233,5 +238,6 @@ TEST(ImmediateCrashTest, ExpectedOpcodeSequence) {
   result = ExpectImmediateCrashInvocation(result.value());
   ASSERT_TRUE(result);
 }
+#endif
 
 }  // namespace base

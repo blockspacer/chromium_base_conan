@@ -33,6 +33,30 @@
 
 namespace base {
 
+DoubleDouble computeFast2Sum(double a, double b, bool auto_swap) {
+  if(auto_swap && std::fabs(b) > std::fabs(a)) {
+    double tmp = a;
+    b = a;
+    a = tmp;
+  } else if (std::isfinite(a) && std::isfinite(b)) {
+    DCHECK_LE(std::fabs(b), std::fabs(a));
+  }
+  double s = a + b;
+  double z = s - a;
+  double t = b - z;
+  return {s, t};
+}
+
+DoubleDouble compute2Sum(double a, double b) {
+  double s = a + b;
+  double aPrime = s - b;
+  double bPrime = s - aPrime;
+  double deltaA = a - aPrime;
+  double deltaB = b - bPrime;
+  double t = deltaA + deltaB;
+  return {s, t};
+}
+
 void DoubleDoubleSummation::addLong(long long x) {
   // Split 64-bit integers into two doubles, so the sum remains exact.
   int64_t high = x / (1ll << 32) * (1ll << 32);

@@ -94,6 +94,9 @@ if(USE_TEST_SUPPORT)
   )
 
   list(APPEND BASE_SOURCES
+    ${BASE_SOURCES_PATH}test/bind.cc
+    ${BASE_SOURCES_PATH}test/bind.h
+    #
     ${BASE_SOURCES_PATH}test/test_switches.cc
     ${BASE_SOURCES_PATH}test/test_switches.h
     ${BASE_SOURCES_PATH}test/test_timeouts.cc

@@ -5,9 +5,7 @@
 #ifndef BASE_GTEST_PROD_UTIL_H_
 #define BASE_GTEST_PROD_UTIL_H_
 
-//#include "base/test/testing/gtest/include/gtest/gtest_prod.h"  // nogncheck
-
-// see https://github.com/webrtc-uwp/webrtc/blob/master/rtc_base/gtest_prod_util.h#L14
+#include GTEST_HEADER_INCLUDE
 
 // Define our own version of FRIEND_TEST here rather than including
 // gtest_prod.h to avoid depending on any part of GTest in production code.

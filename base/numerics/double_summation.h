@@ -29,11 +29,12 @@
 
 #pragma once
 
+#include "base/logging.h"
+
 #include <cmath>
 #include <tuple>
 #include <utility>
-
-#include "base/logging.h"
+#include <cfloat>
 
 // Many scientific applications require accuracy greater than
 // that provided by ‘double precision’.
@@ -59,19 +60,7 @@ using DoubleDouble = std::pair<double, double>;
  * T. J. Dekker. A floating-point technique for extending the available precision.
  * Numerische Mathematik, 18(3):224â€“242, 1971.
  */
-inline DoubleDouble computeFast2Sum(double a, double b, bool auto_swap = false) {
-  if(auto_swap && std::fabs(b) > std::fabs(a)) {
-    double tmp = a;
-    b = a;
-    a = tmp;
-  } else {
-    DCHECK_LE(b, a);
-  }
-  double s = a + b;
-  double z = s - a;
-  double t = b - z;
-  return {s, t};
-}
+DoubleDouble computeFast2Sum(double a, double b, bool auto_swap = false);
 
 /**
  * TwoSum is usually faster on modern processors than Fast2Sum.
@@ -82,15 +71,7 @@ inline DoubleDouble computeFast2Sum(double a, double b, bool auto_swap = false) 
  * O. MÃ¸ller. Quasi double-precision in floating-point addition. BIT, 5:37â€“50, 1965.
  * D. Knuth. The Art of Computer Programming, vol 2. Addison-Wesley, Reading, MA, 3rd ed, 1998.
  */
-inline DoubleDouble compute2Sum(double a, double b) {
-  double s = a + b;
-  double aPrime = s - b;
-  double bPrime = s - aPrime;
-  double deltaA = a - aPrime;
-  double deltaB = b - bPrime;
-  double t = deltaA + deltaB;
-  return {s, t};
-}
+DoubleDouble compute2Sum(double a, double b);
 
 /**
  * Compensated Summation Based on FastTwoSum and TwoSum techniques
@@ -111,7 +92,7 @@ public:
     // Keep a simple sum to use in case of NaN
     _special += x;
     // Compensated add: _addend tinier than _sum
-    std::tie(x, _addend) = computeFast2Sum(x, _addend);
+    std::tie(x, _addend) = computeFast2Sum(x, _addend, true);
     // Compensated add: x maybe larger than _sum
     std::tie(_sum, x) = compute2Sum(_sum, x);
     // Store away lowest part of sum
