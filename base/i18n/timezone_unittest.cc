@@ -4,14 +4,10 @@
 
 #include "base/i18n/timezone.h"
 
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/icu/source/common/unicode/strenum.h"
 #include "third_party/icu/source/common/unicode/unistr.h"
 #include "third_party/icu/source/i18n/unicode/timezone.h"
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
 
 namespace base {
 namespace {

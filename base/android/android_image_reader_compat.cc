@@ -9,26 +9,19 @@
 #include "base/android/build_info.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
-
-// Helper function to log errors from dlsym. Calling DLOG(ERROR) inside a macro
-// crashes clang code coverage. https://crbug.com/843356
-static void LogDlsymError(const char* func) {
-  DLOG(ERROR) << "Unable to load function " << func;
-}
+#include "base/strings/string_util.h"
 
 #define LOAD_FUNCTION(lib, func)                            \
   do {                                                      \
     func##_ = reinterpret_cast<p##func>(dlsym(lib, #func)); \
     if (!func##_) {                                         \
-      LogDlsymError(#func);                                 \
+      DLOG(ERROR) << "Unable to load function " << #func;   \
       return false;                                         \
     }                                                       \
   } while (0)
 
 namespace base {
 namespace android {
-
-bool AndroidImageReader::disable_support_ = false;
 
 AndroidImageReader& AndroidImageReader::GetInstance() {
   // C++11 static local variable initialization is
@@ -37,17 +30,11 @@ AndroidImageReader& AndroidImageReader::GetInstance() {
   return *instance;
 }
 
-void AndroidImageReader::DisableSupport() {
-  disable_support_ = true;
-}
-
 bool AndroidImageReader::IsSupported() {
-  return !disable_support_ && is_supported_;
+  return is_supported_;
 }
 
-AndroidImageReader::AndroidImageReader() {
-  is_supported_ = LoadFunctions();
-}
+AndroidImageReader::AndroidImageReader() : is_supported_(LoadFunctions()) {}
 
 bool AndroidImageReader::LoadFunctions() {
   // If the Chromium build requires __ANDROID_API__ >= 26 at some
@@ -74,12 +61,14 @@ bool AndroidImageReader::LoadFunctions() {
   LOAD_FUNCTION(libmediandk, AImage_getHardwareBuffer);
   LOAD_FUNCTION(libmediandk, AImage_getWidth);
   LOAD_FUNCTION(libmediandk, AImage_getHeight);
+  LOAD_FUNCTION(libmediandk, AImage_getCropRect);
   LOAD_FUNCTION(libmediandk, AImageReader_newWithUsage);
   LOAD_FUNCTION(libmediandk, AImageReader_setImageListener);
   LOAD_FUNCTION(libmediandk, AImageReader_delete);
   LOAD_FUNCTION(libmediandk, AImageReader_getFormat);
   LOAD_FUNCTION(libmediandk, AImageReader_getWindow);
   LOAD_FUNCTION(libmediandk, AImageReader_acquireLatestImageAsync);
+  LOAD_FUNCTION(libmediandk, AImageReader_acquireNextImageAsync);
 
   void* libandroid = dlopen("libandroid.so", RTLD_NOW);
   if (libandroid == nullptr) {
@@ -114,6 +103,11 @@ media_status_t AndroidImageReader::AImage_getWidth(const AImage* image,
 media_status_t AndroidImageReader::AImage_getHeight(const AImage* image,
                                                     int32_t* height) {
   return AImage_getHeight_(image, height);
+}
+
+media_status_t AndroidImageReader::AImage_getCropRect(const AImage* image,
+                                                      AImageCropRect* rect) {
+  return AImage_getCropRect_(image, rect);
 }
 
 media_status_t AndroidImageReader::AImageReader_newWithUsage(
@@ -154,6 +148,13 @@ media_status_t AndroidImageReader::AImageReader_acquireLatestImageAsync(
     AImage** image,
     int* acquireFenceFd) {
   return AImageReader_acquireLatestImageAsync_(reader, image, acquireFenceFd);
+}
+
+media_status_t AndroidImageReader::AImageReader_acquireNextImageAsync(
+    AImageReader* reader,
+    AImage** image,
+    int* acquireFenceFd) {
+  return AImageReader_acquireNextImageAsync_(reader, image, acquireFenceFd);
 }
 
 jobject AndroidImageReader::ANativeWindow_toSurface(JNIEnv* env,

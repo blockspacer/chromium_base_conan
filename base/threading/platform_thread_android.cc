@@ -12,11 +12,11 @@
 #include <unistd.h>
 
 #include "base/android/jni_android.h"
+#include "base/base_jni_headers/ThreadUtils_jni.h"
 #include "base/lazy_instance.h"
 #include "base/logging.h"
 #include "base/threading/platform_thread_internal_posix.h"
 #include "base/threading/thread_id_name_manager.h"
-#include "jni/ThreadUtils_jni.h"
 
 namespace base {
 
@@ -27,23 +27,12 @@ namespace internal {
 // big.LITTLE devices.
 // - DISPLAY corresponds to Android's PRIORITY_DISPLAY = -4 value.
 // - REALTIME_AUDIO corresponds to Android's PRIORITY_AUDIO = -16 value.
-#if defined(STARBOARD)
-const ThreadPriorityToNiceValuePair kThreadPriorityToNiceValueMap[4] = {
-    {ThreadPriority::DEFAULT, 10},
-    {ThreadPriority::LOWEST, 10},
-    {ThreadPriority::BACKGROUND, 10},
-    {ThreadPriority::NORMAL, 0},
-    {ThreadPriority::DISPLAY, -4},
-    {ThreadPriority::REALTIME_AUDIO, -16},
-};
-#else
 const ThreadPriorityToNiceValuePair kThreadPriorityToNiceValueMap[4] = {
     {ThreadPriority::BACKGROUND, 10},
     {ThreadPriority::NORMAL, 0},
     {ThreadPriority::DISPLAY, -4},
     {ThreadPriority::REALTIME_AUDIO, -16},
 };
-#endif
 
 Optional<bool> CanIncreaseCurrentThreadPriorityForPlatform(
     ThreadPriority priority) {

@@ -8,7 +8,7 @@
 #include <stddef.h>
 
 #include "base/base_export.h"
-#include "base/logging.h"
+#include "base/check_op.h"
 #include "base/macros.h"
 #include "base/memory/shared_memory_mapping.h"
 #include "base/memory/unsafe_shared_memory_region.h"
@@ -27,7 +27,7 @@
 // and Android to indicate that this type of behavior can be expected on
 // those platforms. Note that madvise() will still be used on other POSIX
 // platforms but doesn't provide the zero-fill-on-demand pages guarantee.
-#if defined(OS_LINUX) || defined(OS_ANDROID)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_ANDROID)
 #define DISCARDABLE_SHARED_MEMORY_ZERO_FILL_ON_DEMAND_PAGES_AFTER_PURGE
 #endif
 
@@ -115,6 +115,13 @@ class BASE_EXPORT DiscardableSharedMemory {
   // may be earlier than the "true" usage time when memory has been used by a
   // different process. Returns NULL time if purged.
   Time last_known_usage() const { return last_known_usage_; }
+
+  // Releases any allocated pages in the specified range, if supported by the
+  // platform. Address space in the specified range continues to be reserved.
+  // The memory is not guaranteed to be released immediately.
+  // |offset| and |length| are both in bytes. |offset| and |length| must both be
+  // page aligned.
+  void ReleaseMemoryIfPossible(size_t offset, size_t length);
 
   // This returns true and sets |last_known_usage_| to 0 if
   // DiscardableSharedMemory object was successfully purged. Purging can fail

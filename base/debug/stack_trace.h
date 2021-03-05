@@ -16,6 +16,9 @@
 #include "build/build_config.h"
 
 #if defined(OS_POSIX)
+#if !defined(OS_NACL)
+#include <signal.h>
+#endif
 #include <unistd.h>
 #endif
 
@@ -36,10 +39,9 @@ namespace debug {
 // contents. In non-official builds, this function also opens the object files
 // that are loaded in memory and caches their file descriptors (this cannot be
 // done in official builds because it has security implications).
-BASE_EXPORT
-bool EnableInProcessStackDumping();
+BASE_EXPORT bool EnableInProcessStackDumping();
 
-#if defined(OS_POSIX)
+#if defined(OS_POSIX) && !defined(OS_NACL)
 // Sets a first-chance callback for the stack dump signal handler. This callback
 // is called at the beginning of the signal handler to handle special kinds of
 // signals, like out-of-bounds memory accesses in WebAssembly (WebAssembly Trap
@@ -48,7 +50,7 @@ bool EnableInProcessStackDumping();
 // has been set correctly. It returns {false} if the stack dump signal handler
 // has not been registered with the OS, e.g. because of ASAN.
 BASE_EXPORT bool SetStackDumpFirstChanceCallback(bool (*handler)(int,
-                                                                 void*,
+                                                                 siginfo_t*,
                                                                  void*));
 #endif
 
@@ -85,7 +87,9 @@ class BASE_EXPORT StackTrace {
   // Copying and assignment are allowed with the default functions.
 
   // Gets an array of instruction pointer values. |*count| will be set to the
-  // number of elements in the returned array.
+  // number of elements in the returned array. Addresses()[0] will contain an
+  // address from the leaf function, and Addresses()[count-1] will contain an
+  // address from the root function (i.e.; the thread's entry point).
   const void* const* Addresses(size_t* count) const;
 
   // Prints the stack trace to stderr.
@@ -95,10 +99,9 @@ class BASE_EXPORT StackTrace {
   // each output line.
   void PrintWithPrefix(const char* prefix_string) const;
 
+#if !defined(__UCLIBC__) & !defined(_AIX)
   // Resolves backtrace to symbols and write to stream.
   void OutputToStream(std::ostream* os) const;
-
-#if !defined(__UCLIBC__) && !defined(_AIX) && !defined(OS_EMSCRIPTEN)
   // Resolves backtrace to symbols and write to stream, with the provided
   // prefix string prepended to each line.
   void OutputToStreamWithPrefix(std::ostream* os,
@@ -141,6 +144,20 @@ BASE_EXPORT std::ostream& operator<<(std::ostream& os, const StackTrace& s);
 BASE_EXPORT size_t CollectStackTrace(void** trace, size_t count);
 
 #if BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
+
+// For stack scanning to be efficient it's very important for the thread to
+// be started by Chrome. In that case we naturally terminate unwinding once
+// we reach the origin of the stack (i.e. GetStackEnd()). If the thread is
+// not started by Chrome (e.g. Android's main thread), then we end up always
+// scanning area at the origin of the stack, wasting time and not finding any
+// frames (since Android libraries don't have frame pointers). Scanning is not
+// enabled on other posix platforms due to legacy reasons.
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
+constexpr bool kEnableScanningByDefault = true;
+#else
+constexpr bool kEnableScanningByDefault = false;
+#endif
+
 // Traces the stack by using frame pointers. This function is faster but less
 // reliable than StackTrace. It should work for debug and profiling builds,
 // but not for release builds (although there are some exceptions).
@@ -148,10 +165,25 @@ BASE_EXPORT size_t CollectStackTrace(void** trace, size_t count);
 // Writes at most |max_depth| frames (instruction pointers) into |out_trace|
 // after skipping |skip_initial| frames. Note that the function itself is not
 // added to the trace so |skip_initial| should be 0 in most cases.
-// Returns number of frames written.
-BASE_EXPORT size_t TraceStackFramePointers(const void** out_trace,
-                                           size_t max_depth,
-                                           size_t skip_initial);
+// Returns number of frames written. |enable_scanning| enables scanning on
+// platforms that do not enable scanning by default.
+BASE_EXPORT size_t
+TraceStackFramePointers(const void** out_trace,
+                        size_t max_depth,
+                        size_t skip_initial,
+                        bool enable_scanning = kEnableScanningByDefault);
+
+// Same as above function, but allows to pass in frame pointer and stack end
+// address for unwinding. This is useful when unwinding based on a copied stack
+// segment. Note that the client has to take care of rewriting all the pointers
+// in the stack pointing within the stack to point to the copied addresses.
+BASE_EXPORT size_t TraceStackFramePointersFromBuffer(
+    uintptr_t fp,
+    uintptr_t stack_end,
+    const void** out_trace,
+    size_t max_depth,
+    size_t skip_initial,
+    bool enable_scanning = kEnableScanningByDefault);
 
 // Links stack frame |fp| to |parent_fp|, so that during stack unwinding
 // TraceStackFramePointers() visits |parent_fp| after visiting |fp|.

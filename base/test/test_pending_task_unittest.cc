@@ -5,13 +5,15 @@
 #include "base/test/test_pending_task.h"
 
 #include "base/bind.h"
-#include "base/trace_event/trace_event.h"
-#include GMOCK_HEADER_INCLUDE
-#include <gtest/gtest-spi.h>
-#include GTEST_HEADER_INCLUDE
+#include "base/trace_event/base_tracing.h"
+#include "base/tracing_buildflags.h"
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest-spi.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 TEST(TestPendingTaskTest, TraceSupport) {
   base::TestPendingTask task;
 
@@ -19,10 +21,11 @@ TEST(TestPendingTaskTest, TraceSupport) {
   TRACE_EVENT1("test", "TestPendingTask::TraceSupport", "task", task.AsValue());
 
   // Just a basic check that the trace output has *something* in it.
-  std::unique_ptr<base::trace_event::ConvertableToTraceFormat> task_value(
-      task.AsValue());
-  EXPECT_THAT(task_value->ToString(), ::testing::HasSubstr("post_time"));
+  base::trace_event::TracedValueJSON task_value;
+  task.AsValueInto(&task_value);
+  EXPECT_THAT(task_value.ToJSON(), ::testing::HasSubstr("post_time"));
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 TEST(TestPendingTaskTest, ToString) {
   base::TestPendingTask task;

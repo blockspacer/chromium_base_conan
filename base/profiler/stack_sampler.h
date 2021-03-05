@@ -6,9 +6,12 @@
 #define BASE_PROFILER_STACK_SAMPLER_H_
 
 #include <memory>
+#include <vector>
 
 #include "base/base_export.h"
+#include "base/callback.h"
 #include "base/macros.h"
+#include "base/profiler/sampling_profiler_thread_token.h"
 #include "base/threading/platform_thread.h"
 
 namespace base {
@@ -16,6 +19,7 @@ namespace base {
 class Unwinder;
 class ModuleCache;
 class ProfileBuilder;
+class StackBuffer;
 class StackSamplerTestDelegate;
 
 // StackSampler is an implementation detail of StackSamplingProfiler. It
@@ -23,33 +27,22 @@ class StackSamplerTestDelegate;
 // for a given thread.
 class BASE_EXPORT StackSampler {
  public:
-  // This class contains a buffer for stack copies that can be shared across
-  // multiple instances of StackSampler.
-  class BASE_EXPORT StackBuffer {
-   public:
-    StackBuffer(size_t buffer_size);
-    ~StackBuffer();
-
-    uintptr_t* buffer() const { return buffer_.get(); }
-    size_t size() const { return size_; }
-
-   private:
-    // The word-aligned buffer.
-    const std::unique_ptr<uintptr_t[]> buffer_;
-
-    // The size of the buffer.
-    const size_t size_;
-
-    DISALLOW_COPY_AND_ASSIGN(StackBuffer);
-  };
+  // Factory for generating a set of Unwinders for use by the profiler.
+  using UnwindersFactory =
+      OnceCallback<std::vector<std::unique_ptr<Unwinder>>()>;
 
   virtual ~StackSampler();
 
-  // Creates a stack sampler that records samples for thread with |thread_id|.
-  // Returns null if this platform does not support stack sampling.
+  // Creates a stack sampler that records samples for thread with
+  // |thread_token|. Unwinders in |unwinders| must be stored in increasing
+  // priority to guide unwind attempts. Only the unwinder with the lowest
+  // priority is allowed to return with UnwindResult::COMPLETED. Returns null if
+  // this platform does not support stack sampling.
   static std::unique_ptr<StackSampler> Create(
-      PlatformThreadId thread_id,
+      SamplingProfilerThreadToken thread_token,
       ModuleCache* module_cache,
+      UnwindersFactory core_unwinders_factory,
+      RepeatingClosure record_sample_callback,
       StackSamplerTestDelegate* test_delegate);
 
   // Gets the required size of the stack buffer.
@@ -62,8 +55,12 @@ class BASE_EXPORT StackSampler {
   // The following functions are all called on the SamplingThread (not the
   // thread being sampled).
 
+  // Performs post-construction initialization on the SamplingThread.
+  virtual void Initialize() {}
+
   // Adds an auxiliary unwinder to handle additional, non-native-code unwind
-  // scenarios.
+  // scenarios. Unwinders must be inserted in increasing priority, following
+  // |unwinders| provided in Create(), to guide unwind attempts.
   virtual void AddAuxUnwinder(std::unique_ptr<Unwinder> unwinder) = 0;
 
   // Records a set of frames and returns them.

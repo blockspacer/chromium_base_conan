@@ -6,7 +6,7 @@
 #define BASE_TEST_SCOPED_LOGGING_SETTINGS_H_
 
 #include "base/logging.h"
-#include "base/build/chromeos_buildflags.h"
+#include "build/chromeos_buildflags.h"
 
 namespace logging {
 // Saves the current logging settings and restores them when destroyed.

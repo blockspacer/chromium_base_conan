@@ -15,7 +15,7 @@
 #include "base/metrics/histogram.h"
 #include "base/metrics/persistent_memory_allocator.h"
 #include "base/test/gtest_util.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -263,7 +263,6 @@ TEST_F(SampleVectorTest, Iterate) {
     EXPECT_EQ(i + 1, max);
     EXPECT_EQ(i, count);
 
-    size_t index;
     EXPECT_TRUE(it2->GetBucketIndex(&index));
     EXPECT_EQ(static_cast<size_t>(i), index);
   }

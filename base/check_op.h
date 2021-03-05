@@ -129,9 +129,6 @@ class CheckOpResult {
   // Returns true if the check succeeded.
   constexpr explicit operator bool() const { return !message_; }
 
-  // Returns the message.
-  auto* message() { return message_; }
-
   friend class CheckError;
 
  private:

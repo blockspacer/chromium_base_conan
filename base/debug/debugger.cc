@@ -13,10 +13,6 @@ namespace debug {
 static bool is_debug_ui_suppressed = false;
 
 bool WaitForDebugger(int wait_seconds, bool silent) {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-#warning "todo: port Debugger on wasm platform"
-#endif
-
 #if defined(OS_ANDROID)
   // The pid from which we know which process to attach to are not output by
   // android ddms, so we have to print it out explicitly.

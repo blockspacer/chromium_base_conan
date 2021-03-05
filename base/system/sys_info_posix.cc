@@ -5,24 +5,23 @@
 #include "base/system/sys_info.h"
 
 #include <errno.h>
+#include <sched.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/param.h>
+#include <sys/resource.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
 #include "base/files/file_util.h"
 #include "base/lazy_instance.h"
-#include "base/logging.h"
+#include "base/notreached.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info_internal.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "build/build_config.h"
-
-#if !defined(OS_FUCHSIA)
-#include <sys/resource.h>
-#endif
+#include "build/chromeos_buildflags.h"
 
 #if defined(OS_ANDROID)
 #include <sys/vfs.h>
@@ -31,31 +30,15 @@
 #include <sys/statvfs.h>
 #endif
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 #include <linux/magic.h>
 #include <sys/vfs.h>
 #endif
 
-#if defined(__EMSCRIPTEN__)
-#include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
-#endif
-
-#if defined(__EMSCRIPTEN__) && defined(__EMSCRIPTEN_PTHREADS__)
-#include <emscripten/threading.h>
-#endif
-
 namespace {
 
-#if !defined(OS_OPENBSD) && !defined(OS_FUCHSIA)
+#if !defined(OS_OPENBSD)
 int NumberOfProcessors() {
-#if defined(__EMSCRIPTEN__) && defined(__EMSCRIPTEN_PTHREADS__)
-  int res = emscripten_num_logical_cores();
-  DCHECK(res > 0);
-  return res;
-#elif defined(__EMSCRIPTEN__)
-  return 1; // Targeting a single-threaded Emscripten build.
-#else
   // sysconf returns the number of "logical" (not "physical") processors on both
   // Mac and Linux.  So we get the number of max available "logical" processors.
   //
@@ -75,15 +58,27 @@ int NumberOfProcessors() {
     return 1;
   }
 
-  return static_cast<int>(res);
-#endif
+  int num_cpus = static_cast<int>(res);
+
+#if defined(OS_LINUX) && !defined(OS_CHROMEOS)
+  // Restrict the CPU count based on the process's CPU affinity mask, if
+  // available.
+  cpu_set_t* cpu_set = CPU_ALLOC(num_cpus);
+  size_t cpu_set_size = CPU_ALLOC_SIZE(num_cpus);
+  int ret = sched_getaffinity(0, cpu_set_size, cpu_set);
+  if (ret == 0) {
+    num_cpus = CPU_COUNT_S(cpu_set_size, cpu_set);
+  }
+  CPU_FREE(cpu_set);
+#endif // defined(OS_LINUX) && !defined(OS_CHROMEOS
+
+  return num_cpus;
 }
 
 base::LazyInstance<base::internal::LazySysInfoValue<int, NumberOfProcessors>>::
     Leaky g_lazy_number_of_processors = LAZY_INSTANCE_INITIALIZER;
-#endif  // !defined(OS_OPENBSD) && !defined(OS_FUCHSIA)
+#endif  // !defined(OS_OPENBSD)
 
-#if !defined(OS_FUCHSIA)
 int64_t AmountOfVirtualMemory() {
   struct rlimit limit;
   int result = getrlimit(RLIMIT_DATA, &limit);
@@ -97,9 +92,8 @@ int64_t AmountOfVirtualMemory() {
 base::LazyInstance<
     base::internal::LazySysInfoValue<int64_t, AmountOfVirtualMemory>>::Leaky
     g_lazy_virtual_memory = LAZY_INSTANCE_INITIALIZER;
-#endif  // !defined(OS_FUCHSIA)
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 bool IsStatsZeroIfUnlimited(const base::FilePath& path) {
   struct statfs stats;
 
@@ -114,7 +108,7 @@ bool IsStatsZeroIfUnlimited(const base::FilePath& path) {
   }
   return false;
 }
-#endif
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 
 bool GetDiskSpaceInfo(const base::FilePath& path,
                       int64_t* available_bytes,
@@ -123,7 +117,7 @@ bool GetDiskSpaceInfo(const base::FilePath& path,
   if (HANDLE_EINTR(statvfs(path.value().c_str(), &stats)) != 0)
     return false;
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
   const bool zero_size_means_unlimited =
       stats.f_blocks == 0 && IsStatsZeroIfUnlimited(path);
 #else
@@ -149,18 +143,16 @@ bool GetDiskSpaceInfo(const base::FilePath& path,
 
 namespace base {
 
-#if !defined(OS_OPENBSD) && !defined(OS_FUCHSIA)
+#if !defined(OS_OPENBSD)
 int SysInfo::NumberOfProcessors() {
   return g_lazy_number_of_processors.Get().value();
 }
-#endif
+#endif  // !defined(OS_OPENBSD)
 
-#if !defined(OS_FUCHSIA)
 // static
 int64_t SysInfo::AmountOfVirtualMemory() {
   return g_lazy_virtual_memory.Get().value();
 }
-#endif
 
 // static
 int64_t SysInfo::AmountOfFreeDiskSpace(const FilePath& path) {
@@ -184,7 +176,7 @@ int64_t SysInfo::AmountOfTotalDiskSpace(const FilePath& path) {
   return total;
 }
 
-#if !defined(OS_MACOSX) && !defined(OS_ANDROID)
+#if !defined(OS_APPLE) && !defined(OS_ANDROID)
 // static
 std::string SysInfo::OperatingSystemName() {
   struct utsname info;
@@ -194,9 +186,10 @@ std::string SysInfo::OperatingSystemName() {
   }
   return std::string(info.sysname);
 }
-#endif
+#endif  //! defined(OS_APPLE) && !defined(OS_ANDROID)
 
-#if !defined(OS_MACOSX) && !defined(OS_ANDROID) && !defined(OS_CHROMEOS)
+#if !defined(OS_APPLE) && !defined(OS_ANDROID) && \
+    !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_CHROMEOS_LACROS)
 // static
 std::string SysInfo::OperatingSystemVersion() {
   struct utsname info;
@@ -208,7 +201,8 @@ std::string SysInfo::OperatingSystemVersion() {
 }
 #endif
 
-#if !defined(OS_MACOSX) && !defined(OS_ANDROID) && !defined(OS_CHROMEOS)
+#if !defined(OS_APPLE) && !defined(OS_ANDROID) && \
+    !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_CHROMEOS_LACROS)
 // static
 void SysInfo::OperatingSystemVersionNumbers(int32_t* major_version,
                                             int32_t* minor_version,
@@ -232,6 +226,7 @@ void SysInfo::OperatingSystemVersionNumbers(int32_t* major_version,
 }
 #endif
 
+#if !defined(OS_MAC) && !defined(OS_IOS)
 // static
 std::string SysInfo::OperatingSystemArchitecture() {
   struct utsname info;
@@ -249,6 +244,7 @@ std::string SysInfo::OperatingSystemArchitecture() {
   }
   return arch;
 }
+#endif  // !defined(OS_MAC) && !defined(OS_IOS)
 
 // static
 size_t SysInfo::VMAllocationGranularity() {

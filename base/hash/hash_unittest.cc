@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -77,6 +77,12 @@ TEST(HashTest, CString) {
   // null byte.
   str = "hello world; don't read this part";
   EXPECT_EQ(2794219650u, Hash(str, strlen("hello world")));
+}
+
+TEST(HashTest, FastHash) {
+  std::string s;
+  constexpr char kEmptyString[] = "";
+  EXPECT_EQ(FastHash(s), FastHash(kEmptyString));
 }
 
 }  // namespace base

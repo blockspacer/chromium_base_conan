@@ -7,7 +7,7 @@
 #include "base/android/jni_android.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/strings/utf_string_conversions.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace android {

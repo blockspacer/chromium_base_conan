@@ -10,8 +10,8 @@
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/platform_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 #if defined(OS_POSIX) || defined(OS_FUCHSIA)
 #include "base/test/scoped_locale.h"
@@ -320,7 +320,7 @@ TEST_F(FilePathTest, Append) {
     // TODO(erikkay): It would be nice to have a unicode test append value to
     // handle the case when AppendASCII is passed UTF8
 #if defined(OS_WIN)
-    std::string ascii = UTF16ToUTF8(leaf);
+    std::string ascii = WideToUTF8(leaf);
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
     std::string ascii = leaf;
 #endif
@@ -728,6 +728,7 @@ TEST_F(FilePathTest, Extension) {
 }
 
 TEST_F(FilePathTest, Extension2) {
+  // clang-format off
   const struct UnaryTestData cases[] = {
 #if defined(FILE_PATH_USES_WIN_SEPARATORS)
     { FPL("C:\\a\\b\\c.ext"),        FPL(".ext") },
@@ -772,8 +773,11 @@ TEST_F(FilePathTest, Extension2) {
     { FPL("/foo.1234.user.js"),      FPL(".user.js") },
     { FPL("foo.user.js"),            FPL(".user.js") },
     { FPL("/foo.tar.bz"),            FPL(".tar.bz") },
+    { FPL("/foo.tar.xz"),            FPL(".tar.xz") },
   };
-  for (unsigned int i = 0; i < base::size(cases); ++i) {
+  // clang-format on
+
+  for (size_t i = 0; i < base::size(cases); ++i) {
     FilePath path(cases[i].input);
     FilePath::StringType extension = path.Extension();
     FilePath::StringType final_extension = path.FinalExtension();
@@ -782,7 +786,8 @@ TEST_F(FilePathTest, Extension2) {
     EXPECT_EQ(cases[i].expected, final_extension)
         << "i: " << i << ", path: " << path.value();
   }
-  for (unsigned int i = 0; i < base::size(double_extension_cases); ++i) {
+
+  for (size_t i = 0; i < base::size(double_extension_cases); ++i) {
     FilePath path(double_extension_cases[i].input);
     FilePath::StringType extension = path.Extension();
     EXPECT_EQ(double_extension_cases[i].expected, extension)
@@ -878,7 +883,7 @@ TEST_F(FilePathTest, RemoveExtension) {
     { FPL("/foo.bar/foo"),        FPL("/foo.bar/foo") },
     { FPL("/foo.bar/..////"),     FPL("/foo.bar/..////") },
   };
-  for (unsigned int i = 0; i < base::size(cases); ++i) {
+  for (size_t i = 0; i < base::size(cases); ++i) {
     FilePath path(cases[i].input);
     FilePath removed = path.RemoveExtension();
     FilePath removed_final = path.RemoveFinalExtension();
@@ -887,13 +892,18 @@ TEST_F(FilePathTest, RemoveExtension) {
     EXPECT_EQ(cases[i].expected, removed_final.value()) << "i: " << i <<
         ", path: " << path.value();
   }
-  {
+
+  const FilePath::StringPieceType tarballs[] = {
+      FPL("foo.tar.gz"), FPL("foo.tar.xz"), FPL("foo.tar.bz2"),
+      FPL("foo.tar.Z"), FPL("foo.tar.bz")};
+  for (size_t i = 0; i < base::size(tarballs); ++i) {
     FilePath path(FPL("foo.tar.gz"));
     FilePath removed = path.RemoveExtension();
     FilePath removed_final = path.RemoveFinalExtension();
-    EXPECT_EQ(FPL("foo"), removed.value()) << ", path: " << path.value();
-    EXPECT_EQ(FPL("foo.tar"), removed_final.value()) << ", path: "
-                                                     << path.value();
+    EXPECT_EQ(FPL("foo"), removed.value())
+        << "i: " << i << ", path: " << path.value();
+    EXPECT_EQ(FPL("foo.tar"), removed_final.value())
+        << "i: " << i << ", path: " << path.value();
   }
 }
 
@@ -999,7 +1009,7 @@ TEST_F(FilePathTest, MatchesExtension) {
 #endif  // FILE_PATH_USES_DRIVE_LETTERS
     { { FPL("/bar/foo.txt.dll"),        FPL(".txt") },                false},
     { { FPL("/bar/foo.txt"),            FPL(".txt") },                true},
-#if defined(OS_WIN) || defined(OS_MACOSX)
+#if defined(OS_WIN) || defined(OS_APPLE)
     // Umlauts A, O, U: direct comparison, and upper case vs. lower case
     { { FPL("foo.\u00E4\u00F6\u00FC"),  FPL(".\u00E4\u00F6\u00FC") }, true},
     { { FPL("foo.\u00C4\u00D6\u00DC"),  FPL(".\u00E4\u00F6\u00FC") }, true},
@@ -1046,7 +1056,7 @@ TEST_F(FilePathTest, CompareIgnoreCase) {
     { { FPL("\u00DF"),                       FPL("\u1E9E") },              -1},
     { { FPL("SS"),                           FPL("\u00DF") },              -1},
     { { FPL("SS"),                           FPL("\u1E9E") },              -1},
-#if defined(OS_WIN) || defined(OS_MACOSX)
+#if defined(OS_WIN) || defined(OS_APPLE)
     // Umlauts A, O, U: direct comparison, and upper case vs. lower case
     { { FPL("\u00E4\u00F6\u00FC"),           FPL("\u00E4\u00F6\u00FC") },   0},
     { { FPL("\u00C4\u00D6\u00DC"),           FPL("\u00E4\u00F6\u00FC") },   0},
@@ -1068,7 +1078,7 @@ TEST_F(FilePathTest, CompareIgnoreCase) {
     { { FPL("a"),                            FPL("\uFF21") },              -1},
     { { FPL("a"),                            FPL("\uFF41") },              -1},
 #endif
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
     // Codepoints > 0x1000
     // Georgian letter DON: direct comparison, and upper case vs. lower case
     { { FPL("\u10A3"),                       FPL("\u10A3") },               0},
@@ -1139,7 +1149,7 @@ TEST_F(FilePathTest, FromUTF8Unsafe_And_AsUTF8Unsafe) {
       "\xEF\xBC\xA1\xEF\xBC\xA2\xEF\xBC\xA3.txt" },
   };
 
-#if !defined(SYSTEM_NATIVE_UTF8) && defined(OS_LINUX)
+#if !defined(SYSTEM_NATIVE_UTF8) && (defined(OS_LINUX) || defined(OS_CHROMEOS))
   ScopedLocale locale("en_US.UTF-8");
 #endif
 
@@ -1302,7 +1312,7 @@ TEST_F(FilePathTest, PrintToOstream) {
 
 // Test GetHFSDecomposedForm should return empty result for invalid UTF-8
 // strings.
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 TEST_F(FilePathTest, GetHFSDecomposedFormWithInvalidInput) {
   const FilePath::CharType* cases[] = {
     FPL("\xc3\x28"),
@@ -1315,6 +1325,17 @@ TEST_F(FilePathTest, GetHFSDecomposedFormWithInvalidInput) {
     FilePath::StringType observed = FilePath::GetHFSDecomposedForm(
         invalid_input);
     EXPECT_TRUE(observed.empty());
+  }
+}
+
+TEST_F(FilePathTest, CompareIgnoreCaseWithInvalidInput) {
+  const FilePath::CharType* cases[] = {
+      FPL("\xc3\x28"),         FPL("\xe2\x82\x28"),     FPL("\xe2\x28\xa1"),
+      FPL("\xf0\x28\x8c\xbc"), FPL("\xf0\x28\x8c\x28"),
+  };
+  for (auto* invalid_input : cases) {
+    // All example inputs will be greater than the string "fixed".
+    EXPECT_EQ(FilePath::CompareIgnoreCase(invalid_input, FPL("fixed")), 1);
   }
 }
 #endif

@@ -17,14 +17,14 @@
 #include "base/logging.h"
 #include "base/single_thread_task_runner.h"
 #include "base/synchronization/lock.h"
-#include "base/synchronization/spin_wait.h"
+#include "base/test/spin_wait.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_collision_warner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/platform_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 namespace base {
 
@@ -58,7 +58,7 @@ class ConditionVariableTest : public PlatformTest {
 // construct an instance of a WorkQueue.  The WorkQueue will spin up some
 // threads and control them throughout their lifetime, as well as maintaining
 // a central repository of the work thread's activity.  Finally, the WorkQueue
-// will command the the worker threads to terminate.  At that point, the test
+// will command the worker threads to terminate.  At that point, the test
 // cases will validate that the WorkQueue has records showing that the desired
 // activities were performed.
 //------------------------------------------------------------------------------
@@ -245,16 +245,8 @@ TEST_F(ConditionVariableTest, DISABLED_TimeoutAcrossSetTimeOfDay) {
 }
 #endif
 
-// Suddenly got flaky on Win, see http://crbug.com/10607 (starting at
-// comment #15).
-// This is also flaky on Fuchsia, see http://crbug.com/738275.
-#if defined(OS_WIN) || defined(OS_FUCHSIA)
-#define MAYBE_MultiThreadConsumerTest DISABLED_MultiThreadConsumerTest
-#else
-#define MAYBE_MultiThreadConsumerTest MultiThreadConsumerTest
-#endif
 // Test serial task servicing, as well as two parallel task servicing methods.
-TEST_F(ConditionVariableTest, MAYBE_MultiThreadConsumerTest) {
+TEST_F(ConditionVariableTest, MultiThreadConsumerTest) {
   const int kThreadCount = 10;
   WorkQueue queue(kThreadCount);  // Start the threads.
 
@@ -398,13 +390,7 @@ TEST_F(ConditionVariableTest, MAYBE_MultiThreadConsumerTest) {
                                    queue.ThreadSafeCheckShutdown(kThreadCount));
 }
 
-#if defined(OS_FUCHSIA)
-// TODO(crbug.com/751894): This flakily times out on Fuchsia.
-#define MAYBE_LargeFastTaskTest DISABLED_LargeFastTaskTest
-#else
-#define MAYBE_LargeFastTaskTest LargeFastTaskTest
-#endif
-TEST_F(ConditionVariableTest, MAYBE_LargeFastTaskTest) {
+TEST_F(ConditionVariableTest, LargeFastTaskTest) {
   const int kThreadCount = 200;
   WorkQueue queue(kThreadCount);  // Start the threads.
 

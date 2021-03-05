@@ -7,8 +7,8 @@
 #include <utility>
 
 #include "base/bind.h"
+#include "base/check_op.h"
 #include "base/debug/leak_annotations.h"
-#include "base/logging.h"
 #include "base/memory/ref_counted.h"
 #include "base/sequenced_task_runner.h"
 #include "base/threading/sequenced_task_runner_handle.h"
@@ -69,7 +69,6 @@ class PostTaskAndReplyRelay {
     }
 
     // Case 2:
-    DCHECK(reply_task_runner_);
     if (!reply_task_runner_->RunsTasksInCurrentSequence()) {
       DCHECK(reply_);
 
@@ -101,8 +100,9 @@ class PostTaskAndReplyRelay {
     // |relay| is moved into a callback.
     SequencedTaskRunner* reply_task_runner_raw = relay.reply_task_runner_.get();
 
+    const Location from_here = relay.from_here_;
     reply_task_runner_raw->PostTask(
-        relay.from_here_,
+        from_here,
         BindOnce(&PostTaskAndReplyRelay::RunReply, std::move(relay)));
   }
 

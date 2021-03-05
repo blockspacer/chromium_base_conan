@@ -7,7 +7,8 @@
 #include <algorithm>
 
 #include "base/bind.h"
-#include "base/logging.h"
+#include "base/check.h"
+#include "base/sequenced_task_runner.h"
 #include "base/task/post_task.h"
 #include "base/task/thread_pool/task.h"
 #include "base/task_runner.h"
@@ -35,7 +36,10 @@ DelayedTaskManager::DelayedTask& DelayedTaskManager::DelayedTask::operator=(
 
 bool DelayedTaskManager::DelayedTask::operator<=(
     const DelayedTask& other) const {
-  return task.delayed_run_time <= other.task.delayed_run_time;
+  if (task.delayed_run_time == other.task.delayed_run_time) {
+    return task.sequence_num <= other.task.sequence_num;
+  }
+  return task.delayed_run_time < other.task.delayed_run_time;
 }
 
 bool DelayedTaskManager::DelayedTask::IsScheduled() const {
@@ -46,19 +50,18 @@ void DelayedTaskManager::DelayedTask::SetScheduled() {
   scheduled_ = true;
 }
 
-DelayedTaskManager::DelayedTaskManager(
-    std::unique_ptr<const TickClock> tick_clock)
+DelayedTaskManager::DelayedTaskManager(const TickClock* tick_clock)
     : process_ripe_tasks_closure_(
           BindRepeating(&DelayedTaskManager::ProcessRipeTasks,
                         Unretained(this))),
-      tick_clock_(std::move(tick_clock)) {
+      tick_clock_(tick_clock) {
   DCHECK(tick_clock_);
 }
 
 DelayedTaskManager::~DelayedTaskManager() = default;
 
 void DelayedTaskManager::Start(
-    scoped_refptr<TaskRunner> service_thread_task_runner) {
+    scoped_refptr<SequencedTaskRunner> service_thread_task_runner) {
   DCHECK(service_thread_task_runner);
 
   TimeTicks process_ripe_tasks_time;
@@ -102,8 +105,13 @@ void DelayedTaskManager::ProcessRipeTasks() {
   {
     CheckedAutoLock auto_lock(queue_lock_);
     const TimeTicks now = tick_clock_->NowTicks();
+    // A delayed task is ripe if it reached its delayed run time or if it is
+    // canceled. If it is canceled, schedule its deletion on the correct
+    // sequence now rather than in the future, to minimize CPU wake ups and save
+    // power.
     while (!delayed_task_queue_.empty() &&
-           delayed_task_queue_.Min().task.delayed_run_time <= now) {
+           (delayed_task_queue_.Min().task.delayed_run_time <= now ||
+            !delayed_task_queue_.Min().task.task.MaybeValid())) {
       // The const_cast on top is okay since the DelayedTask is
       // transactionally being popped from |delayed_task_queue_| right after
       // and the move doesn't alter the sort order.
@@ -118,6 +126,13 @@ void DelayedTaskManager::ProcessRipeTasks() {
   for (auto& delayed_task : ripe_delayed_tasks) {
     std::move(delayed_task.callback).Run(std::move(delayed_task.task));
   }
+}
+
+Optional<TimeTicks> DelayedTaskManager::NextScheduledRunTime() const {
+  CheckedAutoLock auto_lock(queue_lock_);
+  if (delayed_task_queue_.empty())
+    return nullopt;
+  return delayed_task_queue_.Min().task.delayed_run_time;
 }
 
 TimeTicks DelayedTaskManager::GetTimeToScheduleProcessRipeTasksLockRequired() {
@@ -141,7 +156,6 @@ void DelayedTaskManager::ScheduleProcessRipeTasksOnServiceThread(
     return;
   const TimeTicks now = tick_clock_->NowTicks();
   TimeDelta delay = std::max(TimeDelta(), next_delayed_task_run_time - now);
-  DCHECK(service_thread_task_runner_);
   service_thread_task_runner_->PostDelayedTask(
       FROM_HERE, process_ripe_tasks_closure_, delay);
 }

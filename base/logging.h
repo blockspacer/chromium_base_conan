@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,14 +16,9 @@
 #include "base/callback_forward.h"
 #include "base/compiler_specific.h"
 #include "base/dcheck_is_on.h"
-#include "base/check.h"
-#include "base/check_op.h"
-#include "base/notreached.h"
-#include "base/immediate_crash.h"
 #include "base/scoped_clear_last_error.h"
 #include "base/strings/string_piece_forward.h"
-#include "base/build/chromeos_buildflags.h"
-#include "base/logging_extensions.h"
+#include "build/chromeos_buildflags.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include <cstdio>
@@ -502,15 +497,6 @@ const LogSeverity LOGGING_0 = LOGGING_ERROR;
       ::logging::GetLastSystemErrorCode()).stream()
 #endif
 
-// Prints the string corresponding to the error code in errno,
-// like %m in printf.
-// foo.conf does not exist, errno was set to ENOENT
-// int fd = open("foo.conf", O_RDONLY);
-// if (fd < 0) {
-//     // "Fail to open foo.conf: No such file or directory"
-//     PLOG(FATAL) << "Fail to open foo.conf";
-//     return -1;
-// }
 #define PLOG(severity)                                          \
   LAZY_STREAM(PLOG_STREAM(severity), LOG_IS_ON(severity))
 
@@ -593,77 +579,6 @@ const LogSeverity LOGGING_DCHECK = LOGGING_FATAL;
 #undef assert
 #define assert(x) DLOG_ASSERT(x)
 
-class LogStringStream
-  : public std::ostringstream
-{
-public:
-  LogStringStream()
-    : std::ostringstream()
-    , file_("-")
-    , line_(0)
-    , severity_(0)
-    , noEndl_(false)
-    , noFormat_(false)
-  {}
-
-  ~LogStringStream() {
-    noEndl_ = false;
-    noFormat_ = false;
-  }
-
-  inline LogStringStream& operator<<(LogStringStream& (*m)(LogStringStream&)) {
-    return m(*this);
-  }
-
-  inline LogStringStream& operator<<(std::ostream& (*m)(std::ostream&)) {
-    m(*(std::ostream*)this);
-    return *this;
-  }
-
-  template <typename T> inline LogStringStream& operator<<(T const& t) {
-    *(std::ostream*)this << t;
-    return *this;
-  }
-
-  LogStringStream& SetPosition(const char* file, int line, LogSeverity);
-
-  LogStringStream& dontEndlOnce()
-  {
-    noEndl_ = true;
-    return *this;
-  }
-
-  LogStringStream& dontFormatOnce()
-  {
-    noFormat_ = true;
-    return *this;
-  }
-
-  const char* file() const { return file_; }
-
-  int line() const { return line_; }
-
-  LogSeverity severity() const { return severity_; }
-
-  // Returns false if stream must continue on same line
-  bool needEndl() const
-  {
-    return !noEndl_;
-  }
-
-  bool needFormat() const
-  {
-    return !noFormat_;
-  }
-
-private:
-  const char* file_;
-  int line_;
-  LogSeverity severity_;
-  bool noEndl_;
-  bool noFormat_;
-};
-
 // This class more or less represents a particular log message.  You
 // create an instance of LogMessage and then stream stuff to it.
 // When you finish streaming to it, ~LogMessage is called and the
@@ -674,12 +589,6 @@ private:
 // above.
 class BASE_EXPORT LogMessage {
  public:
-  using LogStreamType
-    = std::ostream;
-
-  using LogStringStreamType
-    = LogStringStream;
-
   // Used for LOG(severity).
   LogMessage(const char* file, int line, LogSeverity severity);
 
@@ -698,7 +607,7 @@ class BASE_EXPORT LogMessage {
   void Init(const char* file, int line);
 
   LogSeverity severity_;
-  LogStringStreamType stream_;
+  std::ostringstream stream_;
   size_t message_start_;  // Offset of the start of the message (past prefix
                           // info).
   // The file and line information passed in to the constructor.
@@ -807,41 +716,6 @@ BASE_EXPORT bool IsLoggingToFileEnabled();
 // Returns the default log file path.
 BASE_EXPORT std::wstring GetLogFileFullPath();
 #endif
-
-// Do not append endl after each log message
-inline LogStringStream& noEndl(LogStringStream& ls)
-{
-  ls.dontEndlOnce();
-  return ls;
-}
-
-// Do not append extra information before each log message
-// that looks similar to:
-// [25583:25583:1113/185640.856387:39412343570:INFO:main.cc(375)]
-inline LogStringStream& noFormat(LogStringStream& ls)
-{
-  ls.dontFormatOnce();
-  return ls;
-}
-
-LogStringStream& info(LogStringStream& ls);
-
-// Can be used in conditions
-//
-// USAGE
-//
-// using ::logging::doNothing;
-//
-// for (auto it = items.begin(); it != items.end(); ++it) {
-//   const bool isLastElem
-//     = it == (items.end() - 1);
-//   LOG(INFO) << ' ' << *it << noFormat
-//             << (!isLastElem ? noEndl : doNothing);
-// }
-inline LogStringStream& doNothing(LogStringStream& ls)
-{
-  return ls;
-}
 
 }  // namespace logging
 

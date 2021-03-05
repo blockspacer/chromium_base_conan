@@ -7,7 +7,9 @@
 
 #include <jni.h>
 
+#include "base/android/scoped_java_ref.h"
 #include "base/base_export.h"
+#include "base/callback_forward.h"
 
 namespace base {
 namespace android {
@@ -26,6 +28,13 @@ BASE_EXPORT void SetJavaExceptionCallback(void (*)(const char* exception));
 
 // Calls the Java exception callback, if any, with exception.
 void SetJavaException(const char* exception);
+
+// Sets a filter that determines whether a java exception should cause a crash
+// report. |java_exception_filter| should return true if a crash report should
+// be generated.
+BASE_EXPORT void SetJavaExceptionFilter(
+    base::RepeatingCallback<bool(const JavaRef<jthrowable>&)>
+        java_exception_filter);
 
 }  // namespace android
 }  // namespace base

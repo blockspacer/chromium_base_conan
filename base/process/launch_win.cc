@@ -15,8 +15,7 @@
 #include <limits>
 
 #include "base/bind.h"
-#include "base/bind_helpers.h"
-#include "base/command_line.h"
+#include "base/callback_helpers.h"
 #include "base/debug/activity_tracker.h"
 #include "base/debug/stack_trace.h"
 #include "base/logging.h"
@@ -26,6 +25,9 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info.h"
+#include "base/threading/scoped_blocking_call.h"
+#include "base/threading/scoped_thread_priority.h"
+#include "base/trace_event/base_tracing.h"
 #include "base/win/scoped_handle.h"
 #include "base/win/scoped_process_information.h"
 #include "base/win/startup_information.h"
@@ -35,10 +37,12 @@ namespace base {
 
 namespace {
 
-bool GetAppOutputInternal(const StringPiece16& cl,
+bool GetAppOutputInternal(CommandLine::StringPieceType cl,
                           bool include_stderr,
                           std::string* output,
                           int* exit_code) {
+  TRACE_EVENT0("base", "GetAppOutput");
+
   HANDLE out_read = nullptr;
   HANDLE out_write = nullptr;
 
@@ -81,8 +85,8 @@ bool GetAppOutputInternal(const StringPiece16& cl,
 
   // Create the child process.
   PROCESS_INFORMATION temp_process_info = {};
-  if (!CreateProcess(nullptr, as_writable_wcstr(writable_command_line_string),
-                     nullptr, nullptr,
+  if (!CreateProcess(nullptr, data(writable_command_line_string), nullptr,
+                     nullptr,
                      TRUE,  // Handles are inherited.
                      0, nullptr, nullptr, &start_info, &temp_process_info)) {
     NOTREACHED() << "Failed to start process";
@@ -113,7 +117,13 @@ bool GetAppOutputInternal(const StringPiece16& cl,
   }
 
   // Let's wait for the process to finish.
-  WaitForSingleObject(proc_info.process_handle(), INFINITE);
+  {
+    // It is okay to allow this process to wait on the launched process as a
+    // process launched with GetAppOutput*() shouldn't wait back on the process
+    // that launched it.
+    internal::GetAppOutputScopedAllowBaseSyncPrimitives allow_wait;
+    WaitForSingleObject(proc_info.process_handle(), INFINITE);
+  }
 
   TerminationStatus status =
       GetTerminationStatus(proc_info.process_handle(), exit_code);
@@ -199,14 +209,57 @@ Process LaunchProcess(const CommandLine& cmdline,
   return LaunchProcess(cmdline.GetCommandLineString(), options);
 }
 
-Process LaunchProcess(const string16& cmdline,
+Process LaunchProcess(const CommandLine::StringType& cmdline,
                       const LaunchOptions& options) {
+  // Mitigate the issues caused by loading DLLs on a background thread
+  // (http://crbug/973868).
+  SCOPED_MAY_LOAD_LIBRARY_AT_BACKGROUND_PRIORITY();
+
+  // |process_mitigations| must outlive |startup_info_wrapper|.
+  DWORD64 process_mitigations[2]{0, 0};
   win::StartupInformation startup_info_wrapper;
   STARTUPINFO* startup_info = startup_info_wrapper.startup_info();
-
-  bool inherit_handles = options.inherit_mode == LaunchOptions::Inherit::kAll;
   DWORD flags = 0;
+
+  // Count extended attributes before reserving space.
+  int attribute_count = 0;
+  // Count PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY.
+  if (options.disable_cetcompat &&
+      base::win::GetVersion() >= base::win::Version::WIN10_20H1) {
+    ++attribute_count;
+  }
+
+  // Count PROC_THREAD_ATTRIBUTE_HANDLE_LIST.
+  if (!options.handles_to_inherit.empty())
+    ++attribute_count;
+
+  // Reserve space for attributes.
+  if (attribute_count > 0) {
+    if (!startup_info_wrapper.InitializeProcThreadAttributeList(
+            attribute_count)) {
+      DPLOG(ERROR);
+      return Process();
+    }
+    flags |= EXTENDED_STARTUPINFO_PRESENT;
+  }
+
+  // Set PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY.
+  if (options.disable_cetcompat &&
+      base::win::GetVersion() >= base::win::Version::WIN10_20H1) {
+    DCHECK_GT(attribute_count, 0);
+    process_mitigations[1] |=
+        PROCESS_CREATION_MITIGATION_POLICY2_CET_USER_SHADOW_STACKS_ALWAYS_OFF;
+    if (!startup_info_wrapper.UpdateProcThreadAttribute(
+            PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &process_mitigations[0],
+            sizeof(process_mitigations))) {
+      return Process();
+    }
+  }
+
+  // Set PROC_THREAD_ATTRIBUTE_HANDLE_LIST.
+  bool inherit_handles = options.inherit_mode == LaunchOptions::Inherit::kAll;
   if (!options.handles_to_inherit.empty()) {
+    DCHECK_GT(attribute_count, 0);
     DCHECK_EQ(options.inherit_mode, LaunchOptions::Inherit::kSpecific);
 
     if (options.handles_to_inherit.size() >
@@ -222,11 +275,6 @@ Process LaunchProcess(const string16& cmdline,
       PCHECK(result);
     }
 
-    if (!startup_info_wrapper.InitializeProcThreadAttributeList(1)) {
-      DPLOG(ERROR);
-      return Process();
-    }
-
     if (!startup_info_wrapper.UpdateProcThreadAttribute(
             PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
             const_cast<HANDLE*>(&options.handles_to_inherit[0]),
@@ -237,7 +285,6 @@ Process LaunchProcess(const string16& cmdline,
     }
 
     inherit_handles = true;
-    flags |= EXTENDED_STARTUPINFO_PRESENT;
   }
 
   if (options.feedback_cursor_off)
@@ -274,18 +321,18 @@ Process LaunchProcess(const string16& cmdline,
 
   LPCTSTR current_directory = options.current_directory.empty()
                                   ? nullptr
-                                  : as_wcstr(options.current_directory.value());
+                                  : options.current_directory.value().c_str();
 
-  string16 writable_cmdline(cmdline);
+  auto writable_cmdline(cmdline);
   DCHECK(!(flags & CREATE_SUSPENDED))
       << "Creating a suspended process can lead to hung processes if the "
       << "launching process is killed before it assigns the process to the"
       << "job. https://crbug.com/820996";
   if (options.as_user) {
     flags |= CREATE_UNICODE_ENVIRONMENT;
-    void* enviroment_block = nullptr;
+    void* environment_block = nullptr;
 
-    if (!CreateEnvironmentBlock(&enviroment_block, options.as_user, FALSE)) {
+    if (!CreateEnvironmentBlock(&environment_block, options.as_user, FALSE)) {
       DPLOG(ERROR);
       return Process();
     }
@@ -295,18 +342,18 @@ Process LaunchProcess(const string16& cmdline,
     DCHECK(options.environment.empty());
 
     BOOL launched = CreateProcessAsUser(
-        options.as_user, nullptr, as_writable_wcstr(writable_cmdline), nullptr,
-        nullptr, inherit_handles, flags, enviroment_block, current_directory,
+        options.as_user, nullptr, data(writable_cmdline), nullptr, nullptr,
+        inherit_handles, flags, environment_block, current_directory,
         startup_info, &temp_process_info);
-    DestroyEnvironmentBlock(enviroment_block);
+    DestroyEnvironmentBlock(environment_block);
     if (!launched) {
-      DPLOG(ERROR) << "Command line:" << std::endl << UTF16ToUTF8(cmdline)
-                   << std::endl;
+      DPLOG(ERROR) << "Command line:" << std::endl
+                   << WideToUTF8(cmdline) << std::endl;
       return Process();
     }
   } else {
     wchar_t* new_environment = nullptr;
-    string16 env_storage;
+    std::wstring env_storage;
     if (options.clear_environment || !options.environment.empty()) {
       if (options.clear_environment) {
         static const wchar_t kEmptyEnvironment[] = {0};
@@ -322,15 +369,14 @@ Process LaunchProcess(const string16& cmdline,
             internal::AlterEnvironment(old_environment, options.environment);
         FreeEnvironmentStrings(old_environment);
       }
-      new_environment = const_cast<wchar_t*>(env_storage.data());
+      new_environment = data(env_storage);
       flags |= CREATE_UNICODE_ENVIRONMENT;
     }
 
-    if (!CreateProcess(nullptr, as_writable_wcstr(writable_cmdline), nullptr,
-                       nullptr, inherit_handles, flags, new_environment,
+    if (!CreateProcess(nullptr, data(writable_cmdline), nullptr, nullptr,
+                       inherit_handles, flags, new_environment,
                        current_directory, startup_info, &temp_process_info)) {
-      DPLOG(ERROR) << "Command line:" << std::endl
-                   << UTF16ToUTF8(cmdline) << std::endl;
+      DPLOG(ERROR) << "Command line:" << std::endl << cmdline << std::endl;
       return Process();
     }
   }
@@ -360,16 +406,16 @@ Process LaunchProcess(const string16& cmdline,
 
 Process LaunchElevatedProcess(const CommandLine& cmdline,
                               const LaunchOptions& options) {
-  const string16 file = cmdline.GetProgram().value();
-  const string16 arguments = cmdline.GetArgumentsString();
+  const FilePath::StringType file = cmdline.GetProgram().value();
+  const CommandLine::StringType arguments = cmdline.GetArgumentsString();
 
   SHELLEXECUTEINFO shex_info = {};
   shex_info.cbSize = sizeof(shex_info);
   shex_info.fMask = SEE_MASK_NOCLOSEPROCESS;
   shex_info.hwnd = GetActiveWindow();
   shex_info.lpVerb = L"runas";
-  shex_info.lpFile = as_wcstr(file);
-  shex_info.lpParameters = as_wcstr(arguments);
+  shex_info.lpFile = file.c_str();
+  shex_info.lpParameters = arguments.c_str();
   shex_info.lpDirectory = nullptr;
   shex_info.nShow = options.start_hidden ? SW_HIDE : SW_SHOWNORMAL;
   shex_info.hInstApp = nullptr;
@@ -414,7 +460,7 @@ bool GetAppOutputWithExitCode(const CommandLine& cl,
       cl.GetCommandLineString(), false, output, exit_code);
 }
 
-bool GetAppOutput(const StringPiece16& cl, std::string* output) {
+bool GetAppOutput(CommandLine::StringPieceType cl, std::string* output) {
   int exit_code;
   return GetAppOutputInternal(cl, false, output, &exit_code);
 }

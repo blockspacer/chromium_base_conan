@@ -7,12 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "base/logging.h"
+#include "base/check.h"
+#include "base/containers/contains.h"
 #include "base/memory/singleton.h"
 #include "base/no_destructor.h"
+#include "base/stl_util.h"
 #include "base/strings/string_util.h"
 #include "base/threading/thread_local.h"
-#include "base/trace_event/heap_profiler_allocation_context_tracker.h"
+#include "base/trace_event/heap_profiler_allocation_context_tracker.h"  // no-presubmit-check
 
 namespace base {
 namespace {
@@ -25,6 +27,8 @@ ThreadLocalStorage::Slot& GetThreadNameTLS() {
   return *thread_name_tls;
 }
 }
+
+ThreadIdNameManager::Observer::~Observer() = default;
 
 ThreadIdNameManager::ThreadIdNameManager()
     : main_process_name_(nullptr), main_process_id_(kInvalidThreadId) {
@@ -47,21 +51,25 @@ const char* ThreadIdNameManager::GetDefaultInternedString() {
 
 void ThreadIdNameManager::RegisterThread(PlatformThreadHandle::Handle handle,
                                          PlatformThreadId id) {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   AutoLock locked(lock_);
   thread_id_to_handle_[id] = handle;
   thread_handle_to_interned_name_[handle] =
       name_to_interned_name_[kDefaultName];
-#endif // !defined(__EMSCRIPTEN__)
 }
 
-void ThreadIdNameManager::InstallSetNameCallback(SetNameCallback callback) {
+void ThreadIdNameManager::AddObserver(Observer* obs) {
   AutoLock locked(lock_);
-  set_name_callback_ = std::move(callback);
+  DCHECK(!base::Contains(observers_, obs));
+  observers_.push_back(obs);
+}
+
+void ThreadIdNameManager::RemoveObserver(Observer* obs) {
+  AutoLock locked(lock_);
+  DCHECK(base::Contains(observers_, obs));
+  base::Erase(observers_, obs);
 }
 
 void ThreadIdNameManager::SetName(const std::string& name) {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   PlatformThreadId id = PlatformThread::CurrentId();
   std::string* leaked_str = nullptr;
   {
@@ -77,9 +85,8 @@ void ThreadIdNameManager::SetName(const std::string& name) {
     auto id_to_handle_iter = thread_id_to_handle_.find(id);
 
     GetThreadNameTLS().Set(const_cast<char*>(leaked_str->c_str()));
-    if (set_name_callback_) {
-      set_name_callback_.Run(leaked_str->c_str());
-    }
+    for (Observer* obs : observers_)
+      obs->OnThreadNameChanged(leaked_str->c_str());
 
     // The main thread of a process will not be created as a Thread object which
     // means there is no PlatformThreadHandler registered.
@@ -98,11 +105,9 @@ void ThreadIdNameManager::SetName(const std::string& name) {
   // ThreadIdNameManager itself when holding the lock.
   trace_event::AllocationContextTracker::SetCurrentThreadName(
       leaked_str->c_str());
-#endif // !defined(__EMSCRIPTEN__)
 }
 
 const char* ThreadIdNameManager::GetName(PlatformThreadId id) {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   AutoLock locked(lock_);
 
   if (id == main_process_id_)
@@ -115,23 +120,15 @@ const char* ThreadIdNameManager::GetName(PlatformThreadId id) {
   auto handle_to_name_iter =
       thread_handle_to_interned_name_.find(id_to_handle_iter->second);
   return handle_to_name_iter->second->c_str();
-#else
-  return name_to_interned_name_[kDefaultName]->c_str();
-#endif // !defined(__EMSCRIPTEN__)
 }
 
 const char* ThreadIdNameManager::GetNameForCurrentThread() {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   const char* name = reinterpret_cast<const char*>(GetThreadNameTLS().Get());
   return name ? name : kDefaultName;
-#else
-  return kDefaultName;
-#endif // !defined(__EMSCRIPTEN__)
 }
 
 void ThreadIdNameManager::RemoveName(PlatformThreadHandle::Handle handle,
                                      PlatformThreadId id) {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   AutoLock locked(lock_);
   auto handle_to_name_iter = thread_handle_to_interned_name_.find(handle);
 
@@ -146,7 +143,6 @@ void ThreadIdNameManager::RemoveName(PlatformThreadHandle::Handle handle,
     return;
 
   thread_id_to_handle_.erase(id_to_handle_iter);
-#endif // !defined(__EMSCRIPTEN__)
 }
 
 }  // namespace base

@@ -153,7 +153,7 @@ class BASE_EXPORT FilePath {
 #if defined(OS_WIN)
   // On Windows, for Unicode-aware applications, native pathnames are wchar_t
   // arrays encoded in UTF-16.
-  typedef base::string16 StringType;
+  typedef std::wstring StringType;
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
   // On most platforms, native pathnames are char arrays, and the encoding
   // may or may not be specified.  On Mac OS X, native pathnames are encoded
@@ -193,7 +193,7 @@ class BASE_EXPORT FilePath {
   FilePath(FilePath&& that) noexcept;
   // Replaces the contents with those of |that|, which is left in valid but
   // unspecified state.
-  FilePath& operator=(FilePath&& that);
+  FilePath& operator=(FilePath&& that) noexcept;
 
   bool operator==(const FilePath& that) const;
 
@@ -324,7 +324,6 @@ class BASE_EXPORT FilePath {
   // only to |component| is returned.  |component| must be a relative path;
   // it is an error to pass an absolute path.
   FilePath Append(StringPieceType component) const WARN_UNUSED_RESULT;
-
   FilePath Append(const FilePath& component) const WARN_UNUSED_RESULT;
 
   // Although Windows StringType is std::wstring, since the encoding it uses for
@@ -428,7 +427,7 @@ class BASE_EXPORT FilePath {
     return CompareIgnoreCase(string1, string2) < 0;
   }
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
   // Returns the string in the special canonical decomposed form as defined for
   // HFS, which is close to, but not quite, decomposition form D. See
   // http://developer.apple.com/mac/library/technotes/tn/tn1150.html#UnicodeSubtleties

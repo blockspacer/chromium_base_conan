@@ -8,7 +8,9 @@
 #include "base/base_export.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
+#include "base/power_monitor/power_observer.h"
 #include "base/synchronization/lock.h"
+#include "build/build_config.h"
 
 namespace base {
 
@@ -30,13 +32,20 @@ class BASE_EXPORT PowerMonitorSource {
   // Is the computer currently on battery power. Can be called on any thread.
   bool IsOnBatteryPower();
 
-  // Called by PowerMonitor just before PowerMonitor destroys both itself and
-  // this instance). After return from this call it is no longer safe for
-  // subclasses to call into PowerMonitor (e.g., via PowerMonitor::Get(). Hence,
-  // subclasses should take any necessary actions here to ensure that after
-  // return from this invocation they will no longer make any calls on
-  // PowerMonitor.
-  virtual void Shutdown() = 0;
+  // Reads the current DeviceThermalState, if available on the platform.
+  // Otherwise, returns kUnknown.
+  virtual PowerObserver::DeviceThermalState GetCurrentThermalState();
+
+  // Update the result of thermal state.
+  virtual void SetCurrentThermalState(PowerObserver::DeviceThermalState state);
+
+#if defined(OS_ANDROID)
+  // Read and return the current remaining battery capacity (microampere-hours).
+  virtual int GetRemainingBatteryCapacity();
+#endif  // defined(OS_ANDROID)
+
+  static const char* DeviceThermalStateToString(
+      PowerObserver::DeviceThermalState state);
 
  protected:
   friend class PowerMonitorTest;
@@ -44,9 +53,11 @@ class BASE_EXPORT PowerMonitorSource {
   // Friend function that is allowed to access the protected ProcessPowerEvent.
   friend void ProcessPowerEventHelper(PowerEvent);
 
-  // ProcessPowerEvent should only be called from a single thread, most likely
+  // Process*Event should only be called from a single thread, most likely
   // the UI thread or, in child processes, the IO thread.
   static void ProcessPowerEvent(PowerEvent event_id);
+  static void ProcessThermalEvent(
+      PowerObserver::DeviceThermalState new_thermal_state);
 
   // Platform-specific method to check whether the system is currently
   // running on battery power.  Returns true if running on batteries,
@@ -59,7 +70,7 @@ class BASE_EXPORT PowerMonitorSource {
   void SetInitialOnBatteryPowerState(bool on_battery_power);
 
  private:
-  bool on_battery_power_ = false;
+  bool on_battery_power_ GUARDED_BY(battery_lock_) = false;
   bool suspended_ = false;
 
   // This lock guards access to on_battery_power_, to ensure that

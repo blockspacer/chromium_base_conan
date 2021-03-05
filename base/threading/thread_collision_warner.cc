@@ -4,7 +4,7 @@
 
 #include "base/threading/thread_collision_warner.h"
 
-#include "base/logging.h"
+#include "base/notreached.h"
 #include "base/threading/platform_thread.h"
 
 namespace base {
@@ -60,7 +60,5 @@ void ThreadCollisionWarner::Leave() {
     subtle::NoBarrier_Store(&valid_thread_id_, 0);
   }
 }
-
-AsserterBase::~AsserterBase(){}
 
 }  // namespace base

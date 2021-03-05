@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,9 +11,9 @@
 #pragma clang max_tokens_here 350000
 #endif  // NACL_TC_REV
 
-//#ifdef BASE_CHECK_H_
-//#error "logging.h should not include check.h"
-//#endif
+#ifdef BASE_CHECK_H_
+#error "logging.h should not include check.h"
+#endif
 
 #include <limits.h>
 #include <stdint.h>
@@ -24,7 +24,7 @@
 #include "base/stl_util.h"
 #include "base/strings/string_piece.h"
 #include "base/task/common/task_annotator.h"
-#include "base/trace_event/trace_event.h"
+#include "base/trace_event/base_tracing.h"
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
@@ -63,15 +63,11 @@ typedef HANDLE FileHandle;
 #include <mach-o/dyld.h>
 
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
-#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL)
 #include <sys/time.h>  // timespec doesn't seem to be in <time.h>
 #endif
 #include <time.h>
 #endif
-
-#if defined(OS_EMSCRIPTEN)
-#include <emscripten/emscripten.h>
-#endif // OS_EMSCRIPTEN
 
 #if defined(OS_FUCHSIA)
 #include <lib/syslog/global.h>
@@ -126,7 +122,7 @@ typedef FILE* FileHandle;
 #include "base/test/scoped_logging_settings.h"
 #include "base/threading/platform_thread.h"
 #include "base/vlog.h"
-#include "base/build/chromeos_buildflags.h"
+#include "build/chromeos_buildflags.h"
 
 #if defined(OS_WIN)
 #include "base/win/win_util.h"
@@ -213,13 +209,6 @@ uint64_t TickCount() {
   // NaCl sadly does not have _POSIX_TIMERS enabled in sys/features.h
   // So we have to use clock() for now.
   return clock();
-#elif defined(OS_EMSCRIPTEN)
-  // this goes above x86-specific code because old versions of Emscripten
-  // define __x86_64__, although they have nothing to do with it.
-  /// \note The result is not an absolute time,
-  /// and is only meaningful in comparison to other calls to this function (!!!)
-  // emscripten_get_now() returns a wallclock time as a float in milliseconds (1e-3).
-  return static_cast<int64_t>(emscripten_get_now() * 1e+6);
 #elif defined(OS_POSIX)
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -570,7 +559,7 @@ LogMessage::LogMessage(const char* file, int line, const char* condition)
 LogMessage::~LogMessage() {
   size_t stack_start = stream_.tellp();
 #if !defined(OFFICIAL_BUILD) && !defined(OS_NACL) && !defined(__UCLIBC__) && \
-    !defined(OS_AIX) && !defined(OS_EMSCRIPTEN)
+    !defined(OS_AIX)
   if (severity_ == LOGGING_FATAL && !base::debug::BeingDebugged()) {
     // Include a stack trace on a fatal, unless a debugger is attached.
     base::debug::StackTrace stack_trace;
@@ -583,18 +572,16 @@ LogMessage::~LogMessage() {
     // Include the IPC context, if any.
     // TODO(chrisha): Integrate with symbolization once those tools exist!
     const auto* task = base::TaskAnnotator::CurrentTaskForThread();
-    if (task && task->ipc_program_counter) {
-      //stream_ << "IPC message handler context: "
-      //        << base::StringPrintf("0x%08X", task->ipc_program_counter) << std::endl;
-      base::debug::StackTrace ipc_trace(&task->ipc_program_counter, 1);
-      ipc_trace.OutputToStream(&stream_);
+    if (task && task->ipc_hash) {
+      stream_ << "IPC message handler context: "
+              << base::StringPrintf("0x%08X", task->ipc_hash) << std::endl;
     }
   }
 #endif
   stream_ << std::endl;
   std::string str_newline(stream_.str());
-  //TRACE_LOG_MESSAGE(
-  //    file_, base::StringPiece(str_newline).substr(message_start_), line_);
+  TRACE_LOG_MESSAGE(
+      file_, base::StringPiece(str_newline).substr(message_start_), line_);
 
   // Give any log message handler first dibs on the message.
   if (log_message_handler &&
@@ -603,24 +590,6 @@ LogMessage::~LogMessage() {
     // The handler took care of it, no further processing.
     return;
   }
-
-  if(stream_.needEndl())
-  {
-    stream_ << std::endl;
-  }
-
-  if(!stream_.needFormat())
-  {
-    // Remove prefix that looks similar to:
-    // [25583:25583:1113/185640.856387:39412343570:INFO:main.cc(375)]
-    str_newline
-      = str_newline.substr(message_start_, str_newline.size());
-  }
-
-  /// \todo proper logging in browser
-#if defined(OS_EMSCRIPTEN)
-  printf("LOG: %s\n", str_newline.c_str());
-#endif
 
   if ((g_logging_destination & LOG_TO_SYSTEM_DEBUG_LOG) != 0) {
 #if defined(OS_WIN)
@@ -1159,18 +1128,6 @@ std::wstring GetLogFileFullPath() {
   return std::wstring();
 }
 #endif
-
-LogStringStream& info(LogStringStream& ls)
-{
-  ls
-    << "file:"
-    << ls.file()
-    << " line:"
-    << ls.line()
-    << " severity:"
-    << log_severity_name(ls.severity());
-  return ls;
-}
 
 }  // namespace logging
 

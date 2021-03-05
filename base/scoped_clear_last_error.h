@@ -53,11 +53,6 @@ using ScopedClearLastError = ScopedClearLastErrorBase;
 
 #endif  // defined(OS_WIN)
 
-namespace internal {
-using ScopedClearLastErrorBase = ScopedClearLastErrorBase;
-using ScopedClearLastError = ScopedClearLastError;
-} // namespace internal
-
 }  // namespace base
 
 #endif  // BASE_SCOPED_CLEAR_LAST_ERROR_H_

@@ -12,7 +12,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/threading/platform_thread.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace debug {

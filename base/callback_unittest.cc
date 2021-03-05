@@ -10,10 +10,11 @@
 #include "base/bind.h"
 #include "base/callback_internal.h"
 #include "base/memory/ref_counted.h"
+#include "base/notreached.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/test/test_timeouts.h"
 #include "base/threading/thread.h"
-#include "base/strings/string_number_conversions.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -57,6 +58,24 @@ class CallbackTest : public ::testing::Test {
   const RepeatingCallback<void()> callback_b_;  // Ensure APIs work with const.
   RepeatingCallback<void()> null_callback_;
 };
+
+TEST_F(CallbackTest, Types) {
+  static_assert(std::is_same<void, OnceClosure::ResultType>::value, "");
+  static_assert(std::is_same<void(), OnceClosure::RunType>::value, "");
+
+  using OnceCallbackT = OnceCallback<double(int, char)>;
+  static_assert(std::is_same<double, OnceCallbackT::ResultType>::value, "");
+  static_assert(std::is_same<double(int, char), OnceCallbackT::RunType>::value,
+                "");
+
+  static_assert(std::is_same<void, RepeatingClosure::ResultType>::value, "");
+  static_assert(std::is_same<void(), RepeatingClosure::RunType>::value, "");
+
+  using RepeatingCallbackT = RepeatingCallback<bool(float, short)>;
+  static_assert(std::is_same<bool, RepeatingCallbackT::ResultType>::value, "");
+  static_assert(
+      std::is_same<bool(float, short), RepeatingCallbackT::RunType>::value, "");
+}
 
 // Ensure we can create unbound callbacks. We need this to be able to store
 // them in class members that can be initialized later.
@@ -667,11 +686,15 @@ TEST_F(CallbackTest, MaybeValidInvalidateWeakPtrsOnSameSequence) {
   RepeatingCallback<void()> cb =
       BindRepeating(&ClassWithAMethod::TheMethod, ptr);
   EXPECT_TRUE(cb.MaybeValid());
+  EXPECT_FALSE(cb.IsCancelled());
 
   factory.InvalidateWeakPtrs();
-  // MaybeValid() should be false because InvalidateWeakPtrs() was called on
-  // the same thread.
+  // MaybeValid() should be false and IsCancelled() should become true because
+  // InvalidateWeakPtrs() was called on the same thread.
   EXPECT_FALSE(cb.MaybeValid());
+  EXPECT_TRUE(cb.IsCancelled());
+  // is_null() is not affected by the invalidated WeakPtr.
+  EXPECT_FALSE(cb.is_null());
 }
 
 TEST_F(CallbackTest, MaybeValidInvalidateWeakPtrsOnOtherSequence) {

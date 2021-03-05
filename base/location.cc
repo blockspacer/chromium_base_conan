@@ -29,7 +29,7 @@ Location::Location(const char* function_name,
       file_name_(file_name),
       line_number_(line_number),
       program_counter_(program_counter) {
-#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL)
   // The program counter should not be null except in a default constructed
   // (empty) Location object. This value is used for identity, so if it doesn't
   // uniquely identify a location, things will break.
@@ -48,22 +48,24 @@ std::string Location::ToString() const {
   return StringPrintf("pc:%p", program_counter_);
 }
 
-#if defined(OS_EMSCRIPTEN)
-/// \todo use emscripten_return_address
-#define RETURN_ADDRESS() nullptr
-#elif defined(COMPILER_MSVC)
+#if defined(COMPILER_MSVC)
 #define RETURN_ADDRESS() _ReturnAddress()
-#elif defined(COMPILER_GCC) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#elif defined(COMPILER_GCC) && !defined(OS_NACL)
 #define RETURN_ADDRESS() \
   __builtin_extract_return_addr(__builtin_return_address(0))
 #else
 #define RETURN_ADDRESS() nullptr
 #endif
 
+#if !BUILDFLAG(FROM_HERE_USES_LOCATION_BUILTINS)
+#if !BUILDFLAG(ENABLE_LOCATION_SOURCE)
+
 // static
 NOINLINE Location Location::CreateFromHere(const char* file_name) {
   return Location(file_name, RETURN_ADDRESS());
 }
+
+#else
 
 // static
 NOINLINE Location Location::CreateFromHere(const char* function_name,
@@ -71,6 +73,9 @@ NOINLINE Location Location::CreateFromHere(const char* function_name,
                                            int line_number) {
   return Location(function_name, file_name, line_number, RETURN_ADDRESS());
 }
+
+#endif
+#endif
 
 #if SUPPORTS_LOCATION_BUILTINS && BUILDFLAG(ENABLE_LOCATION_SOURCE)
 // static

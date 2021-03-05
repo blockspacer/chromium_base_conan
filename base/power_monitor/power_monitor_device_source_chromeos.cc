@@ -37,4 +37,25 @@ bool PowerMonitorDeviceSource::IsOnBatteryPowerImpl() {
   return g_on_battery;
 }
 
+// static
+void PowerMonitorDeviceSource::ThermalEventReceived(
+    PowerObserver::DeviceThermalState state) {
+  if (!PowerMonitor::IsInitialized()) {
+    PowerMonitor::Initialize(std::make_unique<PowerMonitorDeviceSource>());
+  }
+  PowerMonitor::SetCurrentThermalState(state);
+
+  ProcessThermalEvent(state);
+}
+
+PowerObserver::DeviceThermalState
+PowerMonitorDeviceSource::GetCurrentThermalState() {
+  return current_thermal_state_;
+}
+
+void PowerMonitorDeviceSource::SetCurrentThermalState(
+    PowerObserver::DeviceThermalState state) {
+  current_thermal_state_ = state;
+}
+
 }  // namespace base

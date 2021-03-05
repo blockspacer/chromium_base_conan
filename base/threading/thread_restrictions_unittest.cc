@@ -10,7 +10,7 @@
 #include "base/callback.h"
 #include "base/macros.h"
 #include "base/test/gtest_util.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

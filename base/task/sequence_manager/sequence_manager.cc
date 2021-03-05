@@ -7,6 +7,8 @@
 namespace base {
 namespace sequence_manager {
 
+NativeWorkHandle::~NativeWorkHandle() = default;
+
 SequenceManager::MetricRecordingSettings::MetricRecordingSettings(
     double task_thread_time_sampling_rate)
     : task_sampling_rate_for_recording_cpu_time(
@@ -22,8 +24,8 @@ SequenceManager::Settings::Builder::Builder() = default;
 SequenceManager::Settings::Builder::~Builder() = default;
 
 SequenceManager::Settings::Builder&
-SequenceManager::Settings::Builder::SetMessageLoopType(
-    MessageLoop::Type message_loop_type_val) {
+SequenceManager::Settings::Builder::SetMessagePumpType(
+    MessagePumpType message_loop_type_val) {
   settings_.message_loop_type = message_loop_type_val;
   return *this;
 }
@@ -38,6 +40,13 @@ SequenceManager::Settings::Builder::SetRandomisedSamplingEnabled(
 SequenceManager::Settings::Builder&
 SequenceManager::Settings::Builder::SetTickClock(const TickClock* clock_val) {
   settings_.clock = clock_val;
+  return *this;
+}
+
+SequenceManager::Settings::Builder&
+SequenceManager::Settings::Builder::SetAddQueueTimeToTasks(
+    bool add_queue_time_to_tasks_val) {
+  settings_.add_queue_time_to_tasks = add_queue_time_to_tasks_val;
   return *this;
 }
 
@@ -60,14 +69,6 @@ SequenceManager::Settings::Builder&
 SequenceManager::Settings::Builder::SetLogTaskDelayExpiry(
     bool log_task_delay_expiry_val) {
   settings_.log_task_delay_expiry = log_task_delay_expiry_val;
-  return *this;
-}
-
-SequenceManager::Settings::Builder&
-SequenceManager::Settings::Builder::SetLogRunloopQuitAndQuitWhenIdle(
-    bool log_runloop_quit_and_quit_when_idle_val) {
-  settings_.log_runloop_quit_and_quit_when_idle =
-      log_runloop_quit_and_quit_when_idle_val;
   return *this;
 }
 

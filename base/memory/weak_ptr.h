@@ -16,25 +16,24 @@
 //
 //  class Controller {
 //   public:
-//    Controller() : weak_factory_(this) {}
 //    void SpawnWorker() { Worker::StartNew(weak_factory_.GetWeakPtr()); }
 //    void WorkComplete(const Result& result) { ... }
 //   private:
 //    // Member variables should appear before the WeakPtrFactory, to ensure
 //    // that any WeakPtrs to Controller are invalidated before its members
 //    // variable's destructors are executed, rendering them invalid.
-//    WeakPtrFactory<Controller> weak_factory_;
+//    WeakPtrFactory<Controller> weak_factory_{this};
 //  };
 //
 //  class Worker {
 //   public:
-//    static void StartNew(const WeakPtr<Controller>& controller) {
-//      Worker* worker = new Worker(controller);
+//    static void StartNew(WeakPtr<Controller> controller) {
+//      Worker* worker = new Worker(std::move(controller));
 //      // Kick off asynchronous processing...
 //    }
 //   private:
-//    Worker(const WeakPtr<Controller>& controller)
-//        : controller_(controller) {}
+//    Worker(WeakPtr<Controller> controller)
+//        : controller_(std::move(controller)) {}
 //    void DidCompleteAsynchronousProcessing(const Result& result) {
 //      if (controller_)
 //        controller_->WorkComplete(result);
@@ -74,7 +73,7 @@
 #include <type_traits>
 
 #include "base/base_export.h"
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/sequence_checker.h"
@@ -117,9 +116,9 @@ class BASE_EXPORT WeakReference {
   explicit WeakReference(const scoped_refptr<Flag>& flag);
   ~WeakReference();
 
-  WeakReference(WeakReference&& other);
+  WeakReference(WeakReference&& other) noexcept;
   WeakReference(const WeakReference& other);
-  WeakReference& operator=(WeakReference&& other) = default;
+  WeakReference& operator=(WeakReference&& other) noexcept = default;
   WeakReference& operator=(const WeakReference& other) = default;
 
   bool IsValid() const;
@@ -141,7 +140,7 @@ class BASE_EXPORT WeakReferenceOwner {
   void Invalidate();
 
  private:
-  mutable scoped_refptr<WeakReference::Flag> flag_;
+  scoped_refptr<WeakReference::Flag> flag_;
 };
 
 // This class simplifies the implementation of WeakPtr's type conversion
@@ -154,9 +153,9 @@ class BASE_EXPORT WeakPtrBase {
   ~WeakPtrBase();
 
   WeakPtrBase(const WeakPtrBase& other) = default;
-  WeakPtrBase(WeakPtrBase&& other) = default;
+  WeakPtrBase(WeakPtrBase&& other) noexcept = default;
   WeakPtrBase& operator=(const WeakPtrBase& other) = default;
-  WeakPtrBase& operator=(WeakPtrBase&& other) = default;
+  WeakPtrBase& operator=(WeakPtrBase&& other) noexcept = default;
 
   void reset() {
     ref_ = internal::WeakReference();
@@ -237,7 +236,7 @@ class WeakPtr : public internal::WeakPtrBase {
     ptr_ = reinterpret_cast<uintptr_t>(t);
   }
   template <typename U>
-  WeakPtr(WeakPtr<U>&& other) : WeakPtrBase(std::move(other)) {
+  WeakPtr(WeakPtr<U>&& other) noexcept : WeakPtrBase(std::move(other)) {
     // Need to cast from U* to T* to do pointer adjustment in case of multiple
     // inheritance. This also enforces the "U is a T" rule.
     T* t = reinterpret_cast<U*>(other.ptr_);
@@ -249,11 +248,11 @@ class WeakPtr : public internal::WeakPtrBase {
   }
 
   T& operator*() const {
-    DCHECK(get() != nullptr);
+    CHECK(ref_.IsValid());
     return *get();
   }
   T* operator->() const {
-    DCHECK(get() != nullptr);
+    CHECK(ref_.IsValid());
     return get();
   }
 
@@ -325,7 +324,7 @@ class WeakPtrFactory : public internal::WeakPtrFactoryBase {
 
   ~WeakPtrFactory() = default;
 
-  WeakPtr<T> GetWeakPtr() {
+  WeakPtr<T> GetWeakPtr() const {
     return WeakPtr<T>(weak_reference_owner_.GetRef(),
                       reinterpret_cast<T*>(ptr_));
   }
@@ -359,11 +358,6 @@ class SupportsWeakPtr : public internal::SupportsWeakPtrBase {
   WeakPtr<T> AsWeakPtr() {
     return WeakPtr<T>(weak_reference_owner_.GetRef(), static_cast<T*>(this));
   }
-
-  // Call this method to invalidate all existing weak pointers.
-  // This may be useful to call explicitly in a destructor of a derived class,
-  // as the SupportsWeakPtr destructor won't run until late in destruction.
-  void InvalidateWeakPtrs() { weak_reference_owner_.Invalidate(); }
 
  protected:
   ~SupportsWeakPtr() = default;

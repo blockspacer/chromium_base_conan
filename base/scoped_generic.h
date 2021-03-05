@@ -6,11 +6,14 @@
 #define BASE_SCOPED_GENERIC_H_
 
 #include <stdlib.h>
+#include <ostream>
 
 #include <algorithm>
+#include <utility>
 
-#include "base/compiler_specific.h"
-#include "base/logging.h"
+#include "base/check.h"
+// TODO(crbug.com/1010217) Remove once no #includers are getting base/macros.h
+// by including this header.
 #include "base/macros.h"
 
 namespace base {
@@ -118,6 +121,8 @@ class ScopedGeneric {
       : data_(rvalue.release(), rvalue.get_traits()) {
     TrackAcquire(data_.generic);
   }
+  ScopedGeneric(const ScopedGeneric&) = delete;
+  ScopedGeneric& operator=(const ScopedGeneric&) = delete;
 
   virtual ~ScopedGeneric() {
     CHECK(!receiving_) << "ScopedGeneric destroyed with active receiver";
@@ -135,11 +140,7 @@ class ScopedGeneric {
   // http://crbug.com/162971
   void reset(const element_type& value = traits_type::InvalidValue()) {
     if (data_.generic != traits_type::InvalidValue() && data_.generic == value)
-      #if defined(OS_EMSCRIPTEN)
-        printf("ERROR during base::reset\n");
-      #else
-        abort();
-      #endif
+      abort();
     FreeIfNecessary();
     data_.generic = value;
     TrackAcquire(value);
@@ -218,15 +219,8 @@ class ScopedGeneric {
              "Receiver";
       scoped_generic_->receiving_ = true;
     }
-
-    ~Receiver() {
-      if (scoped_generic_) {
-        CHECK(scoped_generic_->receiving_);
-        scoped_generic_->reset(value_);
-        scoped_generic_->receiving_ = false;
-      }
-    }
-
+    Receiver(const Receiver&) = delete;
+    Receiver& operator=(const Receiver&) = delete;
     Receiver(Receiver&& move) {
       CHECK(!used_) << "moving into already-used Receiver";
       CHECK(!move.used_) << "moving from already-used Receiver";
@@ -240,7 +234,13 @@ class ScopedGeneric {
       scoped_generic_ = move.scoped_generic_;
       move.scoped_generic_ = nullptr;
     }
-
+    ~Receiver() {
+      if (scoped_generic_) {
+        CHECK(scoped_generic_->receiving_);
+        scoped_generic_->reset(value_);
+        scoped_generic_->receiving_ = false;
+      }
+    }
     // We hand out a pointer to a field in Receiver instead of directly to
     // ScopedGeneric's internal storage in order to make it so that users can't
     // accidentally silently break ScopedGeneric's invariants. This way, an
@@ -256,8 +256,6 @@ class ScopedGeneric {
     T value_ = Traits::InvalidValue();
     ScopedGeneric* scoped_generic_;
     bool used_ = false;
-
-    DISALLOW_COPY_AND_ASSIGN(Receiver);
   };
 
   const element_type& get() const { return data_.generic; }
@@ -299,9 +297,7 @@ class ScopedGeneric {
   typename std::enable_if_t<
       !std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
       Void>
-  TrackAcquire(const T& value) {
-    UNREFERENCED_PARAMETER(value);
-  }
+  TrackAcquire(const T& value) {}
 
   template <typename Void = void>
   typename std::enable_if_t<
@@ -317,9 +313,7 @@ class ScopedGeneric {
   typename std::enable_if_t<
       !std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
       Void>
-  TrackRelease(const T& value) {
-    UNREFERENCED_PARAMETER(value);
-  }
+  TrackRelease(const T& value) {}
 
   // Forbid comparison. If U != T, it totally doesn't make sense, and if U ==
   // T, it still doesn't make sense because you should never have the same
@@ -331,8 +325,6 @@ class ScopedGeneric {
 
   Data data_;
   bool receiving_ = false;
-
-  DISALLOW_COPY_AND_ASSIGN(ScopedGeneric);
 };
 
 template<class T, class Traits>

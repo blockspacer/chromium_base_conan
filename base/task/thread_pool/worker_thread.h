@@ -8,22 +8,17 @@
 #include <memory>
 
 #include "base/base_export.h"
-#include "base/macros.h"
+#include "base/compiler_specific.h"
 #include "base/memory/ref_counted.h"
 #include "base/synchronization/atomic_flag.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/common/checked_lock.h"
 #include "base/task/thread_pool/task_source.h"
 #include "base/task/thread_pool/tracked_ref.h"
-#include "base/task/thread_pool/worker_thread_params.h"
 #include "base/thread_annotations.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-
-#if defined(OS_WIN)
-#include "base/win/com_init_check_hook.h"
-#endif
 
 namespace base {
 
@@ -73,12 +68,12 @@ class BASE_EXPORT WorkerThread : public RefCountedThreadSafe<WorkerThread>,
     virtual void OnMainEntry(const WorkerThread* worker) = 0;
 
     // Called by |worker|'s thread to get a TaskSource from which to run a Task.
-    virtual scoped_refptr<TaskSource> GetWork(WorkerThread* worker) = 0;
+    virtual RegisteredTaskSource GetWork(WorkerThread* worker) = 0;
 
     // Called by the WorkerThread after it ran a Task. If the Task's
     // TaskSource should be reenqueued, it is passed to |task_source|.
     // Otherwise, |task_source| is nullptr.
-    virtual void DidRunTask(scoped_refptr<TaskSource> task_source) = 0;
+    virtual void DidProcessTask(RegisteredTaskSource task_source) = 0;
 
     // Called to determine how long to sleep before the next call to GetWork().
     // GetWork() may be called before this timeout expires if the worker's
@@ -95,9 +90,7 @@ class BASE_EXPORT WorkerThread : public RefCountedThreadSafe<WorkerThread>,
     // Delegate is free to release any associated resources in this call. It is
     // guaranteed that WorkerThread won't access the Delegate or the
     // TaskTracker after calling OnMainExit() on the Delegate.
-    virtual void OnMainExit(WorkerThread* worker) {
-      ignore_result(worker);
-    }
+    virtual void OnMainExit(WorkerThread* worker) {}
   };
 
   // Creates a WorkerThread that runs Tasks from TaskSources returned by
@@ -112,9 +105,10 @@ class BASE_EXPORT WorkerThread : public RefCountedThreadSafe<WorkerThread>,
   WorkerThread(ThreadPriority priority_hint,
                std::unique_ptr<Delegate> delegate,
                TrackedRef<TaskTracker> task_tracker,
-               const CheckedLock* predecessor_lock = nullptr,
-               WorkerThreadBackwardCompatibility backward_compatibility =
-                   WorkerThreadBackwardCompatibility::DISABLED);
+               const CheckedLock* predecessor_lock = nullptr);
+
+  WorkerThread(const WorkerThread&) = delete;
+  WorkerThread& operator=(const WorkerThread&) = delete;
 
   // Creates a thread to back the WorkerThread. The thread will be in a wait
   // state pending a WakeUp() call. No thread will be created if Cleanup() was
@@ -201,7 +195,7 @@ class BASE_EXPORT WorkerThread : public RefCountedThreadSafe<WorkerThread>,
   //     ThreadMain() -> RunLabeledWorker() -> RunWorker().
   // "RunLabeledWorker()" is a dummy frame based on ThreadLabel+ThreadPriority
   // and used to easily identify threads in stack traces.
-  void RunWorker();
+  void NOT_TAIL_CALLED RunWorker();
 
   // Self-reference to prevent destruction of |this| while the thread is alive.
   // Set in Start() before creating the thread. Reset in ThreadMain() before the
@@ -240,14 +234,8 @@ class BASE_EXPORT WorkerThread : public RefCountedThreadSafe<WorkerThread>,
   // construction accesses occur on the thread.
   ThreadPriority current_thread_priority_;
 
-#if defined(OS_WIN) && !defined(COM_INIT_CHECK_HOOK_ENABLED)
-  const WorkerThreadBackwardCompatibility backward_compatibility_;
-#endif
-
   // Set once JoinForTesting() has been called.
   AtomicFlag join_called_for_testing_;
-
-  DISALLOW_COPY_AND_ASSIGN(WorkerThread);
 };
 
 }  // namespace internal

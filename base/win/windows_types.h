@@ -5,8 +5,8 @@
 // This file contains defines and typedefs that allow popular Windows types to
 // be used without the overhead of including windows.h.
 
-#ifndef BASE_WIN_WINDOWS_TYPES_H
-#define BASE_WIN_WINDOWS_TYPES_H
+#ifndef BASE_WIN_WINDOWS_TYPES_H_
+#define BASE_WIN_WINDOWS_TYPES_H_
 
 // Needed for function prototypes.
 #include <concurrencysal.h>
@@ -68,6 +68,8 @@ typedef LONG_PTR SSIZE_T, *PSSIZE_T;
 typedef DWORD ACCESS_MASK;
 typedef ACCESS_MASK REGSAM;
 
+typedef LONG NTSTATUS;
+
 // As defined in guiddef.h.
 #ifndef _REFGUID_DEFINED
 #define _REFGUID_DEFINED
@@ -91,8 +93,10 @@ CHROME_DECLARE_HANDLE(HWND);
 #undef CHROME_DECLARE_HANDLE
 
 typedef LPVOID HINTERNET;
+typedef HICON HCURSOR;
 typedef HINSTANCE HMODULE;
 typedef PVOID LSA_HANDLE;
+typedef PVOID HDEVINFO;
 
 // Forward declare some Windows struct/typedef sets.
 
@@ -114,6 +118,8 @@ typedef struct tagMENUITEMINFOW MENUITEMINFOW, MENUITEMINFO;
 
 typedef struct tagNMHDR NMHDR;
 
+typedef struct _SP_DEVINFO_DATA SP_DEVINFO_DATA;
+
 typedef PVOID PSID;
 
 // Declare Chrome versions of some Windows structures. These are needed for
@@ -129,9 +135,10 @@ struct CHROME_CONDITION_VARIABLE {
   PVOID Ptr;
 };
 
-
 // Define some commonly used Windows constants. Note that the layout of these
 // macros - including internal spacing - must be 100% consistent with windows.h.
+
+// clang-format off
 
 #ifndef INVALID_HANDLE_VALUE
 // Work around there being two slightly different definitions in the SDK.
@@ -199,6 +206,8 @@ struct CHROME_CONDITION_VARIABLE {
                                   &                           \
                                  (~SYNCHRONIZE))
 
+// clang-format on
+
 // Define some macros needed when prototyping Windows functions.
 
 #define DECLSPEC_IMPORT __declspec(dllimport)
@@ -207,9 +216,10 @@ struct CHROME_CONDITION_VARIABLE {
 #define WINAPI __stdcall
 #define CALLBACK __stdcall
 
-// Needed for optimal lock performance.
+// Needed for LockImpl.
 WINBASEAPI _Releases_exclusive_lock_(*SRWLock) VOID WINAPI
     ReleaseSRWLockExclusive(_Inout_ PSRWLOCK SRWLock);
+WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockExclusive(_Inout_ PSRWLOCK SRWLock);
 
 // Needed to support protobuf's GetMessage macro magic.
 WINUSERAPI BOOL WINAPI GetMessageW(_Out_ LPMSG lpMsg,
@@ -225,6 +235,9 @@ WINBASEAPI _Check_return_ _Post_equals_last_error_ DWORD WINAPI
     GetLastError(VOID);
 
 WINBASEAPI VOID WINAPI SetLastError(_In_ DWORD dwErrCode);
+
+WINBASEAPI BOOL WINAPI TerminateProcess(_In_ HANDLE hProcess,
+                                        _In_ UINT uExitCode);
 
 #ifdef __cplusplus
 }
@@ -244,6 +257,8 @@ WINBASEAPI VOID WINAPI SetLastError(_In_ DWORD dwErrCode);
 #define DeleteFile DeleteFileW
 #define DispatchMessage DispatchMessageW
 #define DrawText DrawTextW
+#define FindFirstFile FindFirstFileW
+#define FindNextFile FindNextFileW
 #define GetComputerName GetComputerNameW
 #define GetCurrentDirectory GetCurrentDirectoryW
 #define GetCurrentTime() GetTickCount()
@@ -253,6 +268,7 @@ WINBASEAPI VOID WINAPI SetLastError(_In_ DWORD dwErrCode);
 #define LoadIcon LoadIconW
 #define LoadImage LoadImageW
 #define PostMessage PostMessageW
+#define RemoveDirectory RemoveDirectoryW
 #define ReplaceFile ReplaceFileW
 #define ReportEvent ReportEventW
 #define SendMessage SendMessageW
@@ -261,4 +277,4 @@ WINBASEAPI VOID WINAPI SetLastError(_In_ DWORD dwErrCode);
 #define StartService StartServiceW
 #define UpdateResource UpdateResourceW
 
-#endif  // BASE_WIN_WINDOWS_TYPES_H
+#endif  // BASE_WIN_WINDOWS_TYPES_H_

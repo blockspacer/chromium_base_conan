@@ -4,14 +4,50 @@
 
 #include "base/debug/task_trace.h"
 
-#include <algorithm>
+#include "base/ranges/algorithm.h"
+#include "build/build_config.h"
+
+#if defined(OS_ANDROID)
+#include <android/log.h>
+#endif  // OS_ANDROID
+
 #include <iostream>
+#include <sstream>
+
+#if defined(OS_ANDROID)
+#include "base/no_destructor.h"
+#endif
 
 #include "base/pending_task.h"
 #include "base/task/common/task_annotator.h"
 
 namespace base {
 namespace debug {
+namespace {
+#if defined(OS_ANDROID)
+// Android sends stdout and stderr to /dev/null; logging should be done through
+// the __android_log_write() function. Here we create an override of
+// std::stringbuf that writes to the Android log.
+class AndroidErrBuffer : public std::stringbuf {
+ protected:
+  int sync() override {
+    __android_log_write(ANDROID_LOG_ERROR, "chromium", str().c_str());
+    return 0;
+  }
+};
+
+std::ostream& DefaultOutputStream() {
+  static NoDestructor<AndroidErrBuffer> buf;
+  static NoDestructor<std::ostream> out(buf.get());
+  return *out;
+}
+#else
+// Use stderr by default.
+std::ostream& DefaultOutputStream() {
+  return std::cerr;
+}
+#endif  // OS_ANDROID
+}  // namespace
 
 TaskTrace::TaskTrace() {
   const PendingTask* current_task = TaskAnnotator::CurrentTaskForThread();
@@ -19,8 +55,7 @@ TaskTrace::TaskTrace() {
     return;
   std::array<const void*, PendingTask::kTaskBacktraceLength + 1> task_trace;
   task_trace[0] = current_task->posted_from.program_counter();
-  std::copy(current_task->task_backtrace.begin(),
-            current_task->task_backtrace.end(), task_trace.begin() + 1);
+  ranges::copy(current_task->task_backtrace, task_trace.begin() + 1);
   size_t length = 0;
   while (length < task_trace.size() && task_trace[length])
     ++length;
@@ -35,7 +70,7 @@ bool TaskTrace::empty() const {
 }
 
 void TaskTrace::Print() const {
-  OutputToStream(&std::cerr);
+  OutputToStream(&DefaultOutputStream());
 }
 
 void TaskTrace::OutputToStream(std::ostream* os) const {
@@ -50,6 +85,12 @@ void TaskTrace::OutputToStream(std::ostream* os) const {
            "PendingTask::kTaskBacktraceLength to increase."
         << std::endl;
   }
+}
+
+std::string TaskTrace::ToString() const {
+  std::stringstream stream;
+  OutputToStream(&stream);
+  return stream.str();
 }
 
 base::span<const void* const> TaskTrace::AddressesForTesting() const {

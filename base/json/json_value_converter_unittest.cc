@@ -11,7 +11,7 @@
 #include "base/json/json_reader.h"
 #include "base/strings/string_piece.h"
 #include "base/values.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {

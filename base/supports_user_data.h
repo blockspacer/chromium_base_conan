@@ -9,7 +9,6 @@
 #include <memory>
 
 #include "base/base_export.h"
-#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/sequence_checker.h"
 
@@ -20,6 +19,10 @@ namespace base {
 class BASE_EXPORT SupportsUserData {
  public:
   SupportsUserData();
+  SupportsUserData(SupportsUserData&&);
+  SupportsUserData& operator=(SupportsUserData&&);
+  SupportsUserData(const SupportsUserData&) = delete;
+  SupportsUserData& operator=(const SupportsUserData&) = delete;
 
   // Derive from this class and add your own data members to associate extra
   // information with this object. Alternatively, add this as a public base
@@ -54,6 +57,10 @@ class BASE_EXPORT SupportsUserData {
  protected:
   virtual ~SupportsUserData();
 
+  // Clear all user data from this object. This can be used if the subclass
+  // needs to provide reset functionality.
+  void ClearAllUserData();
+
  private:
   using DataMap = std::map<const void*, std::unique_ptr<Data>>;
 
@@ -61,8 +68,6 @@ class BASE_EXPORT SupportsUserData {
   DataMap user_data_;
   // Guards usage of |user_data_|
   SequenceChecker sequence_checker_;
-
-  DISALLOW_COPY_AND_ASSIGN(SupportsUserData);
 };
 
 // Adapter class that releases a refcounted object when the
@@ -77,14 +82,14 @@ class UserDataAdapter : public SupportsUserData::Data {
   }
 
   explicit UserDataAdapter(T* object) : object_(object) {}
+  UserDataAdapter(const UserDataAdapter&) = delete;
+  UserDataAdapter& operator=(const UserDataAdapter&) = delete;
   ~UserDataAdapter() override = default;
 
   T* release() { return object_.release(); }
 
  private:
   scoped_refptr<T> const object_;
-
-  DISALLOW_COPY_AND_ASSIGN(UserDataAdapter);
 };
 
 }  // namespace base

@@ -11,7 +11,6 @@
 #include "base/callback.h"
 #include "base/sequenced_task_runner_helpers.h"
 #include "base/task_runner.h"
-#include "base/thread_annotations.h"
 
 namespace base {
 
@@ -97,7 +96,7 @@ namespace base {
 //     has a method Run() that runs each runnable task in FIFO order
 //     that can be called from any thread, but only if another
 //     (non-nested) Run() call isn't already happening.
-class BASE_EXPORT LOCKABLE SequencedTaskRunner : public TaskRunner {
+class BASE_EXPORT SequencedTaskRunner : public TaskRunner {
  public:
   // The two PostNonNestable*Task methods below are like their
   // nestable equivalents in TaskRunner, but they guarantee that the
@@ -153,6 +152,19 @@ class BASE_EXPORT LOCKABLE SequencedTaskRunner : public TaskRunner {
                                 object.release());
   }
 
+  // Returns true iff tasks posted to this TaskRunner are sequenced
+  // with this call.
+  //
+  // In particular:
+  // - Returns true if this is a SequencedTaskRunner to which the
+  //   current task was posted.
+  // - Returns true if this is a SequencedTaskRunner bound to the
+  //   same sequence as the SequencedTaskRunner to which the current
+  //   task was posted.
+  // - Returns true if this is a SingleThreadTaskRunner bound to
+  //   the current thread.
+  virtual bool RunsTasksInCurrentSequence() const = 0;
+
  protected:
   ~SequencedTaskRunner() override = default;
 
@@ -177,7 +189,6 @@ struct BASE_EXPORT OnTaskRunnerDeleter {
   // For compatibility with std:: deleters.
   template <typename T>
   void operator()(const T* ptr) {
-    DCHECK(task_runner_);
     if (ptr)
       task_runner_->DeleteSoon(FROM_HERE, ptr);
   }

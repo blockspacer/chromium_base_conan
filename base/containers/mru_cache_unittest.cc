@@ -7,8 +7,12 @@
 #include <cstddef>
 #include <memory>
 
-#include "base/trace_event/memory_usage_estimator.h"
-#include GTEST_HEADER_INCLUDE
+#include "base/tracing_buildflags.h"
+#include "testing/gtest/include/gtest/gtest.h"
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "base/trace_event/memory_usage_estimator.h"  // no-presubmit-check
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 namespace base {
 
@@ -247,28 +251,11 @@ TEST(MRUCacheTest, AutoEvict) {
     cache.Put(kItem1Key, std::make_unique<CachedItem>(20));
     cache.Put(kItem2Key, std::make_unique<CachedItem>(21));
     cache.Put(kItem3Key, std::make_unique<CachedItem>(22));
-
-    // exceed kMaxSize, will prune `kItem1Key`
     cache.Put(kItem4Key, std::make_unique<CachedItem>(23));
 
     // The cache should only have kMaxSize items in it even though we inserted
     // more.
     EXPECT_EQ(kMaxSize, cache.size());
-
-    {
-      auto iter = cache.Get(kItem2Key);
-      EXPECT_TRUE(iter != cache.end());
-    }
-
-    {
-      auto iter = cache.Get(kItem3Key);
-      EXPECT_TRUE(iter != cache.end());
-    }
-
-    {
-      auto iter = cache.Get(kItem4Key);
-      EXPECT_TRUE(iter != cache.end());
-    }
   }
 
   // There should be no objects leaked.
@@ -397,6 +384,7 @@ TEST(MRUCacheTest, Swap) {
   }
 }
 
+#if BUILDFLAG(ENABLE_BASE_TRACING)
 TEST(MRUCacheTest, EstimateMemory) {
   base::MRUCache<std::string, int> cache(10);
 
@@ -406,5 +394,6 @@ TEST(MRUCacheTest, EstimateMemory) {
   EXPECT_GT(trace_event::EstimateMemoryUsage(cache),
             trace_event::EstimateMemoryUsage(key));
 }
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 }  // namespace base

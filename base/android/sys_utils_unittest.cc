@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "base/system/sys_info.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace android {

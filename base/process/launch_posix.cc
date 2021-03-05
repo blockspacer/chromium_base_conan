@@ -43,16 +43,16 @@
 #include "base/threading/platform_thread.h"
 #include "base/threading/platform_thread_internal_posix.h"
 #include "base/threading/scoped_blocking_call.h"
-#include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
-#include "base/trace_event/trace_event.h"
+#include "base/trace_event/base_tracing.h"
 #include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 
-#if defined(OS_LINUX) || defined(OS_AIX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_AIX)
 #include <sys/prctl.h>
 #endif
 
-#if defined(OS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
 #include <sys/ioctl.h>
 #endif
 
@@ -61,20 +61,13 @@
 #include <sys/ucontext.h>
 #endif
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 #error "macOS should use launch_mac.cc"
 #endif
 
 extern char** environ;
 
 namespace base {
-
-// Friend and derived class of ScopedAllowBaseSyncPrimitives which allows
-// GetAppOutputInternal() to join a process. GetAppOutputInternal() can't itself
-// be a friend of ScopedAllowBaseSyncPrimitives because it is in the anonymous
-// namespace.
-class GetAppOutputScopedAllowBaseSyncPrimitives
-    : public base::ScopedAllowBaseSyncPrimitives {};
 
 #if !defined(OS_NACL_NONSFI)
 
@@ -96,7 +89,6 @@ void SetEnvironment(char** env) {
 // the previous signal mask.
 sigset_t SetSignalMask(const sigset_t& new_sigmask) {
   sigset_t old_sigmask;
-
 #if defined(OS_ANDROID)
   // POSIX says pthread_sigmask() must be used in multi-threaded processes,
   // but Android's pthread_sigmask() was broken until 4.1:
@@ -104,19 +96,12 @@ sigset_t SetSignalMask(const sigset_t& new_sigmask) {
   // http://stackoverflow.com/questions/13777109/pthread-sigmask-on-android-not-working
   RAW_CHECK(sigprocmask(SIG_SETMASK, &new_sigmask, &old_sigmask) == 0);
 #else
-
-#if defined(OS_EMSCRIPTEN)
-// https://github.com/abseil/abseil-cpp/blob/master/absl/base/internal/thread_identity.cc#L72
-//#warning "base: Emscripten PThread implementation does not support signals."
-#else
   RAW_CHECK(pthread_sigmask(SIG_SETMASK, &new_sigmask, &old_sigmask) == 0);
-#endif // OS_EMSCRIPTEN
-
 #endif
   return old_sigmask;
 }
 
-#if (!defined(OS_LINUX) && !defined(OS_AIX)) || \
+#if (!defined(OS_LINUX) && !defined(OS_AIX) && !defined(OS_CHROMEOS)) || \
     (!defined(__i386__) && !defined(__x86_64__) && !defined(__arm__))
 void ResetChildSignalHandlersToDefaults() {
   // The previous signal handlers are likely to be meaningless in the child's
@@ -214,7 +199,7 @@ struct ScopedDIRClose {
 // Automatically closes |DIR*|s.
 typedef std::unique_ptr<DIR, ScopedDIRClose> ScopedDIR;
 
-#if defined(OS_LINUX) || defined(OS_AIX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_AIX)
 static const char kFDDir[] = "/proc/self/fd";
 #elif defined(OS_SOLARIS)
 static const char kFDDir[] = "/dev/fd";
@@ -224,16 +209,9 @@ static const char kFDDir[] = "/dev/fd";
 static const char kFDDir[] = "/dev/fd";
 #elif defined(OS_ANDROID)
 static const char kFDDir[] = "/proc/self/fd";
-#elif defined(OS_EMSCRIPTEN)
-static const char kFDDir[] = "/proc/self/fd"; // TODO
 #endif
 
 void CloseSuperfluousFds(const base::InjectiveMultimap& saved_mapping) {
-
-#if defined(OS_EMSCRIPTEN)
-  return; /// @TODO
-#endif // OS_EMSCRIPTEN
-
   // DANGER: no calls to malloc or locks are allowed from now on:
   // http://crbug.com/36678
 
@@ -332,7 +310,7 @@ Process LaunchProcess(const std::vector<std::string>& argv,
 
   pid_t pid;
   base::TimeTicks before_fork = TimeTicks::Now();
-#if defined(OS_LINUX) || defined(OS_AIX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_AIX)
   if (options.clone_flags) {
     // Signal handling in this function assumes the creation of a new
     // process, so we check that a thread is not being created by mistake
@@ -353,13 +331,6 @@ Process LaunchProcess(const std::vector<std::string>& argv,
   } else
 #endif
   {
-
-  // The Emscripten implementation does also not support multiprocessing via fork() and join().
-  // see https://emscripten.org/docs/porting/pthreads.html
-#if defined(OS_EMSCRIPTEN)
-//#warning "wasm: Unsupported architecture for fork"
-#endif
-
     pid = fork();
   }
 
@@ -435,11 +406,11 @@ Process LaunchProcess(const std::vector<std::string>& argv,
     // any hidden calls to malloc.
     void *malloc_thunk =
         reinterpret_cast<void*>(reinterpret_cast<intptr_t>(malloc) & ~4095);
-    mprotect(malloc_thunk, 4096, PROT_READ | PROT_WRITE | PROT_EXEC);
+    HANDLE_EINTR(mprotect(malloc_thunk, 4096, PROT_READ | PROT_WRITE | PROT_EXEC));
     memset(reinterpret_cast<void*>(malloc), 0xff, 8);
 #endif  // 0
 
-#if defined(OS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
     if (options.ctrl_terminal_fd >= 0) {
       // Set process' controlling terminal.
       if (HANDLE_EINTR(setsid()) != -1) {
@@ -451,7 +422,7 @@ Process LaunchProcess(const std::vector<std::string>& argv,
         RAW_LOG(WARNING, "setsid failed, ctrl terminal not set");
       }
     }
-#endif  // defined(OS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
 
     // Cannot use STL iterators here, since debug iterators use locks.
     // NOLINTNEXTLINE(modernize-loop-convert)
@@ -473,7 +444,7 @@ Process LaunchProcess(const std::vector<std::string>& argv,
 
     // Set NO_NEW_PRIVS by default. Since NO_NEW_PRIVS only exists in kernel
     // 3.5+, do not check the return value of prctl here.
-#if defined(OS_LINUX) || defined(OS_AIX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_AIX)
 #ifndef PR_SET_NO_NEW_PRIVS
 #define PR_SET_NO_NEW_PRIVS 38
 #endif
@@ -545,7 +516,6 @@ static bool GetAppOutputInternal(
     std::string* output,
     bool do_search_path,
     int* exit_code) {
-  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   // exit_code must be supplied so calling function can determine success.
   DCHECK(exit_code);
   *exit_code = EXIT_FAILURE;
@@ -566,12 +536,6 @@ static bool GetAppOutputInternal(
   int pipe_fd[2];
   if (pipe(pipe_fd) < 0)
     return false;
-
-  // The Emscripten implementation does also not support multiprocessing via fork() and join().
-  // see https://emscripten.org/docs/porting/pthreads.html
-#if defined(OS_EMSCRIPTEN)
-//#warning "wasm: Unsupported architecture for fork"
-#endif
 
   pid_t pid = fork();
   switch (pid) {
@@ -633,6 +597,8 @@ static bool GetAppOutputInternal(
       // write to the pipe).
       close(pipe_fd[1]);
 
+      TRACE_EVENT0("base", "GetAppOutput");
+
       output->clear();
 
       while (true) {
@@ -648,9 +614,10 @@ static bool GetAppOutputInternal(
       // Always wait for exit code (even if we know we'll declare
       // GOT_MAX_OUTPUT).
       Process process(pid);
-      // A process launched with GetAppOutput*() usually doesn't wait on the
-      // process that launched it and thus chances of deadlock are low.
-      GetAppOutputScopedAllowBaseSyncPrimitives allow_base_sync_primitives;
+      // It is okay to allow this process to wait on the launched process as a
+      // process launched with GetAppOutput*() shouldn't wait back on the
+      // process that launched it.
+      internal::GetAppOutputScopedAllowBaseSyncPrimitives allow_wait;
       return process.WaitForExit(exit_code);
     }
   }
@@ -694,7 +661,8 @@ bool GetAppOutputWithExitCode(const CommandLine& cl,
 
 #endif  // !defined(OS_NACL_NONSFI)
 
-#if defined(OS_LINUX) || defined(OS_NACL_NONSFI) || defined(OS_AIX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_NACL_NONSFI) || \
+    defined(OS_AIX)
 namespace {
 
 // This function runs on the stack specified on the clone call. It uses longjmp
@@ -723,9 +691,6 @@ NOINLINE pid_t CloneAndLongjmpInChild(unsigned long flags,
                                       pid_t* ptid,
                                       pid_t* ctid,
                                       jmp_buf* env) {
-#if defined(OS_EMSCRIPTEN)
-#error "wasm: Unsupported architecture for CloneAndLongjmpInChild"
-#endif
   // We use the libc clone wrapper instead of making the syscall
   // directly because making the syscall may fail to update the libc's
   // internal pid cache. The libc interface unfortunately requires
@@ -763,15 +728,15 @@ pid_t ForkWithFlags(unsigned long flags, pid_t* ptid, pid_t* ctid) {
     return CloneAndLongjmpInChild(flags, ptid, ctid, &env);
   }
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
   // Since we use clone() directly, it does not call any pthread_aftork()
   // callbacks, we explicitly clear tid cache here (normally this call is
   // done as pthread_aftork() callback).  See crbug.com/902514.
   base::internal::ClearTidCache();
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 
   return 0;
 }
-#endif  // defined(OS_LINUX) || defined(OS_NACL_NONSFI)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_NACL_NONSFI)
 
 }  // namespace base

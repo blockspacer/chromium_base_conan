@@ -11,7 +11,6 @@
 #include "base/base_export.h"
 #include "base/compiler_specific.h"
 #include "base/macros.h"
-#include "base/thread_annotations.h"
 
 // A helper class alongside macros to be used to verify assumptions about thread
 // safety of a class.
@@ -98,10 +97,14 @@
 //   DFAKE_MUTEX(ctor_dtor_);
 //   DFAKE_MUTEX(shareable_section_);
 // };
-//
-// See https://faouellet.github.io/ddmutex/
+
 
 #if !defined(NDEBUG)
+
+#define DFAKE_UNIQUE_VARIABLE_CONCAT(a, b) a##b
+// CONCAT1 provides extra level of indirection so that __LINE__ macro expands.
+#define DFAKE_UNIQUE_VARIABLE_CONCAT1(a, b) DFAKE_UNIQUE_VARIABLE_CONCAT(a, b)
+#define DFAKE_UNIQUE_VARIABLE_NAME(a) DFAKE_UNIQUE_VARIABLE_CONCAT1(a, __LINE__)
 
 // Defines a class member that acts like a mutex. It is used only as a
 // verification tool.
@@ -109,15 +112,17 @@
      mutable base::ThreadCollisionWarner obj
 // Asserts the call is never called simultaneously in two threads. Used at
 // member function scope.
-#define DFAKE_SCOPED_LOCK(obj) \
-     base::ThreadCollisionWarner::ScopedCheck s_check_##obj(&obj)
+#define DFAKE_SCOPED_LOCK(obj)                                         \
+  base::ThreadCollisionWarner::ScopedCheck DFAKE_UNIQUE_VARIABLE_NAME( \
+      s_check_)(&obj)
 // Asserts the call is never called simultaneously in two threads. Used at
 // member function scope. Same as DFAKE_SCOPED_LOCK but allows recursive locks.
-#define DFAKE_SCOPED_RECURSIVE_LOCK(obj) \
-     base::ThreadCollisionWarner::ScopedRecursiveCheck sr_check_##obj(&obj)
+#define DFAKE_SCOPED_RECURSIVE_LOCK(obj)            \
+  base::ThreadCollisionWarner::ScopedRecursiveCheck \
+      DFAKE_UNIQUE_VARIABLE_NAME(sr_check)(&obj)
 // Asserts the code is always executed in the same thread.
 #define DFAKE_SCOPED_LOCK_THREAD_LOCKED(obj) \
-     base::ThreadCollisionWarner::Check check_##obj(&obj)
+  base::ThreadCollisionWarner::Check DFAKE_UNIQUE_VARIABLE_NAME(check_)(&obj)
 
 #else
 
@@ -135,7 +140,7 @@ namespace base {
 // used. During the unit tests is used another class that doesn't "DCHECK"
 // in case of collision (check thread_collision_warner_unittests.cc)
 struct BASE_EXPORT AsserterBase {
-  virtual ~AsserterBase() = 0;
+  virtual ~AsserterBase() = default;
   virtual void warn() = 0;
 };
 
@@ -144,7 +149,7 @@ struct BASE_EXPORT DCheckAsserter : public AsserterBase {
   void warn() override;
 };
 
-class BASE_EXPORT LOCKABLE ThreadCollisionWarner {
+class BASE_EXPORT ThreadCollisionWarner {
  public:
   // The parameter asserter is there only for test purpose
   explicit ThreadCollisionWarner(AsserterBase* asserter = new DCheckAsserter())
@@ -161,7 +166,7 @@ class BASE_EXPORT LOCKABLE ThreadCollisionWarner {
   // it doesn't leave the critical section, as opposed to ScopedCheck,
   // because the critical section being pinned is allowed to be used only
   // from one thread
-  class BASE_EXPORT LOCKABLE Check {
+  class BASE_EXPORT Check {
    public:
     explicit Check(ThreadCollisionWarner* warner)
         : warner_(warner) {
@@ -178,7 +183,7 @@ class BASE_EXPORT LOCKABLE ThreadCollisionWarner {
 
   // This class is meant to be used through the macro
   // DFAKE_SCOPED_LOCK
-  class BASE_EXPORT LOCKABLE ScopedCheck {
+  class BASE_EXPORT ScopedCheck {
    public:
     explicit ScopedCheck(ThreadCollisionWarner* warner)
         : warner_(warner) {
@@ -197,7 +202,7 @@ class BASE_EXPORT LOCKABLE ThreadCollisionWarner {
 
   // This class is meant to be used through the macro
   // DFAKE_SCOPED_RECURSIVE_LOCK
-  class BASE_EXPORT LOCKABLE ScopedRecursiveCheck {
+  class BASE_EXPORT ScopedRecursiveCheck {
    public:
     explicit ScopedRecursiveCheck(ThreadCollisionWarner* warner)
         : warner_(warner) {

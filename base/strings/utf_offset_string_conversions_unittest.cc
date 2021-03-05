@@ -6,11 +6,10 @@
 
 #include <algorithm>
 
-#include "base/logging.h"
 #include "base/stl_util.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/utf_offset_string_conversions.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

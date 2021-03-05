@@ -17,11 +17,11 @@
 #include "base/debug/alias.h"
 #include "base/files/memory_mapped_file.h"
 #include "base/logging.h"
-#include "base/memory/shared_memory.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/sparse_histogram.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/optional.h"
+#include "base/strings/string_piece.h"
 #include "base/system/sys_info.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "build/build_config.h"
@@ -350,11 +350,10 @@ PersistentMemoryAllocator::PersistentMemoryAllocator(Memory memory,
   // Ensure that memory segment is of acceptable size.
   CHECK(IsMemoryAcceptable(memory.base, size, page_size, readonly));
 
-  // These atomics operate inter-process and so must be lock-free. The local
-  // casts are to make sure it can be evaluated at compile time to a constant.
-  CHECK(((SharedMetadata*)nullptr)->freeptr.is_lock_free());
-  CHECK(((SharedMetadata*)nullptr)->flags.is_lock_free());
-  CHECK(((BlockHeader*)nullptr)->next.is_lock_free());
+  // These atomics operate inter-process and so must be lock-free.
+  DCHECK(SharedMetadata().freeptr.is_lock_free());
+  DCHECK(SharedMetadata().flags.is_lock_free());
+  DCHECK(BlockHeader().next.is_lock_free());
   CHECK(corrupt_.is_lock_free());
 
   if (shared_meta()->cookie != kGlobalCookie) {
@@ -473,7 +472,7 @@ void PersistentMemoryAllocator::CreateTrackingHistograms(
     base::StringPiece name) {
   if (name.empty() || readonly_)
     return;
-  std::string name_string = name.as_string();
+  std::string name_string(name);
 
 #if 0
   // This histogram wasn't being used so has been disabled. It is left here
@@ -1129,7 +1128,7 @@ void FilePersistentMemoryAllocator::FlushPartial(size_t length, bool sync) {
   scoped_blocking_call.emplace(FROM_HERE, base::BlockingType::MAY_BLOCK);
   BOOL success = ::FlushViewOfFile(data(), length);
   DPCHECK(success);
-#elif defined(OS_MACOSX)
+#elif defined(OS_APPLE)
   // On OSX, "invalidate" removes all cached pages, forcing a re-read from
   // disk. That's not applicable to "flush" so omit it.
   int result =

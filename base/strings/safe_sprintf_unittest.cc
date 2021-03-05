@@ -12,10 +12,10 @@
 #include <limits>
 #include <memory>
 
-#include "base/logging.h"
+#include "base/check_op.h"
 #include "base/macros.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 // Death tests on Android are currently very flaky. No need to add more flaky
 // tests, as they just make it hard to spot real problems.

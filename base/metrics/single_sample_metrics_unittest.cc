@@ -7,7 +7,7 @@
 #include "base/metrics/dummy_histogram.h"
 #include "base/test/gtest_util.h"
 #include "base/test/metrics/histogram_tester.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

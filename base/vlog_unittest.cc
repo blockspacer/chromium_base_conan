@@ -4,9 +4,8 @@
 
 #include "base/vlog.h"
 
-#include "base/logging.h"
 #include "base/time/time.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace logging {
 

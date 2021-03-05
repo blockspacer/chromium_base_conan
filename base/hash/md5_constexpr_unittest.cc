@@ -6,8 +6,7 @@
 
 #include "base/hash/md5.h"
 #include "base/stl_util.h"
-
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

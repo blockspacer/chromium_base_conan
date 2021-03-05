@@ -10,15 +10,11 @@
 #include "base/i18n/string_search.h"
 #include "base/strings/string16.h"
 #include "base/strings/utf_string_conversions.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/icu/source/i18n/unicode/usearch.h"
 
 namespace base {
 namespace i18n {
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
 
 #define EXPECT_MATCH_IGNORE_CASE(find_this, in_this, ex_start, ex_len)         \
   {                                                                            \

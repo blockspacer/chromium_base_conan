@@ -6,24 +6,27 @@ package org.chromium.base.compat;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Process;
+import android.os.UserManager;
+import android.security.NetworkSecurityPolicy;
 import android.view.ActionMode;
 import android.view.ViewConfiguration;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import org.chromium.base.annotations.DoNotInline;
+import org.chromium.base.annotations.VerifiesOnM;
 
 /**
  * Utility class to use new APIs that were added in M (API level 23). These need to exist in a
  * separate class so that Android framework can successfully verify classes without
  * encountering the new APIs.
  */
-@DoNotInline
+@VerifiesOnM
 @TargetApi(Build.VERSION_CODES.M)
 public final class ApiHelperForM {
     private ApiHelperForM() {}
@@ -82,6 +85,16 @@ public final class ApiHelperForM {
                 permission, activity.getPackageName());
     }
 
+    /** See {@link NetworkSecurityPolicy#isCleartextTrafficPermitted()}. */
+    public static boolean isCleartextTrafficPermitted() {
+        return NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted();
+    }
+
+    /** See {@link UserManager#isSystemUser()}. */
+    public static boolean isSystemUser(UserManager userManager) {
+        return userManager.isSystemUser();
+    }
+
     /*
      * See {@link ActionMode#invalidateContentRect()}.
      * @param actionMode
@@ -104,5 +117,9 @@ public final class ApiHelperForM {
 
     public static void hideActionMode(ActionMode actionMode, long duration) {
         actionMode.hide(duration);
+    }
+
+    public static int getPendingIntentImmutableFlag() {
+        return PendingIntent.FLAG_IMMUTABLE;
     }
 }

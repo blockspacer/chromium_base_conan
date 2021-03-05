@@ -3,23 +3,27 @@
 // found in the LICENSE file.
 
 package org.chromium.base.test.task;
+import org.chromium.base.annotations.NativeMethods;
 
-/** Helpers that allow base::ThreadPool to be initialized or shutdown for testing. */
+/** Helpers that allow base::ThreadPoolInstance to be initialized or shutdown for testing. */
 public class ThreadPoolTestHelpers {
     /**
-     * Initializes base::ThreadPool with default params.
+     * Initializes base::ThreadPoolInstance with default params.
      */
     public static void enableThreadPoolExecutionForTesting() {
-        nativeEnableThreadPoolExecutionForTesting();
+        ThreadPoolTestHelpersJni.get().enableThreadPoolExecutionForTesting();
     }
 
     /**
-     * Shuts down base::ThreadPool.
+     * Shuts down base::ThreadPoolInstance.
      */
     public static void disableThreadPoolExecutionForTesting() {
-        nativeDisableThreadPoolExecutionForTesting();
+        ThreadPoolTestHelpersJni.get().disableThreadPoolExecutionForTesting();
     }
 
-    private static native void nativeEnableThreadPoolExecutionForTesting();
-    private static native void nativeDisableThreadPoolExecutionForTesting();
+    @NativeMethods
+    interface Natives {
+        void enableThreadPoolExecutionForTesting();
+        void disableThreadPoolExecutionForTesting();
+    }
 }

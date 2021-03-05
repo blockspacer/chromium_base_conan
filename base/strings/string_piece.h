@@ -256,21 +256,6 @@ template <typename STRING_TYPE> class BasicStringPiece {
     return substr(pos, n1).compare(BasicStringPiece(s, n2));
   }
 
-  // Does "this" start with "x"
-  constexpr bool starts_with(BasicStringPiece x) const noexcept {
-    return (
-        (this->length_ >= x.length_) &&
-        (CharTraits<value_type>::compare(this->ptr_, x.ptr_, x.length_) == 0));
-  }
-
-  // Does "this" end with "x"
-  constexpr bool ends_with(BasicStringPiece x) const noexcept {
-    return ((this->length_ >= x.length_) &&
-            (CharTraits<value_type>::compare(
-                 this->ptr_ + (this->length_ - x.length_), x.ptr_, x.length_) ==
-             0));
-  }
-
   // Searching, see https://wg21.link/string.view.find.
 
   // find: Search for a character or substring at a given offset.

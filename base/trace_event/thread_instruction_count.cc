@@ -11,18 +11,18 @@
 #include "base/threading/thread_local_storage.h"
 #include "build/build_config.h"
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 #include <linux/perf_event.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 
 namespace base {
 namespace trace_event {
 
 namespace {
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 
 // Special constants used for counter FD states.
 constexpr int kPerfFdDisabled = -2;
@@ -80,35 +80,38 @@ int InstructionCounterFdForCurrentThread() {
   return fd;
 }
 
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 
 }  // namespace
 
 bool ThreadInstructionCount::IsSupported() {
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
   // If we can't initialize the counter FD, mark as disabled.
   int counter_fd = InstructionCounterFdForCurrentThread();
   if (counter_fd <= 0)
     return false;
 
   return true;
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
   return false;
 }
 
 ThreadInstructionCount ThreadInstructionCount::Now() {
   DCHECK(IsSupported());
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
   int fd = InstructionCounterFdForCurrentThread();
   if (fd <= 0)
     return ThreadInstructionCount();
 
   uint64_t instructions = 0;
   ssize_t bytes_read = read(fd, &instructions, sizeof(instructions));
-  DCHECK_EQ(bytes_read, static_cast<ssize_t>(sizeof(instructions)));
+  CHECK_EQ(bytes_read, static_cast<ssize_t>(sizeof(instructions)))
+      << "Short reads of small size from kernel memory is not expected. If "
+         "this fails, use HANDLE_EINTR.";
   return ThreadInstructionCount(instructions);
-#endif  // defined(OS_LINUX)
+#else
   return ThreadInstructionCount();
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 }
 
 }  // namespace trace_event

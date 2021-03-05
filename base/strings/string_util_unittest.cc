@@ -18,9 +18,8 @@
 #include "base/strings/string_piece.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 using ::testing::ElementsAre;
 
@@ -1326,7 +1325,7 @@ TEST(StringUtilTest, MakeBasicStringPieceTest) {
   EXPECT_EQ(MakeStringPiece(foo.begin(), foo.end()).size(), foo.size());
   EXPECT_TRUE(MakeStringPiece(foo.end(), foo.end()).empty());
 
-  constexpr char16 kBar[] = STRING16_LITERAL("Bar");
+  constexpr char16 kBar[] = u"Bar";
   static_assert(MakeStringPiece16(kBar, kBar + 3) == kBar, "");
   static_assert(MakeStringPiece16(kBar, kBar + 3).data() == kBar, "");
   static_assert(MakeStringPiece16(kBar, kBar + 3).size() == 3, "");

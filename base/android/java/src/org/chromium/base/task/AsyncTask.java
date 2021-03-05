@@ -5,9 +5,10 @@
 package org.chromium.base.task;
 
 import android.os.Binder;
-import android.support.annotation.IntDef;
-import android.support.annotation.MainThread;
-import android.support.annotation.WorkerThread;
+
+import androidx.annotation.IntDef;
+import androidx.annotation.MainThread;
+import androidx.annotation.WorkerThread;
 
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
@@ -50,7 +51,7 @@ public abstract class AsyncTask<Result> {
     private static final StealRunnableHandler STEAL_RUNNABLE_HANDLER = new StealRunnableHandler();
 
     private final Callable<Result> mWorker;
-    private final FutureTask<Result> mFuture;
+    private final NamedFutureTask mFuture;
 
     private volatile @Status int mStatus = Status.PENDING;
 
@@ -276,6 +277,8 @@ public abstract class AsyncTask<Result> {
      *         while waiting.
      */
     @DoNotInline
+    // The string passed is safe since it is class and method name.
+    @SuppressWarnings("NoDynamicStringsInTraceEventCheck")
     public final Result get() throws InterruptedException, ExecutionException {
         Result r;
         if (getStatus() != Status.FINISHED && ThreadUtils.runningOnUiThread()) {
@@ -392,6 +395,14 @@ public abstract class AsyncTask<Result> {
 
         Class getBlamedClass() {
             return AsyncTask.this.getClass();
+        }
+
+        @Override
+        @SuppressWarnings("NoDynamicStringsInTraceEventCheck")
+        public void run() {
+            try (TraceEvent e = TraceEvent.scoped("AsyncTask.run: " + mFuture.getBlamedClass())) {
+                super.run();
+            }
         }
 
         @Override

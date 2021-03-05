@@ -1,3 +1,3 @@
 #pragme once
 
-#include GMOCK_HEADER_INCLUDE
+#include <gmock/gmock.h>

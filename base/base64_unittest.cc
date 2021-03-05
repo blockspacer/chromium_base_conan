@@ -4,7 +4,7 @@
 
 #include "base/base64.h"
 
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -22,6 +22,20 @@ TEST(Base64Test, Basic) {
   ok = Base64Decode(encoded, &decoded);
   EXPECT_TRUE(ok);
   EXPECT_EQ(kText, decoded);
+}
+
+TEST(Base64Test, Binary) {
+  const uint8_t kData[] = {0x00, 0x01, 0xFE, 0xFF};
+
+  std::string binary_encoded = Base64Encode(make_span(kData));
+
+  // Check that encoding the same data through the StringPiece interface gives
+  // the same results.
+  std::string string_piece_encoded;
+  Base64Encode(StringPiece(reinterpret_cast<const char*>(kData), sizeof(kData)),
+               &string_piece_encoded);
+
+  EXPECT_EQ(binary_encoded, string_piece_encoded);
 }
 
 TEST(Base64Test, InPlace) {

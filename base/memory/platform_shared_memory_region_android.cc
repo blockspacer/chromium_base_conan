@@ -7,7 +7,9 @@
 #include <sys/mman.h>
 
 #include "base/bits.h"
+#include "base/logging.h"
 #include "base/memory/shared_memory_tracker.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/process/process_metrics.h"
 #include "third_party/ashmem/ashmem.h"
@@ -22,7 +24,7 @@ namespace subtle {
 
 namespace {
 
-static int GetAshmemRegionProtectionMask(int fd) {
+int GetAshmemRegionProtectionMask(int fd) {
   int prot = ashmem_get_prot_region(fd);
   if (prot < 0) {
     // TODO(crbug.com/838365): convert to DLOG when bug fixed.
@@ -52,20 +54,6 @@ PlatformSharedMemoryRegion PlatformSharedMemoryRegion::Take(
   CHECK(CheckPlatformHandlePermissionsCorrespondToMode(fd.get(), mode, size));
 
   return PlatformSharedMemoryRegion(std::move(fd), mode, size, guid);
-}
-
-// static
-PlatformSharedMemoryRegion
-PlatformSharedMemoryRegion::TakeFromSharedMemoryHandle(
-    const SharedMemoryHandle& handle,
-    Mode mode) {
-  CHECK((mode == Mode::kReadOnly && handle.IsReadOnly()) ||
-        (mode == Mode::kUnsafe && !handle.IsReadOnly()));
-  if (!handle.IsValid())
-    return {};
-
-  return Take(ScopedFD(handle.GetHandle()), mode, handle.GetSize(),
-              handle.GetGUID());
 }
 
 int PlatformSharedMemoryRegion::GetPlatformHandle() const {
@@ -132,6 +120,9 @@ bool PlatformSharedMemoryRegion::MapAtInternal(off_t offset,
                                                size_t size,
                                                void** memory,
                                                size_t* mapped_size) const {
+  // IMPORTANT: Even if the mapping is readonly and the mapped data is not
+  // changing, the region must ALWAYS be mapped with MAP_SHARED, otherwise with
+  // ashmem the mapping is equivalent to a private anonymous mapping.
   bool write_allowed = mode_ != Mode::kReadOnly;
   *memory = mmap(nullptr, size, PROT_READ | (write_allowed ? PROT_WRITE : 0),
                  MAP_SHARED, handle_.get(), offset);
@@ -149,33 +140,38 @@ bool PlatformSharedMemoryRegion::MapAtInternal(off_t offset,
 // static
 PlatformSharedMemoryRegion PlatformSharedMemoryRegion::Create(Mode mode,
                                                               size_t size) {
-  if (size == 0)
+  if (size == 0) {
     return {};
+  }
 
-  // Align size as required by ashmem_create_region() API documentation.
-  size_t rounded_size = bits::Align(size, GetPageSize());
-  if (rounded_size > static_cast<size_t>(std::numeric_limits<int>::max()))
+  // Align size as required by ashmem_create_region() API documentation. This
+  // operation may overflow so check that the result doesn't decrease.
+  size_t rounded_size = bits::AlignUp(size, GetPageSize());
+  if (rounded_size < size ||
+      rounded_size > static_cast<size_t>(std::numeric_limits<int>::max())) {
     return {};
+  }
 
   CHECK_NE(mode, Mode::kReadOnly) << "Creating a region in read-only mode will "
                                      "lead to this region being non-modifiable";
 
   UnguessableToken guid = UnguessableToken::Create();
 
-  ScopedFD fd(ashmem_create_region(
-      SharedMemoryTracker::GetDumpNameForTracing(guid).c_str(), rounded_size));
-  if (!fd.is_valid()) {
+  int fd = ashmem_create_region(
+      SharedMemoryTracker::GetDumpNameForTracing(guid).c_str(), rounded_size);
+  if (fd < 0) {
     DPLOG(ERROR) << "ashmem_create_region failed";
     return {};
   }
 
-  int err = ashmem_set_prot_region(fd.get(), PROT_READ | PROT_WRITE);
+  ScopedFD scoped_fd(fd);
+  int err = ashmem_set_prot_region(scoped_fd.get(), PROT_READ | PROT_WRITE);
   if (err < 0) {
     DPLOG(ERROR) << "ashmem_set_prot_region failed";
     return {};
   }
 
-  return PlatformSharedMemoryRegion(std::move(fd), mode, size, guid);
+  return PlatformSharedMemoryRegion(std::move(scoped_fd), mode, size, guid);
 }
 
 bool PlatformSharedMemoryRegion::CheckPlatformHandlePermissionsCorrespondToMode(

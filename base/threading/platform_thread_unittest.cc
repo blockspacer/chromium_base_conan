@@ -5,18 +5,29 @@
 #include <stddef.h>
 
 #include "base/compiler_specific.h"
+#include "base/process/process.h"
 #include "base/stl_util.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/threading/platform_thread.h"
+#include "base/threading/threading_features.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 #if defined(OS_POSIX)
 #include "base/threading/platform_thread_internal_posix.h"
 #elif defined(OS_WIN)
 #include <windows.h>
 #include "base/threading/platform_thread_win.h"
+#endif
+
+#if defined(OS_APPLE)
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <mach/thread_policy.h>
+#include "base/mac/mac_util.h"
+#include "base/metrics/field_trial_params.h"
+#include "base/time/time.h"
 #endif
 
 namespace base {
@@ -287,30 +298,12 @@ TEST(PlatformThreadTest, MAYBE_SetCurrentThreadPriority) {
 }
 
 #if defined(OS_WIN)
-// Test changing a created thread's priority, with the
-// kWindowsThreadModeBackground feature enabled.
-// Flaky: https://crbug.com/931706
+// Test changing a created thread's priority in an IDLE_PRIORITY_CLASS process
+// (regression test for https://crbug.com/901483).
 TEST(PlatformThreadTest,
-     DISABLED_SetCurrentThreadPriorityWithThreadModeBackground) {
-  test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(
-      features::kWindowsThreadModeBackground);
-  TestSetCurrentThreadPriority();
-}
-
-// Test changing a created thread's priority, with the
-// kWindowsThreadModeBackground feature enabled, in an IDLE_PRIORITY_CLASS
-// process (regression test for https://crbug.com/901483).
-// Flaky: https://crbug.com/931706
-TEST(PlatformThreadTest,
-     DISABLED_SetCurrentThreadPriorityWithThreadModeBackgroundIdleProcess) {
+     SetCurrentThreadPriorityWithThreadModeBackgroundIdleProcess) {
   ::SetPriorityClass(Process::Current().Handle(), IDLE_PRIORITY_CLASS);
-
-  test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(
-      features::kWindowsThreadModeBackground);
   TestSetCurrentThreadPriority();
-
   ::SetPriorityClass(Process::Current().Handle(), NORMAL_PRIORITY_CLASS);
 }
 #endif  // defined(OS_WIN)
@@ -320,7 +313,7 @@ TEST(PlatformThreadTest,
 // and hardcodes what we know. Please inform scheduler-dev@chromium.org if this
 // proprerty changes for a given platform.
 TEST(PlatformThreadTest, CanIncreaseThreadPriority) {
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
   // On Ubuntu, RLIMIT_NICE and RLIMIT_RTPRIO are 0 by default, so we won't be
   // able to increase priority to any level.
   constexpr bool kCanIncreasePriority = false;
@@ -345,8 +338,7 @@ TEST(PlatformThreadTest, CanIncreaseThreadPriority) {
 
 // This tests internal PlatformThread APIs used under some POSIX platforms,
 // with the exception of Mac OS X, iOS and Fuchsia.
-#if defined(OS_POSIX) && !defined(OS_MACOSX) && !defined(OS_IOS) && \
-    !defined(OS_FUCHSIA)
+#if defined(OS_POSIX) && !defined(OS_APPLE) && !defined(OS_FUCHSIA)
 TEST(PlatformThreadTest, GetNiceValueToThreadPriority) {
   using internal::NiceValueToThreadPriority;
   using internal::kThreadPriorityToNiceValueMap;
@@ -401,7 +393,7 @@ TEST(PlatformThreadTest, GetNiceValueToThreadPriority) {
   EXPECT_EQ(ThreadPriority::REALTIME_AUDIO,
             NiceValueToThreadPriority(kLowestNiceValue));
 }
-#endif  // defined(OS_POSIX) && !defined(OS_MACOSX) && !defined(OS_IOS) &&
+#endif  // defined(OS_POSIX) && !defined(OS_APPLE) &&
         // !defined(OS_FUCHSIA)
 
 TEST(PlatformThreadTest, SetHugeThreadName) {
@@ -416,7 +408,8 @@ TEST(PlatformThreadTest, SetHugeThreadName) {
 TEST(PlatformThreadTest, GetDefaultThreadStackSize) {
   size_t stack_size = PlatformThread::GetDefaultThreadStackSize();
 #if defined(OS_WIN) || defined(OS_IOS) || defined(OS_FUCHSIA) || \
-    (defined(OS_LINUX) && !defined(THREAD_SANITIZER)) ||         \
+    ((defined(OS_LINUX) || defined(OS_CHROMEOS)) &&              \
+     !defined(THREAD_SANITIZER)) ||                              \
     (defined(OS_ANDROID) && !defined(ADDRESS_SANITIZER))
   EXPECT_EQ(0u, stack_size);
 #else
@@ -424,5 +417,156 @@ TEST(PlatformThreadTest, GetDefaultThreadStackSize) {
   EXPECT_LT(stack_size, 20u * (1 << 20));
 #endif
 }
+
+#if defined(OS_APPLE)
+
+namespace {
+
+class RealtimeTestThread : public FunctionTestThread {
+ public:
+  explicit RealtimeTestThread(TimeDelta realtime_period)
+      : realtime_period_(realtime_period) {}
+  ~RealtimeTestThread() override = default;
+
+ private:
+  RealtimeTestThread(const RealtimeTestThread&) = delete;
+  RealtimeTestThread& operator=(const RealtimeTestThread&) = delete;
+
+  TimeDelta GetRealtimePeriod() final { return realtime_period_; }
+
+  // Verifies the realtime thead configuration.
+  void RunTest() override {
+    EXPECT_EQ(PlatformThread::GetCurrentThreadPriority(),
+              ThreadPriority::REALTIME_AUDIO);
+
+    mach_port_t mach_thread_id = pthread_mach_thread_np(
+        PlatformThread::CurrentHandle().platform_handle());
+
+    // |count| and |get_default| chosen impirically so that
+    // time_constraints_buffer[0] would store the last constraints that were
+    // applied.
+    const int kPolicyCount = 32;
+    thread_time_constraint_policy_data_t time_constraints_buffer[kPolicyCount];
+    mach_msg_type_number_t count = kPolicyCount;
+    boolean_t get_default = 0;
+
+    kern_return_t result = thread_policy_get(
+        mach_thread_id, THREAD_TIME_CONSTRAINT_POLICY,
+        reinterpret_cast<thread_policy_t>(time_constraints_buffer), &count,
+        &get_default);
+
+    EXPECT_EQ(result, KERN_SUCCESS);
+
+    const thread_time_constraint_policy_data_t& time_constraints =
+        time_constraints_buffer[0];
+
+    mach_timebase_info_data_t tb_info;
+    mach_timebase_info(&tb_info);
+
+    if (FeatureList::IsEnabled(kOptimizedRealtimeThreadingMac) &&
+#if defined(OS_MAC)
+        !mac::IsOS10_14() &&  // Should not be applied on 10.14.
+#endif
+        !realtime_period_.is_zero()) {
+      uint32_t abs_realtime_period = saturated_cast<uint32_t>(
+          realtime_period_.InNanoseconds() *
+          (static_cast<double>(tb_info.denom) / tb_info.numer));
+
+      EXPECT_EQ(time_constraints.period, abs_realtime_period);
+      EXPECT_EQ(
+          time_constraints.computation,
+          static_cast<uint32_t>(abs_realtime_period *
+                                kOptimizedRealtimeThreadingMacBusy.Get()));
+      EXPECT_EQ(
+          time_constraints.constraint,
+          static_cast<uint32_t>(abs_realtime_period *
+                                kOptimizedRealtimeThreadingMacBusyLimit.Get()));
+      EXPECT_EQ(time_constraints.preemptible,
+                kOptimizedRealtimeThreadingMacPreemptible.Get());
+    } else {
+      // Old-style empirical values.
+      const double kTimeQuantum = 2.9;
+      const double kAudioTimeNeeded = 0.75 * kTimeQuantum;
+      const double kMaxTimeAllowed = 0.85 * kTimeQuantum;
+
+      // Get the conversion factor from milliseconds to absolute time
+      // which is what the time-constraints returns.
+      double ms_to_abs_time = double(tb_info.denom) / tb_info.numer * 1000000;
+
+      EXPECT_EQ(time_constraints.period,
+                saturated_cast<uint32_t>(kTimeQuantum * ms_to_abs_time));
+      EXPECT_EQ(time_constraints.computation,
+                saturated_cast<uint32_t>(kAudioTimeNeeded * ms_to_abs_time));
+      EXPECT_EQ(time_constraints.constraint,
+                saturated_cast<uint32_t>(kMaxTimeAllowed * ms_to_abs_time));
+      EXPECT_FALSE(time_constraints.preemptible);
+    }
+  }
+
+  const TimeDelta realtime_period_;
+};
+
+class RealtimePlatformThreadTest
+    : public testing::TestWithParam<
+          std::tuple<bool, FieldTrialParams, TimeDelta>> {
+ protected:
+  void VerifyRealtimeConfig(TimeDelta period) {
+    RealtimeTestThread thread(period);
+    PlatformThreadHandle handle;
+
+    ASSERT_FALSE(thread.IsRunning());
+    ASSERT_TRUE(PlatformThread::CreateWithPriority(
+        0, &thread, &handle, ThreadPriority::REALTIME_AUDIO));
+    thread.WaitForTerminationReady();
+    ASSERT_TRUE(thread.IsRunning());
+
+    thread.MarkForTermination();
+    PlatformThread::Join(handle);
+    ASSERT_FALSE(thread.IsRunning());
+  }
+};
+
+TEST_P(RealtimePlatformThreadTest, RealtimeAudioConfigMac) {
+  test::ScopedFeatureList feature_list;
+  if (std::get<0>(GetParam())) {
+    feature_list.InitAndEnableFeatureWithParameters(
+        kOptimizedRealtimeThreadingMac, std::get<1>(GetParam()));
+  } else {
+    feature_list.InitAndDisableFeature(kOptimizedRealtimeThreadingMac);
+  }
+
+  PlatformThread::InitializeOptimizedRealtimeThreadingFeature();
+  VerifyRealtimeConfig(std::get<2>(GetParam()));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    RealtimePlatformThreadTest,
+    RealtimePlatformThreadTest,
+    testing::Combine(
+        testing::Bool(),
+        testing::Values(
+            FieldTrialParams{
+                {kOptimizedRealtimeThreadingMacPreemptible.name, "true"}},
+            FieldTrialParams{
+                {kOptimizedRealtimeThreadingMacPreemptible.name, "false"}},
+            FieldTrialParams{
+                {kOptimizedRealtimeThreadingMacBusy.name, "0.5"},
+                {kOptimizedRealtimeThreadingMacBusyLimit.name, "0.75"}},
+            FieldTrialParams{
+                {kOptimizedRealtimeThreadingMacBusy.name, "0.7"},
+                {kOptimizedRealtimeThreadingMacBusyLimit.name, "0.7"}},
+            FieldTrialParams{
+                {kOptimizedRealtimeThreadingMacBusy.name, "1.0"},
+                {kOptimizedRealtimeThreadingMacBusyLimit.name, "1.0"}}),
+        testing::Values(TimeDelta(),
+                        TimeDelta::FromSeconds(256.0 / 48000),
+                        TimeDelta::FromMilliseconds(5),
+                        TimeDelta::FromMilliseconds(10),
+                        TimeDelta::FromSeconds(1024.0 / 44100),
+                        TimeDelta::FromSeconds(1024.0 / 16000))));
+
+}  // namespace
+
+#endif
 
 }  // namespace base

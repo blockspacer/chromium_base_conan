@@ -5,20 +5,14 @@
 #include "base/files/file_util.h"
 
 #include <errno.h>
-
-#if !defined(OS_EMSCRIPTEN)
 #include <linux/magic.h>
 #include <sys/vfs.h>
-#endif // OS_EMSCRIPTEN
 
 #include "base/files/file_path.h"
 
 namespace base {
 
 bool GetFileSystemType(const FilePath& path, FileSystemType* type) {
-#if defined(OS_EMSCRIPTEN)
-  *type = FILE_SYSTEM_MEMORY;
-#else
   struct statfs statfs_buf;
   if (statfs(path.value().c_str(), &statfs_buf) < 0) {
     if (errno == ENOENT)
@@ -63,7 +57,6 @@ bool GetFileSystemType(const FilePath& path, FileSystemType* type) {
     default:
       *type = FILE_SYSTEM_OTHER;
   }
-#endif // OS_EMSCRIPTEN
   return true;
 }
 

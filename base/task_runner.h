@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,27 +8,20 @@
 #include <stddef.h>
 
 #include "base/base_export.h"
+#include "base/bind.h"
 #include "base/callback.h"
+#include "base/check.h"
 #include "base/location.h"
 #include "base/memory/ref_counted.h"
+#include "base/post_task_and_reply_with_result_internal.h"
 #include "base/time/time.h"
 
 namespace base {
 
 struct TaskRunnerTraits;
 
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-/// \note Used to schedule task using emscripten_async_call
-///       without blocking browser main loop.
-/// \see https://developer.mozilla.org/en-US/docs/Web/JavaScript/EventLoop#Zero_delays
-struct BASE_EXPORT STClosure {
-    STClosure(OnceClosure onceClosure) : onceClosure_(std::move(onceClosure)) {}
-    OnceClosure onceClosure_;
-};
-#endif
-
 // A TaskRunner is an object that runs posted tasks (in the form of
-// Closure objects).  The TaskRunner interface provides a way of
+// OnceClosure objects).  The TaskRunner interface provides a way of
 // decoupling task posting from the mechanics of how each task will be
 // run.  TaskRunner provides very weak guarantees as to how posted
 // tasks are run (or if they're run at all).  In particular, it only
@@ -80,31 +73,13 @@ class BASE_EXPORT TaskRunner
                                OnceClosure task,
                                base::TimeDelta delay) = 0;
 
-  // Returns true iff tasks posted to this TaskRunner are sequenced
-  // with this call.
-  //
-  // In particular:
-  // - Returns true if this is a SequencedTaskRunner to which the
-  //   current task was posted.
-  // - Returns true if this is a SequencedTaskRunner bound to the
-  //   same sequence as the SequencedTaskRunner to which the current
-  //   task was posted.
-  // - Returns true if this is a SingleThreadTaskRunner bound to
-  //   the current thread.
-  // TODO(http://crbug.com/665062):
-  //   This API doesn't make sense for parallel TaskRunners.
-  //   Introduce alternate static APIs for documentation purposes of "this runs
-  //   in pool X", have RunsTasksInCurrentSequence() return false for parallel
-  //   TaskRunners, and ultimately move this method down to SequencedTaskRunner.
-  virtual bool RunsTasksInCurrentSequence() const = 0;
-
   // Posts |task| on the current TaskRunner.  On completion, |reply|
   // is posted to the thread that called PostTaskAndReply().  Both
   // |task| and |reply| are guaranteed to be deleted on the thread
   // from which PostTaskAndReply() is invoked.  This allows objects
   // that must be deleted on the originating thread to be bound into
-  // the |task| and |reply| Closures.  In particular, it can be useful
-  // to use WeakPtr<> in the |reply| Closure so that the reply
+  // the |task| and |reply| OnceClosures.  In particular, it can be useful
+  // to use WeakPtr<> in the |reply| OnceClosure so that the reply
   // operation can be canceled. See the following pseudo-code:
   //
   // class DataBuffer : public RefCountedThreadSafe<DataBuffer> {
@@ -121,8 +96,8 @@ class BASE_EXPORT TaskRunner
   //      scoped_refptr<DataBuffer> buffer = new DataBuffer();
   //      target_thread_.task_runner()->PostTaskAndReply(
   //          FROM_HERE,
-  //          base::Bind(&DataBuffer::AddData, buffer),
-  //          base::Bind(&DataLoader::OnDataReceived, AsWeakPtr(), buffer));
+  //          base::BindOnce(&DataBuffer::AddData, buffer),
+  //          base::BindOnce(&DataLoader::OnDataReceived, AsWeakPtr(), buffer));
   //    }
   //
   //  private:
@@ -142,6 +117,36 @@ class BASE_EXPORT TaskRunner
   bool PostTaskAndReply(const Location& from_here,
                         OnceClosure task,
                         OnceClosure reply);
+
+  // When you have these methods
+  //
+  //   R DoWorkAndReturn();
+  //   void Callback(const R& result);
+  //
+  // and want to call them in a PostTaskAndReply kind of fashion where the
+  // result of DoWorkAndReturn is passed to the Callback, you can use
+  // PostTaskAndReplyWithResult as in this example:
+  //
+  // PostTaskAndReplyWithResult(
+  //     target_thread_.task_runner(),
+  //     FROM_HERE,
+  //     BindOnce(&DoWorkAndReturn),
+  //     BindOnce(&Callback));
+  template <typename TaskReturnType, typename ReplyArgType>
+  bool PostTaskAndReplyWithResult(const Location& from_here,
+                                  OnceCallback<TaskReturnType()> task,
+                                  OnceCallback<void(ReplyArgType)> reply) {
+    DCHECK(task);
+    DCHECK(reply);
+    // std::unique_ptr used to avoid the need of a default constructor.
+    auto* result = new std::unique_ptr<TaskReturnType>();
+    return PostTaskAndReply(
+        from_here,
+        BindOnce(&internal::ReturnAsParamAdapter<TaskReturnType>,
+                 std::move(task), result),
+        BindOnce(&internal::ReplyAdapter<TaskReturnType, ReplyArgType>,
+                 std::move(reply), Owned(result)));
+  }
 
  protected:
   friend struct TaskRunnerTraits;

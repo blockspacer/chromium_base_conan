@@ -6,7 +6,7 @@
 
 #include "base/at_exit.h"
 #include "base/logging.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace android {

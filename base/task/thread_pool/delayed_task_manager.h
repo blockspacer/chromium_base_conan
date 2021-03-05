@@ -10,19 +10,20 @@
 
 #include "base/base_export.h"
 #include "base/callback.h"
-#include "base/macros.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
+#include "base/optional.h"
 #include "base/synchronization/atomic_flag.h"
 #include "base/task/common/checked_lock.h"
 #include "base/task/common/intrusive_heap.h"
 #include "base/task/thread_pool/task.h"
+#include "base/thread_annotations.h"
 #include "base/time/default_tick_clock.h"
 #include "base/time/tick_clock.h"
 
 namespace base {
 
-class TaskRunner;
+class SequencedTaskRunner;
 
 namespace internal {
 
@@ -35,15 +36,17 @@ class BASE_EXPORT DelayedTaskManager {
   using PostTaskNowCallback = OnceCallback<void(Task task)>;
 
   // |tick_clock| can be specified for testing.
-  DelayedTaskManager(std::unique_ptr<const TickClock> tick_clock =
-                         std::make_unique<DefaultTickClock>());
+  DelayedTaskManager(
+      const TickClock* tick_clock = DefaultTickClock::GetInstance());
+  DelayedTaskManager(const DelayedTaskManager&) = delete;
+  DelayedTaskManager& operator=(const DelayedTaskManager&) = delete;
   ~DelayedTaskManager();
 
   // Starts the delayed task manager, allowing past and future tasks to be
   // forwarded to their callbacks as they become ripe for execution.
   // |service_thread_task_runner| posts tasks to the ThreadPool service
   // thread.
-  void Start(scoped_refptr<TaskRunner> service_thread_task_runner);
+  void Start(scoped_refptr<SequencedTaskRunner> service_thread_task_runner);
 
   // Schedules a call to |post_task_now_callback| with |task| as argument when
   // |task| is ripe for execution. |task_runner| is passed to retain a
@@ -52,6 +55,12 @@ class BASE_EXPORT DelayedTaskManager {
                       PostTaskNowCallback post_task_now_callback,
                       scoped_refptr<TaskRunner> task_runner);
 
+  // Pop and post all the ripe tasks in the delayed task queue.
+  void ProcessRipeTasks();
+
+  // Returns the |delayed_run_time| of the next scheduled task, if any.
+  Optional<TimeTicks> NextScheduledRunTime() const;
+
  private:
   struct DelayedTask {
     DelayedTask();
@@ -59,6 +68,8 @@ class BASE_EXPORT DelayedTaskManager {
                 PostTaskNowCallback callback,
                 scoped_refptr<TaskRunner> task_runner);
     DelayedTask(DelayedTask&& other);
+    DelayedTask(const DelayedTask&) = delete;
+    DelayedTask& operator=(const DelayedTask&) = delete;
     ~DelayedTask();
 
     // Required by IntrusiveHeap::insert().
@@ -79,25 +90,23 @@ class BASE_EXPORT DelayedTaskManager {
     void SetScheduled();
 
     // Required by IntrusiveHeap.
-    void SetHeapHandle(const HeapHandle& handle) {
-      ignore_result(handle);
-    }
+    void SetHeapHandle(const HeapHandle& handle) {}
 
     // Required by IntrusiveHeap.
     void ClearHeapHandle() {}
 
+    // Required by IntrusiveHeap.
+    HeapHandle GetHeapHandle() const { return HeapHandle::Invalid(); }
+
    private:
     bool scheduled_ = false;
-    DISALLOW_COPY_AND_ASSIGN(DelayedTask);
   };
-
-  // Pop and post all the ripe tasks in the delayed task queue.
-  void ProcessRipeTasks();
 
   // Get the time at which to schedule the next |ProcessRipeTasks()| execution,
   // or TimeTicks::Max() if none needs to be scheduled (i.e. no task, or next
   // task already scheduled).
-  TimeTicks GetTimeToScheduleProcessRipeTasksLockRequired();
+  TimeTicks GetTimeToScheduleProcessRipeTasksLockRequired()
+      EXCLUSIVE_LOCKS_REQUIRED(queue_lock_);
 
   // Schedule |ProcessRipeTasks()| on the service thread to be executed at the
   // given |process_ripe_tasks_time|, provided the given time is not
@@ -107,20 +116,18 @@ class BASE_EXPORT DelayedTaskManager {
 
   const RepeatingClosure process_ripe_tasks_closure_;
 
-  const std::unique_ptr<const TickClock> tick_clock_;
-
-  scoped_refptr<TaskRunner> service_thread_task_runner_;
-
-  IntrusiveHeap<DelayedTask> delayed_task_queue_;
+  const TickClock* const tick_clock_;
 
   // Synchronizes access to |delayed_task_queue_| and the setting of
-  // |service_thread_task_runner|. Once |service_thread_task_runner_| is set,
+  // |service_thread_task_runner_|. Once |service_thread_task_runner_| is set,
   // it is never modified. It is therefore safe to access
   // |service_thread_task_runner_| without synchronization once it is observed
   // that it is non-null.
-  CheckedLock queue_lock_;
+  mutable CheckedLock queue_lock_;
 
-  DISALLOW_COPY_AND_ASSIGN(DelayedTaskManager);
+  scoped_refptr<SequencedTaskRunner> service_thread_task_runner_;
+
+  IntrusiveHeap<DelayedTask> delayed_task_queue_ GUARDED_BY(queue_lock_);
 };
 
 }  // namespace internal

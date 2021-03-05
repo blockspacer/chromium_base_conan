@@ -7,22 +7,19 @@
 #include <utility>
 
 #include "base/files/file_descriptor_watcher_posix.h"
-#include "base/message_loop/message_loop.h"
 
 namespace base {
 namespace internal {
 
-TaskTrackerPosix::TaskTrackerPosix(StringPiece name) : TaskTracker(name) {}
+TaskTrackerPosix::TaskTrackerPosix() = default;
 TaskTrackerPosix::~TaskTrackerPosix() = default;
 
-void TaskTrackerPosix::RunOrSkipTask(Task task,
-                                     TaskSource* task_source,
-                                     const TaskTraits& traits,
-                                     bool can_run_task) {
+void TaskTrackerPosix::RunTask(Task task,
+                               TaskSource* task_source,
+                               const TaskTraits& traits) {
   DCHECK(io_thread_task_runner_);
   FileDescriptorWatcher file_descriptor_watcher(io_thread_task_runner_);
-  TaskTracker::RunOrSkipTask(std::move(task), task_source, traits,
-                             can_run_task);
+  TaskTracker::RunTask(std::move(task), task_source, traits);
 }
 
 }  // namespace internal

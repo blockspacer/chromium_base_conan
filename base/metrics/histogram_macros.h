@@ -18,9 +18,6 @@
 // the histogram should take, see
 // https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histograms/README.md
 
-// TODO(rkaplow): Link to proper documentation on metric creation once we have
-// it in a good state.
-
 // All of these macros must be called with |name| as a runtime constant - it
 // doesn't have to literally be a constant, but it must be the same string on
 // all calls from a particular call site. If this rule is violated, it is
@@ -88,6 +85,13 @@
 // large amounts. See UMA_HISTOGRAM_SCALED_EXACT_LINEAR for more information.
 // Only the new format utilizing an internal kMaxValue is supported.
 // It'll be necessary to #include "base/lazy_instance.h" to use this macro.
+//   name: Full constant name of the histogram (must not change between calls).
+//   sample: Bucket to be incremented.
+//   count: Amount by which to increment.
+//   scale: Amount by which |count| is divided.
+
+// Sample usage:
+//    UMA_HISTOGRAM_SCALED_ENUMERATION("FooKiB", kEnumValue, byte_count, 1024)
 #define UMA_HISTOGRAM_SCALED_ENUMERATION(name, sample, count, scale) \
   INTERNAL_HISTOGRAM_SCALED_ENUMERATION_WITH_FLAG(                   \
       name, sample, count, scale,                                    \
@@ -126,17 +130,27 @@
   UMA_HISTOGRAM_EXACT_LINEAR(name, percent_as_int, 101)
 
 //------------------------------------------------------------------------------
-// Scaled Linear histograms.
+// Scaled linear histograms.
 
 // These take |count| and |scale| parameters to allow cumulative reporting of
-// large numbers. Only the scaled count is reported but the reminder is kept so
-// multiple calls will accumulate correctly.  Only "exact linear" is supported.
+// large numbers. For example, code might pass a count of 1825 bytes and a scale
+// of 1024 bytes to report values in kilobytes. Only the scaled count is
+// reported, but the remainder is tracked between calls, so that multiple calls
+// will accumulate correctly. Only "exact linear" is supported.
 // It'll be necessary to #include "base/lazy_instance.h" to use this macro.
+//   name: Full constant name of the histogram (must not change between calls).
+//   sample: Bucket to be incremented.
+//   count: Amount by which to increment.
+//   sample_max: Maximum (exclusive) allowed sample value.
+//   scale: Amount by which |count| is divided.
 
-#define UMA_HISTOGRAM_SCALED_EXACT_LINEAR(name, sample, count, value_max, \
-                                          scale)                          \
-  INTERNAL_HISTOGRAM_SCALED_EXACT_LINEAR_WITH_FLAG(                       \
-      name, sample, count, value_max, scale,                              \
+// Sample usage:
+//    UMA_HISTOGRAM_SCALED_EXACT_LINER("FooKiB", bucket_no, byte_count,
+//                                     kBucketsMax+1, 1024)
+#define UMA_HISTOGRAM_SCALED_EXACT_LINEAR(name, sample, count, sample_max, \
+                                          scale)                           \
+  INTERNAL_HISTOGRAM_SCALED_EXACT_LINEAR_WITH_FLAG(                        \
+      name, sample, count, sample_max, scale,                              \
       base::HistogramBase::kUmaTargetedHistogramFlag)
 
 //------------------------------------------------------------------------------
@@ -185,7 +199,7 @@
 // underflow bucket.
 
 // Sample usage:
-//   UMA_HISTOGRAM_CUSTOM_COUNTS("My.Histogram", 1, 100000000, 100);
+//   UMA_HISTOGRAM_CUSTOM_COUNTS("My.Histogram", sample, 1, 100000000, 50);
 #define UMA_HISTOGRAM_CUSTOM_COUNTS(name, sample, min, max, bucket_count)      \
     INTERNAL_HISTOGRAM_CUSTOM_COUNTS_WITH_FLAG(                                \
         name, sample, min, max, bucket_count,                                  \
@@ -269,15 +283,28 @@
 //     SCOPED_UMA_HISTOGRAM_TIMER("Component.FunctionTime");
 //     ...
 //   }
-#define SCOPED_UMA_HISTOGRAM_TIMER(name)                                       \
-  INTERNAL_SCOPED_UMA_HISTOGRAM_TIMER_EXPANDER(name, false, __COUNTER__)
+enum class ScopedHistogramTiming {
+  kMicrosecondTimes,
+  kMediumTimes,
+  kLongTimes
+};
+#define SCOPED_UMA_HISTOGRAM_TIMER(name)        \
+  INTERNAL_SCOPED_UMA_HISTOGRAM_TIMER_EXPANDER( \
+      name, ScopedHistogramTiming::kMediumTimes, __COUNTER__)
 
 // Similar scoped histogram timer, but this uses UMA_HISTOGRAM_LONG_TIMES_100,
 // which measures up to an hour, and uses 100 buckets. This is more expensive
 // to store, so only use if this often takes >10 seconds.
-#define SCOPED_UMA_HISTOGRAM_LONG_TIMER(name)                                  \
-  INTERNAL_SCOPED_UMA_HISTOGRAM_TIMER_EXPANDER(name, true, __COUNTER__)
+#define SCOPED_UMA_HISTOGRAM_LONG_TIMER(name)   \
+  INTERNAL_SCOPED_UMA_HISTOGRAM_TIMER_EXPANDER( \
+      name, ScopedHistogramTiming::kLongTimes, __COUNTER__)
 
+// Similar scoped histogram timer, but this uses
+// UMA_HISTOGRAM_CUSTOM_MICROSECONDS_TIMES, measuring from 1 microseconds to 1
+// second, with 50 buckets.
+#define SCOPED_UMA_HISTOGRAM_SHORT_TIMER(name)  \
+  INTERNAL_SCOPED_UMA_HISTOGRAM_TIMER_EXPANDER( \
+      name, ScopedHistogramTiming::kMicrosecondTimes, __COUNTER__)
 
 //------------------------------------------------------------------------------
 // Memory histograms.
@@ -310,6 +337,12 @@
 
 // For details on usage, see the documentation on the non-stability equivalents.
 
+#define UMA_STABILITY_HISTOGRAM_BOOLEAN(name, sample) \
+  STATIC_HISTOGRAM_POINTER_BLOCK(                     \
+      name, AddBoolean(sample),                       \
+      base::BooleanHistogram::FactoryGet(             \
+          name, base::HistogramBase::kUmaStabilityHistogramFlag))
+
 #define UMA_STABILITY_HISTOGRAM_COUNTS_100(name, sample)                       \
     UMA_STABILITY_HISTOGRAM_CUSTOM_COUNTS(name, sample, 1, 100, 50)
 
@@ -319,10 +352,24 @@
         name, sample, min, max, bucket_count,                                  \
         base::HistogramBase::kUmaStabilityHistogramFlag)
 
-#define UMA_STABILITY_HISTOGRAM_ENUMERATION(name, sample, enum_max)            \
-    INTERNAL_HISTOGRAM_ENUMERATION_WITH_FLAG(                                  \
-        name, sample, enum_max,                                                \
-        base::HistogramBase::kUmaStabilityHistogramFlag)
+#define UMA_STABILITY_HISTOGRAM_ENUMERATION(name, ...)                  \
+  INTERNAL_UMA_HISTOGRAM_ENUMERATION_GET_MACRO(                         \
+      __VA_ARGS__, INTERNAL_UMA_HISTOGRAM_ENUMERATION_SPECIFY_BOUNDARY, \
+      INTERNAL_UMA_HISTOGRAM_ENUMERATION_DEDUCE_BOUNDARY)               \
+  (name, __VA_ARGS__, base::HistogramBase::kUmaStabilityHistogramFlag)
+
+#define UMA_STABILITY_HISTOGRAM_LONG_TIMES(name, sample) \
+  STATIC_HISTOGRAM_POINTER_BLOCK(                        \
+      name, AddTimeMillisecondsGranularity(sample),      \
+      base::Histogram::FactoryTimeGet(                   \
+          name, base::TimeDelta::FromMilliseconds(1),    \
+          base::TimeDelta::FromHours(1), 50,             \
+          base::HistogramBase::kUmaStabilityHistogramFlag))
+
+#define UMA_STABILITY_HISTOGRAM_PERCENTAGE(name, percent_as_int) \
+  INTERNAL_HISTOGRAM_EXACT_LINEAR_WITH_FLAG(                     \
+      name, percent_as_int, 101,                                 \
+      base::HistogramBase::kUmaStabilityHistogramFlag)
 
 //------------------------------------------------------------------------------
 // Histogram instantiation helpers.
@@ -344,17 +391,16 @@
 // instance will be used only for DCHECK builds and the second will
 // execute only during the first access to the given index, after which
 // the pointer is cached and the name never needed again.
-#define STATIC_HISTOGRAM_POINTER_GROUP(constant_histogram_name, index,        \
-                                       constant_maximum,                      \
-                                       histogram_add_method_invocation,       \
-                                       histogram_factory_get_invocation)      \
-  do {                                                                        \
-    static base::subtle::AtomicWord atomic_histograms[constant_maximum];      \
-    DCHECK_LE(0, index);                                                      \
-    DCHECK_LT(index, constant_maximum);                                       \
-    HISTOGRAM_POINTER_USE(&atomic_histograms[index], constant_histogram_name, \
-                          histogram_add_method_invocation,                    \
-                          histogram_factory_get_invocation);                  \
+#define STATIC_HISTOGRAM_POINTER_GROUP(                                     \
+    constant_histogram_name, index, constant_maximum,                       \
+    histogram_add_method_invocation, histogram_factory_get_invocation)      \
+  do {                                                                      \
+    static std::atomic_uintptr_t atomic_histograms[constant_maximum];       \
+    DCHECK_LE(0, index);                                                    \
+    DCHECK_LT(index, constant_maximum);                                     \
+    HISTOGRAM_POINTER_USE(                                                  \
+        std::addressof(atomic_histograms[index]), constant_histogram_name,  \
+        histogram_add_method_invocation, histogram_factory_get_invocation); \
   } while (0)
 
 //------------------------------------------------------------------------------

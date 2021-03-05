@@ -8,33 +8,24 @@
 
 #include <utility>
 
+#include "base/check_op.h"
 #include "base/compiler_specific.h"
 #include "base/debug/alias.h"
-#include "base/logging.h"
 #include "base/task/thread_pool/environment_config.h"
 #include "base/task/thread_pool/task_tracker.h"
 #include "base/task/thread_pool/worker_thread_observer.h"
-#include "base/trace_event/trace_event.h"
+#include "base/threading/hang_watcher.h"
+#include "base/time/time_override.h"
+#include "base/trace_event/base_tracing.h"
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 #include "base/mac/scoped_nsautorelease_pool.h"
-#elif defined(OS_WIN)
-#include "base/win/com_init_check_hook.h"
-#include "base/win/scoped_com_initializer.h"
-#endif
-
-#if defined(OS_EMSCRIPTEN)
-#include <emscripten/emscripten.h>
 #endif
 
 namespace base {
 namespace internal {
 
 void WorkerThread::Delegate::WaitForWork(WaitableEvent* wake_up_event) {
-#if defined(OS_EMSCRIPTEN)
-  printf("can`t use WorkerThread::Delegate on wasm platform!");
-  HTML5_STACKTRACE();
-#endif
   DCHECK(wake_up_event);
   const TimeDelta sleep_time = GetSleepTimeout();
   if (sleep_time.is_max()) {
@@ -46,22 +37,15 @@ void WorkerThread::Delegate::WaitForWork(WaitableEvent* wake_up_event) {
   }
 }
 
-WorkerThread::WorkerThread(
-    ThreadPriority priority_hint,
-    std::unique_ptr<Delegate> delegate,
-    TrackedRef<TaskTracker> task_tracker,
-    const CheckedLock* predecessor_lock,
-    WorkerThreadBackwardCompatibility backward_compatibility)
+WorkerThread::WorkerThread(ThreadPriority priority_hint,
+                           std::unique_ptr<Delegate> delegate,
+                           TrackedRef<TaskTracker> task_tracker,
+                           const CheckedLock* predecessor_lock)
     : thread_lock_(predecessor_lock),
       delegate_(std::move(delegate)),
       task_tracker_(std::move(task_tracker)),
       priority_hint_(priority_hint),
-      current_thread_priority_(GetDesiredThreadPriority())
-#if defined(OS_WIN) && !defined(COM_INIT_CHECK_HOOK_ENABLED)
-      ,
-      backward_compatibility_(backward_compatibility)
-#endif
-{
+      current_thread_priority_(GetDesiredThreadPriority()) {
   DCHECK(delegate_);
   DCHECK(task_tracker_);
   DCHECK(CanUseBackgroundPriorityForWorkerThread() ||
@@ -151,7 +135,7 @@ void WorkerThread::Cleanup() {
 void WorkerThread::BeginUnusedPeriod() {
   CheckedAutoLock auto_lock(thread_lock_);
   DCHECK(last_used_time_.is_null());
-  last_used_time_ = TimeTicks::Now();
+  last_used_time_ = subtle::TimeTicksNowIgnoringOverride();
 }
 
 void WorkerThread::EndUnusedPeriod() {
@@ -192,10 +176,6 @@ void WorkerThread::UpdateThreadPriority(
 }
 
 void WorkerThread::ThreadMain() {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-  #warning "TODO: port WorkerThread thread"
-  P_LOG("TODO: port WorkerThread thread\n");
-#endif
   if (priority_hint_ == ThreadPriority::BACKGROUND) {
     switch (delegate_->GetThreadLabel()) {
       case ThreadLabel::POOLED:
@@ -240,118 +220,115 @@ void WorkerThread::ThreadMain() {
 }
 
 NOINLINE void WorkerThread::RunPooledWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunBackgroundPooledWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunSharedWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunBackgroundSharedWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunDedicatedWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunBackgroundDedicatedWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 #if defined(OS_WIN)
 NOINLINE void WorkerThread::RunSharedCOMWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunBackgroundSharedCOMWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunDedicatedCOMWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 NOINLINE void WorkerThread::RunBackgroundDedicatedCOMWorker() {
-  const int line_number = __LINE__;
   RunWorker();
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 #endif  // defined(OS_WIN)
 
 void WorkerThread::RunWorker() {
   DCHECK_EQ(self_, this);
-  TRACE_EVENT_INSTANT0("thread_pool", "WorkerThreadThread born",
-                       TRACE_EVENT_SCOPE_THREAD);
-  TRACE_EVENT_BEGIN0("thread_pool", "WorkerThreadThread active");
+  TRACE_EVENT_INSTANT0("base", "WorkerThread born", TRACE_EVENT_SCOPE_THREAD);
+  TRACE_EVENT_BEGIN0("base", "WorkerThread active");
 
   if (worker_thread_observer_)
     worker_thread_observer_->OnWorkerThreadMainEntry();
 
   delegate_->OnMainEntry(this);
 
-  // A WorkerThread starts out waiting for work.
-  {
-    TRACE_EVENT_END0("thread_pool", "WorkerThreadThread active");
-    delegate_->WaitForWork(&wake_up_event_);
-    TRACE_EVENT_BEGIN0("thread_pool", "WorkerThreadThread active");
+  // Background threads can take an arbitrary amount of time to complete, do not
+  // watch them for hangs. Ignore priority boosting for now.
+  const bool watch_for_hangs =
+      base::HangWatcher::IsThreadPoolHangWatchingEnabled() &&
+      GetDesiredThreadPriority() != ThreadPriority::BACKGROUND;
+
+  // If this process has a HangWatcher register this thread for watching.
+  base::ScopedClosureRunner unregister_for_hang_watching;
+  if (watch_for_hangs) {
+    unregister_for_hang_watching = base::HangWatcher::RegisterThread(
+        base::HangWatcher::ThreadType::kThreadPoolThread);
   }
 
-// When defined(COM_INIT_CHECK_HOOK_ENABLED), ignore
-// WorkerThreadBackwardCompatibility::INIT_COM_STA to find incorrect uses of
-// COM that should be running in a COM STA Task Runner.
-#if defined(OS_WIN) && !defined(COM_INIT_CHECK_HOOK_ENABLED)
-  std::unique_ptr<win::ScopedCOMInitializer> com_initializer;
-  if (backward_compatibility_ ==
-      WorkerThreadBackwardCompatibility::INIT_COM_STA)
-    com_initializer = std::make_unique<win::ScopedCOMInitializer>();
-#endif
+  // A WorkerThread starts out waiting for work.
+  {
+    TRACE_EVENT_END0("base", "WorkerThread active");
+    delegate_->WaitForWork(&wake_up_event_);
+    TRACE_EVENT_BEGIN0("base", "WorkerThread active");
+  }
 
   while (!ShouldExit()) {
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
     mac::ScopedNSAutoreleasePool autorelease_pool;
 #endif
+    base::Optional<HangWatchScopeEnabled> hang_watch_scope;
+    if (watch_for_hangs)
+      hang_watch_scope.emplace(
+          base::HangWatchScopeEnabled::kDefaultHangWatchTime);
 
     UpdateThreadPriority(GetDesiredThreadPriority());
 
     // Get the task source containing the next task to execute.
-    scoped_refptr<TaskSource> task_source = delegate_->GetWork(this);
+    RegisteredTaskSource task_source = delegate_->GetWork(this);
     if (!task_source) {
       // Exit immediately if GetWork() resulted in detaching this worker.
       if (ShouldExit())
         break;
 
-      TRACE_EVENT_END0("thread_pool", "WorkerThreadThread active");
+      TRACE_EVENT_END0("base", "WorkerThread active");
+      hang_watch_scope.reset();
       delegate_->WaitForWork(&wake_up_event_);
-      TRACE_EVENT_BEGIN0("thread_pool", "WorkerThreadThread active");
+      TRACE_EVENT_BEGIN0("base", "WorkerThread active");
       continue;
     }
 
     task_source = task_tracker_->RunAndPopNextTask(std::move(task_source));
 
-    delegate_->DidRunTask(std::move(task_source));
+    delegate_->DidProcessTask(std::move(task_source));
 
     // Calling WakeUp() guarantees that this WorkerThread will run Tasks from
     // TaskSources returned by the GetWork() method of |delegate_| until it
@@ -373,9 +350,8 @@ void WorkerThread::RunWorker() {
   // and as such no more member accesses should be made after this point.
   self_ = nullptr;
 
-  TRACE_EVENT_END0("thread_pool", "WorkerThreadThread active");
-  TRACE_EVENT_INSTANT0("thread_pool", "WorkerThreadThread dead",
-                       TRACE_EVENT_SCOPE_THREAD);
+  TRACE_EVENT_END0("base", "WorkerThread active");
+  TRACE_EVENT_INSTANT0("base", "WorkerThread dead", TRACE_EVENT_SCOPE_THREAD);
 }
 
 }  // namespace internal

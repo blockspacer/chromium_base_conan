@@ -6,7 +6,7 @@
 
 #include "base/test/copy_only_int.h"
 #include "base/test/move_only_int.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace internal {

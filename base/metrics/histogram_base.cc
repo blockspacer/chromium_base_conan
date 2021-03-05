@@ -10,14 +10,15 @@
 #include <set>
 #include <utility>
 
+#include "base/check_op.h"
 #include "base/json/json_string_value_serializer.h"
-#include "base/lazy_instance.h"
-#include "base/logging.h"
 #include "base/metrics/histogram.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/histogram_samples.h"
 #include "base/metrics/sparse_histogram.h"
 #include "base/metrics/statistics_recorder.h"
+#include "base/no_destructor.h"
+#include "base/notreached.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/pickle.h"
 #include "base/process/process_handle.h"
@@ -143,8 +144,8 @@ void HistogramBase::ValidateHistogramContents() const {}
 
 void HistogramBase::WriteJSON(std::string* output,
                               JSONVerbosityLevel verbosity_level) const {
-  Count count;
-  int64_t sum;
+  Count count = 0;
+  int64_t sum = 0;
   std::unique_ptr<ListValue> buckets(new ListValue());
   GetCountAndBucketData(&count, &sum, buckets.get());
   std::unique_ptr<DictionaryValue> parameters(new DictionaryValue());
@@ -159,27 +160,53 @@ void HistogramBase::WriteJSON(std::string* output,
   root.Set("params", std::move(parameters));
   if (verbosity_level != JSON_VERBOSITY_LEVEL_OMIT_BUCKETS)
     root.Set("buckets", std::move(buckets));
-  root.SetIntKey("pid", GetUniqueIdForProcess());
+  root.SetIntKey("pid", GetUniqueIdForProcess().GetUnsafeValue());
   serializer.Serialize(root);
 }
 
 void HistogramBase::FindAndRunCallback(HistogramBase::Sample sample) const {
+  StatisticsRecorder::GlobalSampleCallback global_sample_callback =
+      StatisticsRecorder::global_sample_callback();
+  if (global_sample_callback)
+    global_sample_callback(histogram_name(), name_hash(), sample);
+
   if ((flags() & kCallbackExists) == 0)
     return;
 
   StatisticsRecorder::OnSampleCallback cb =
       StatisticsRecorder::FindCallback(histogram_name());
   if (!cb.is_null())
-    cb.Run(sample);
+    cb.Run(histogram_name(), name_hash(), sample);
 }
 
-void HistogramBase::WriteAsciiBucketGraph(double current_size,
-                                          double max_size,
+void HistogramBase::GetCountAndBucketData(Count* count,
+                                          int64_t* sum,
+                                          ListValue* buckets) const {
+  std::unique_ptr<HistogramSamples> snapshot = SnapshotSamples();
+  *count = snapshot->TotalCount();
+  *sum = snapshot->sum();
+  std::unique_ptr<SampleCountIterator> it = snapshot->Iterator();
+  uint32_t index = 0;
+  while (!it->Done()) {
+    std::unique_ptr<DictionaryValue> bucket_value(new DictionaryValue());
+    Sample bucket_min;
+    int64_t bucket_max;
+    Count bucket_count;
+    it->Get(&bucket_min, &bucket_max, &bucket_count);
+
+    bucket_value->SetIntKey("low", bucket_min);
+    bucket_value->SetIntKey("high", bucket_max);
+    bucket_value->SetIntKey("count", bucket_count);
+    buckets->Set(index, std::move(bucket_value));
+    it->Next();
+    ++index;
+  }
+}
+
+void HistogramBase::WriteAsciiBucketGraph(double x_count,
+                                          int line_length,
                                           std::string* output) const {
-  const int k_line_length = 72;  // Maximal horizontal width of graph.
-  int x_count = static_cast<int>(k_line_length * (current_size / max_size)
-                                 + 0.5);
-  int x_remainder = k_line_length - x_count;
+  int x_remainder = line_length - x_count;
 
   while (0 < x_count--)
     output->append("-");
@@ -204,11 +231,11 @@ char const* HistogramBase::GetPermanentName(const std::string& name) {
   // A set of histogram names that provides the "permanent" lifetime required
   // by histogram objects for those strings that are not already code constants
   // or held in persistent memory.
-  static LazyInstance<std::set<std::string>>::Leaky permanent_names;
-  static LazyInstance<Lock>::Leaky permanent_names_lock;
+  static base::NoDestructor<std::set<std::string>> permanent_names;
+  static base::NoDestructor<Lock> permanent_names_lock;
 
-  AutoLock lock(permanent_names_lock.Get());
-  auto result = permanent_names.Get().insert(name);
+  AutoLock lock(*permanent_names_lock);
+  auto result = permanent_names->insert(name);
   return result.first->c_str();
 }
 

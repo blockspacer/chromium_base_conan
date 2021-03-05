@@ -11,16 +11,12 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/icu/source/common/unicode/unistr.h"
 #include "third_party/icu/source/i18n/unicode/datefmt.h"
 #include "third_party/icu/source/i18n/unicode/msgfmt.h"
 
 typedef testing::Test MessageFormatterTest;
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
 
 namespace base {
 namespace i18n {

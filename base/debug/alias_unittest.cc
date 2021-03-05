@@ -6,7 +6,7 @@
 #include <string>
 
 #include "base/debug/alias.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 TEST(DebugAlias, Test) {
   std::unique_ptr<std::string> input =

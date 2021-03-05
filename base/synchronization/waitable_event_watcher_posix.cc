@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "base/bind.h"
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 
@@ -68,7 +68,6 @@ class AsyncWaiter : public WaitableEvent::Waiter {
         flag_(flag) {}
 
   bool Fire(WaitableEvent* event) override {
-    DCHECK(task_runner_);
     // Post the callback if we haven't been cancelled.
     if (!flag_->value())
       task_runner_->PostTask(FROM_HERE, std::move(callback_));

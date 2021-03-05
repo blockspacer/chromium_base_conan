@@ -12,6 +12,8 @@
 #include <memory>
 
 #include "base/base_export.h"
+#include "base/compiler_specific.h"
+#include "base/location.h"
 #include "base/message_loop/message_pump.h"
 #include "base/observer_list.h"
 #include "base/optional.h"
@@ -82,10 +84,9 @@ class BASE_EXPORT MessagePumpWin : public MessagePump {
 //
 // MessagePumpForUI implements a "traditional" Windows message pump. It contains
 // a nearly infinite loop that peeks out messages, and then dispatches them.
-// Intermixed with those peeks are callouts to DoWork for pending tasks, and
-// DoDelayedWork for pending timers. When there are no events to be serviced,
-// this pump goes into a wait state. In most cases, this message pump handles
-// all processing.
+// Intermixed with those peeks are callouts to DoWork. When there are no
+// events to be serviced, this pump goes into a wait state. In most cases, this
+// message pump handles all processing.
 //
 // However, when a task, or windows event, invokes on the stack a native dialog
 // box or such, that window typically provides a bare bones (native?) message
@@ -96,15 +97,14 @@ class BASE_EXPORT MessagePumpWin : public MessagePump {
 //
 // The basic structure of the extension (referred to as a sub-pump) is that a
 // special message, kMsgHaveWork, is repeatedly injected into the Windows
-// Message queue.  Each time the kMsgHaveWork message is peeked, checks are
-// made for an extended set of events, including the availability of Tasks to
-// run.
+// Message queue.  Each time the kMsgHaveWork message is peeked, checks are made
+// for an extended set of events, including the availability of Tasks to run.
 //
-// After running a task, the special message kMsgHaveWork is again posted to
-// the Windows Message queue, ensuring a future time slice for processing a
-// future event.  To prevent flooding the Windows Message queue, care is taken
-// to be sure that at most one kMsgHaveWork message is EVER pending in the
-// Window's Message queue.
+// After running a task, the special message kMsgHaveWork is again posted to the
+// Windows Message queue, ensuring a future time slice for processing a future
+// event.  To prevent flooding the Windows Message queue, care is taken to be
+// sure that at most one kMsgHaveWork message is EVER pending in the Window's
+// Message queue.
 //
 // There are a few additional complexities in this system where, when there are
 // no Tasks to run, this otherwise infinite stream of messages which drives the
@@ -115,8 +115,8 @@ class BASE_EXPORT MessagePumpWin : public MessagePump {
 // prevent a bare-bones message pump from ever peeking a WM_PAINT or WM_TIMER.
 // Such paint and timer events always give priority to a posted message, such as
 // kMsgHaveWork messages.  As a result, care is taken to do some peeking in
-// between the posting of each kMsgHaveWork message (i.e., after kMsgHaveWork
-// is peeked, and before a replacement kMsgHaveWork is posted).
+// between the posting of each kMsgHaveWork message (i.e., after kMsgHaveWork is
+// peeked, and before a replacement kMsgHaveWork is posted).
 //
 // NOTE: Although it may seem odd that messages are used to start and stop this
 // flow (as opposed to signaling objects, etc.), it should be understood that
@@ -148,10 +148,13 @@ class BASE_EXPORT MessagePumpForUI : public MessagePumpWin {
   void RemoveObserver(Observer* obseerver);
 
  private:
-  bool MessageCallback(
-      UINT message, WPARAM wparam, LPARAM lparam, LRESULT* result);
+  bool MessageCallback(UINT message,
+                       WPARAM wparam,
+                       LPARAM lparam,
+                       LRESULT* result);
   void DoRunLoop() override;
-  void WaitForWork(Delegate::NextWorkInfo next_work_info);
+  NOINLINE void NOT_TAIL_CALLED
+  WaitForWork(Delegate::NextWorkInfo next_work_info);
   void HandleWorkMessage();
   void HandleTimerMessage();
   void ScheduleNativeTimer(Delegate::NextWorkInfo next_work_info);
@@ -198,7 +201,7 @@ class BASE_EXPORT MessagePumpForIO : public MessagePumpWin {
   //
   // Typical use #1:
   //   class MyFile : public IOHandler {
-  //     MyFile() {
+  //     MyFile() : IOHandler(FROM_HERE) {
   //       ...
   //       message_pump->RegisterIOHandler(file_, this);
   //     }
@@ -228,15 +231,26 @@ class BASE_EXPORT MessagePumpForIO : public MessagePumpWin {
   //         message_pump->WaitForIOCompletion(INFINITE, this);
   //     }
   //
-  class IOHandler {
+  class BASE_EXPORT IOHandler {
    public:
-    virtual ~IOHandler() {}
+    explicit IOHandler(const Location& from_here);
+    virtual ~IOHandler();
+
+    IOHandler(const IOHandler&) = delete;
+    IOHandler& operator=(const IOHandler&) = delete;
+
     // This will be called once the pending IO operation associated with
     // |context| completes. |error| is the Win32 error code of the IO operation
     // (ERROR_SUCCESS if there was no error). |bytes_transfered| will be zero
     // on error.
-    virtual void OnIOCompleted(IOContext* context, DWORD bytes_transfered,
+    virtual void OnIOCompleted(IOContext* context,
+                               DWORD bytes_transfered,
                                DWORD error) = 0;
+
+    const Location& io_handler_location() { return io_handler_location_; }
+
+   private:
+    const Location io_handler_location_;
   };
 
   MessagePumpForIO();
@@ -257,17 +271,6 @@ class BASE_EXPORT MessagePumpForIO : public MessagePumpWin {
   // succeeded, and false otherwise.
   bool RegisterJobObject(HANDLE job_handle, IOHandler* handler);
 
-  // Waits for the next IO completion that should be processed by |filter|, for
-  // up to |timeout| milliseconds. Return true if any IO operation completed,
-  // regardless of the involved handler, and false if the timeout expired. If
-  // the completion port received any message and the involved IO handler
-  // matches |filter|, the callback is called before returning from this code;
-  // if the handler is not the one that we are looking for, the callback will
-  // be postponed for another time, so reentrancy problems can be avoided.
-  // External use of this method should be reserved for the rare case when the
-  // caller is willing to allow pausing regular task dispatching on this thread.
-  bool WaitForIOCompletion(DWORD timeout, IOHandler* filter);
-
  private:
   struct IOItem {
     IOHandler* handler;
@@ -277,16 +280,18 @@ class BASE_EXPORT MessagePumpForIO : public MessagePumpWin {
   };
 
   void DoRunLoop() override;
-  void WaitForWork(Delegate::NextWorkInfo next_work_info);
-  bool MatchCompletedIOItem(IOHandler* filter, IOItem* item);
+  NOINLINE void NOT_TAIL_CALLED
+  WaitForWork(Delegate::NextWorkInfo next_work_info);
   bool GetIOItem(DWORD timeout, IOItem* item);
   bool ProcessInternalIOItem(const IOItem& item);
+  // Waits for the next IO completion for up to |timeout| milliseconds.
+  // Return true if any IO operation completed, and false if the timeout
+  // expired. If the completion port received any messages, the associated
+  // handlers will have been invoked before returning from this code.
+  bool WaitForIOCompletion(DWORD timeout);
 
   // The completion port associated with this thread.
   win::ScopedHandle port_;
-  // This list will be empty almost always. It stores IO completions that have
-  // not been delivered yet because somebody was doing cleanup.
-  std::list<IOItem> completed_io_;
 };
 
 }  // namespace base

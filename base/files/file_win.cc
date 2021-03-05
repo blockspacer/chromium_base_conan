@@ -7,8 +7,9 @@
 #include <io.h>
 #include <stdint.h>
 
-#include "base/logging.h"
+#include "base/check_op.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "base/threading/scoped_blocking_call.h"
 
@@ -293,7 +294,7 @@ File File::Duplicate() const {
     return File(GetLastFileError());
   }
 
-  return File(other_handle, async());
+  return File(ScopedPlatformFile(other_handle), async());
 }
 
 bool File::DeleteOnClose(bool delete_on_close) {
@@ -415,8 +416,8 @@ void File::DoInitialize(const FilePath& path, uint32_t flags) {
   if (flags & FLAG_SEQUENTIAL_SCAN)
     create_flags |= FILE_FLAG_SEQUENTIAL_SCAN;
 
-  file_.Set(CreateFile(as_wcstr(path.value()), access, sharing, NULL,
-                       disposition, create_flags, NULL));
+  file_.Set(CreateFile(path.value().c_str(), access, sharing, NULL, disposition,
+                       create_flags, NULL));
 
   if (file_.IsValid()) {
     error_details_ = FILE_OK;

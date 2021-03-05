@@ -5,13 +5,13 @@
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/android/library_loader/library_loader_hooks.h"
+#include "base/base_jni_headers/ChildProcessService_jni.h"
 #include "base/debug/dump_without_crashing.h"
 #include "base/file_descriptor_store.h"
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/optional.h"
 #include "base/posix/global_descriptors.h"
-#include "jni/ChildProcessService_jni.h"
 
 using base::android::JavaIntArrayToIntVector;
 using base::android::JavaParamRef;
@@ -71,7 +71,11 @@ void JNI_ChildProcessService_ExitChildProcess(JNIEnv* env) {
   _exit(0);
 }
 
-void JNI_ChildProcessService_DumpProcessStack(JNIEnv* env) {
+// Make sure this isn't inlined so it shows up in stack traces.
+// the function body unique by adding a log line, so it doesn't get merged
+// with other functions by link time optimizations (ICF).
+NOINLINE void JNI_ChildProcessService_DumpProcessStack(JNIEnv* env) {
+  LOG(ERROR) << "Dumping as requested.";
   base::debug::DumpWithoutCrashing();
 }
 

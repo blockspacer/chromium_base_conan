@@ -1,11 +1,17 @@
-﻿// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/files/file.h"
+
+#include <utility>
+
+#include "base/check_op.h"
 #include "base/files/file_path.h"
 #include "base/files/file_tracing.h"
 #include "base/metrics/histogram.h"
+#include "base/notreached.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/timer/elapsed_timer.h"
 #include "build/build_config.h"
 
@@ -15,50 +21,44 @@
 
 namespace base {
 
-File::Info::Info()
-    : size(0),
-      is_directory(false),
-      is_symbolic_link(false) {
-}
+File::Info::Info() = default;
 
 File::Info::~Info() = default;
 
-File::File()
-    : error_details_(FILE_ERROR_FAILED),
-      created_(false),
-      async_(false) {
-}
+File::File() = default;
 
 #if !defined(OS_NACL)
-File::File(const FilePath& path, uint32_t flags)
-    : error_details_(FILE_OK), created_(false), async_(false) {
+File::File(const FilePath& path, uint32_t flags) : error_details_(FILE_OK) {
   Initialize(path, flags);
 }
 #endif
 
+File::File(ScopedPlatformFile platform_file)
+    : File(std::move(platform_file), false) {}
+
 File::File(PlatformFile platform_file) : File(platform_file, false) {}
+
+File::File(ScopedPlatformFile platform_file, bool async)
+    : file_(std::move(platform_file)), error_details_(FILE_OK), async_(async) {
+#if defined(OS_POSIX) || defined(OS_FUCHSIA)
+  DCHECK_GE(file_.get(), -1);
+#endif
+}
 
 File::File(PlatformFile platform_file, bool async)
     : file_(platform_file),
       error_details_(FILE_OK),
-      created_(false),
       async_(async) {
 #if defined(OS_POSIX) || defined(OS_FUCHSIA)
   DCHECK_GE(platform_file, -1);
 #endif
 }
 
-File::File(Error error_details)
-    : error_details_(error_details),
-      created_(false),
-      async_(false) {
-}
+File::File(Error error_details) : error_details_(error_details) {}
 
 File::File(File&& other)
     : file_(other.TakePlatformFile()),
-#if !defined(OS_EMSCRIPTEN)
       tracing_path_(other.tracing_path_),
-#endif
       error_details_(other.error_details()),
       created_(other.created()),
       async_(other.async_) {}
@@ -71,9 +71,7 @@ File::~File() {
 File& File::operator=(File&& other) {
   Close();
   SetPlatformFile(other.TakePlatformFile());
-#if !defined(OS_EMSCRIPTEN)
   tracing_path_ = other.tracing_path_;
-#endif
   error_details_ = other.error_details();
   created_ = other.created();
   async_ = other.async_;
@@ -82,7 +80,6 @@ File& File::operator=(File&& other) {
 
 #if !defined(OS_NACL)
 void File::Initialize(const FilePath& path, uint32_t flags) {
-  //P_LOG("File 1 ::Initialize %s\n", path.value().c_str());
   if (path.ReferencesParent()) {
 #if defined(OS_WIN)
     ::SetLastError(ERROR_ACCESS_DENIED);
@@ -94,17 +91,36 @@ void File::Initialize(const FilePath& path, uint32_t flags) {
     error_details_ = FILE_ERROR_ACCESS_DENIED;
     return;
   }
-
-#if !defined(OS_EMSCRIPTEN)
   if (FileTracing::IsCategoryEnabled())
     tracing_path_ = path;
   SCOPED_FILE_TRACE("Initialize");
-#endif
-
   DoInitialize(path, flags);
 }
 #endif
 
+bool File::ReadAndCheck(int64_t offset, span<uint8_t> data) {
+  int size = checked_cast<int>(data.size());
+  return Read(offset, reinterpret_cast<char*>(data.data()), size) == size;
+}
+
+bool File::ReadAtCurrentPosAndCheck(span<uint8_t> data) {
+  int size = checked_cast<int>(data.size());
+  return ReadAtCurrentPos(reinterpret_cast<char*>(data.data()), size) == size;
+}
+
+bool File::WriteAndCheck(int64_t offset, span<const uint8_t> data) {
+  int size = checked_cast<int>(data.size());
+  return Write(offset, reinterpret_cast<const char*>(data.data()), size) ==
+         size;
+}
+
+bool File::WriteAtCurrentPosAndCheck(span<const uint8_t> data) {
+  int size = checked_cast<int>(data.size());
+  return WriteAtCurrentPos(reinterpret_cast<const char*>(data.data()), size) ==
+         size;
+}
+
+// static
 std::string File::ErrorToString(Error error) {
   switch (error) {
     case FILE_OK:

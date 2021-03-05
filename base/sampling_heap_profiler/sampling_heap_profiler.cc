@@ -13,26 +13,26 @@
 #include "base/allocator/partition_allocator/partition_alloc.h"
 #include "base/bind.h"
 #include "base/debug/stack_trace.h"
+#include "base/logging.h"
 #include "base/macros.h"
 #include "base/no_destructor.h"
 #include "base/partition_alloc_buildflags.h"
 #include "base/sampling_heap_profiler/lock_free_address_hash_set.h"
-#include "base/threading/thread_id_name_manager.h"
 #include "base/threading/thread_local_storage.h"
-#include "base/trace_event/heap_profiler_allocation_context_tracker.h"
+#include "base/trace_event/heap_profiler_allocation_context_tracker.h"  // no-presubmit-check
 #include "build/build_config.h"
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 #include <pthread.h>
 #endif
 
-#if defined(OS_LINUX) || defined(OS_ANDROID)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_ANDROID)
 #include <sys/prctl.h>
 #endif
 
 #if defined(OS_ANDROID) && BUILDFLAG(CAN_UNWIND_WITH_CFI_TABLE) && \
     defined(OFFICIAL_BUILD)
-#include "base/trace_event/cfi_backtrace_android.h"
+#include "base/trace_event/cfi_backtrace_android.h"  // no-presubmit-check
 #endif
 
 namespace base {
@@ -55,18 +55,18 @@ const char* GetAndLeakThreadName() {
   // 64 on macOS, see PlatformThread::SetName in platform_thread_mac.mm.
   constexpr size_t kBufferLen = 64;
   char name[kBufferLen];
-#if defined(OS_LINUX) || defined(OS_ANDROID)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_ANDROID)
   // If the thread name is not set, try to get it from prctl. Thread name might
   // not be set in cases where the thread started before heap profiling was
   // enabled.
   int err = prctl(PR_GET_NAME, name);
   if (!err)
     return strdup(name);
-#elif defined(OS_MACOSX)
+#elif defined(OS_APPLE)
   int err = pthread_getname_np(pthread_self(), name, kBufferLen);
   if (err == 0 && *name != '\0')
     return strdup(name);
-#endif  // defined(OS_LINUX) || defined(OS_ANDROID)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_ANDROID)
 
   // Use tid if we don't have a thread name.
   snprintf(name, sizeof(name), "Thread %lu",
@@ -94,7 +94,10 @@ SamplingHeapProfiler::Sample::Sample(const Sample&) = default;
 SamplingHeapProfiler::Sample::~Sample() = default;
 
 SamplingHeapProfiler::SamplingHeapProfiler() = default;
-SamplingHeapProfiler::~SamplingHeapProfiler() = default;
+SamplingHeapProfiler::~SamplingHeapProfiler() {
+  if (record_thread_names_)
+    base::ThreadIdNameManager::GetInstance()->RemoveObserver(this);
+}
 
 uint32_t SamplingHeapProfiler::Start() {
 #if defined(OS_ANDROID) && BUILDFLAG(CAN_UNWIND_WITH_CFI_TABLE) && \
@@ -124,10 +127,13 @@ void SamplingHeapProfiler::SetSamplingInterval(size_t sampling_interval) {
 }
 
 void SamplingHeapProfiler::SetRecordThreadNames(bool value) {
+  if (record_thread_names_ == value)
+    return;
   record_thread_names_ = value;
   if (value) {
-    base::ThreadIdNameManager::GetInstance()->InstallSetNameCallback(
-        base::BindRepeating(IgnoreResult(&UpdateAndGetThreadName)));
+    base::ThreadIdNameManager::GetInstance()->AddObserver(this);
+  } else {
+    base::ThreadIdNameManager::GetInstance()->RemoveObserver(this);
   }
 }
 
@@ -174,7 +180,6 @@ void SamplingHeapProfiler::SampleAdded(
   if (UNLIKELY(base::ThreadLocalStorage::HasBeenDestroyed()))
     return;
   DCHECK(PoissonAllocationSampler::ScopedMuteThreadSamples::IsMuted());
-  AutoLock lock(mutex_);
   Sample sample(size, total, ++last_sample_ordinal_);
   sample.allocator = type;
   using CaptureMode = trace_event::AllocationContextTracker::CaptureMode;
@@ -186,6 +191,7 @@ void SamplingHeapProfiler::SampleAdded(
   } else {
     CaptureNativeStack(context, &sample);
   }
+  AutoLock lock(mutex_);
   RecordString(sample.context);
   samples_.emplace(address, std::move(sample));
 }
@@ -205,6 +211,8 @@ void SamplingHeapProfiler::CaptureMixedStack(const char* context,
   CHECK_LE(backtrace.frame_count, kMaxStackEntries);
   std::vector<void*> stack;
   stack.reserve(backtrace.frame_count);
+
+  AutoLock lock(mutex_);  // Needed for RecordString call.
   for (int i = base::checked_cast<int>(backtrace.frame_count) - 1; i >= 0;
        --i) {
     const base::trace_event::StackFrame& frame = backtrace.frames[i];
@@ -282,6 +290,10 @@ void SamplingHeapProfiler::Init() {
 SamplingHeapProfiler* SamplingHeapProfiler::Get() {
   static NoDestructor<SamplingHeapProfiler> instance;
   return instance.get();
+}
+
+void SamplingHeapProfiler::OnThreadNameChanged(const char* name) {
+  UpdateAndGetThreadName(name);
 }
 
 }  // namespace base

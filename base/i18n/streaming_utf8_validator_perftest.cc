@@ -22,11 +22,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/perf_time_logger.h"
-#include GTEST_HEADER_INCLUDE
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {

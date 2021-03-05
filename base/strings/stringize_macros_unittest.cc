@@ -4,7 +4,7 @@
 
 #include "base/strings/stringize_macros.h"
 
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 // Macros as per documentation in header file.
 #define PREPROCESSOR_UTIL_UNITTEST_A FOO

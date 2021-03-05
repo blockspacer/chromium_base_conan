@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <limits>
 #include <vector>
 
 #include "base/metrics/histogram.h"
@@ -10,20 +11,23 @@
 #include "base/metrics/sparse_histogram.h"
 #include "base/metrics/statistics_recorder.h"
 #include "base/pickle.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
 class HistogramBaseTest : public testing::Test {
- protected:
+ public:
   HistogramBaseTest() {
     // Each test will have a clean state (no Histogram / BucketRanges
     // registered).
     ResetStatisticsRecorder();
   }
 
+  HistogramBaseTest(const HistogramBaseTest&) = delete;
+  HistogramBaseTest& operator=(const HistogramBaseTest&) = delete;
   ~HistogramBaseTest() override = default;
 
+ protected:
   void ResetStatisticsRecorder() {
     // It is necessary to fully destruct any existing StatisticsRecorder
     // before creating a new one.
@@ -33,8 +37,6 @@ class HistogramBaseTest : public testing::Test {
 
  private:
   std::unique_ptr<StatisticsRecorder> statistics_recorder_;
-
-  DISALLOW_COPY_AND_ASSIGN(HistogramBaseTest);
 };
 
 TEST_F(HistogramBaseTest, DeserializeHistogram) {
@@ -270,6 +272,30 @@ TEST_F(HistogramBaseTest, AddTimeMicrosecondsGranularityOverflow) {
   samples = histogram->SnapshotSamples();
   // All of the reported values must have gone into the min overflow bucket.
   EXPECT_EQ(add_count, samples->GetCount(0));
+}
+
+// Tests GetPeakBucketSize() returns accurate max bucket size.
+TEST(HistogramTest, GetPeakBucketSize) {
+  Histogram* histogram = static_cast<Histogram*>(
+      Histogram::FactoryGet("Histogram",
+                            /*minimum=*/1,
+                            /*maximum=*/64,
+                            /*bucket_count=*/8,
+                            /*flags=*/HistogramBase::kNoFlags));
+
+  // Add 1 sample to 0th bucket; 2 to 6th; 3 to 313th.
+  for (int i = 0; i < 1; i++) {
+    histogram->Add(0);
+  }
+  for (int i = 0; i < 2; i++) {
+    histogram->Add(6);
+  }
+  for (int i = 0; i < 3; i++) {
+    histogram->Add(313);
+  }
+
+  // The largest bucket size should be 3.
+  EXPECT_EQ(3, histogram->GetPeakBucketSize(*histogram->SnapshotAllSamples()));
 }
 
 }  // namespace base

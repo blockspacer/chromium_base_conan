@@ -22,6 +22,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/test/gtest_util.h"
 #include "base/test/launcher/test_launcher.h"
+#include "base/test/test_switches.h"
 #include "base/time/time.h"
 #include "base/values.h"
 
@@ -90,12 +91,12 @@ struct TestSuiteResultsAggregator {
 TestResultsTracker::TestResultsTracker() : iteration_(-1), out_(nullptr) {}
 
 TestResultsTracker::~TestResultsTracker() {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  CHECK(thread_checker_.CalledOnValidThread());
 
   if (!out_)
     return;
 
-  DCHECK_GE(iteration_, 0);
+  CHECK_GE(iteration_, 0);
 
   // Maps test case names to test results.
   typedef std::map<std::string, std::vector<TestResult> > TestCaseMap;
@@ -158,13 +159,16 @@ TestResultsTracker::~TestResultsTracker() {
 }
 
 bool TestResultsTracker::Init(const CommandLine& command_line) {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  CHECK(thread_checker_.CalledOnValidThread());
 
   // Prevent initializing twice.
   if (out_) {
     NOTREACHED();
     return false;
   }
+
+  print_temp_leaks_ =
+      command_line.HasSwitch(switches::kTestLauncherPrintTempLeaks);
 
   if (!command_line.HasSwitch(kGTestOutputFlag))
     return true;
@@ -209,7 +213,7 @@ bool TestResultsTracker::Init(const CommandLine& command_line) {
 }
 
 void TestResultsTracker::OnTestIterationStarting() {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  CHECK(thread_checker_.CalledOnValidThread());
 
   // Start with a fresh state for new iteration.
   iteration_++;
@@ -239,8 +243,8 @@ void TestResultsTracker::AddTestPlaceholder(const std::string& test_name) {
 }
 
 void TestResultsTracker::AddTestResult(const TestResult& result) {
-  DCHECK(thread_checker_.CalledOnValidThread());
-  DCHECK_GE(iteration_, 0);
+  CHECK(thread_checker_.CalledOnValidThread());
+  CHECK_GE(iteration_, 0);
 
   PerIterationData::ResultsMap& results_map =
       per_iteration_data_[iteration_].results;
@@ -270,23 +274,26 @@ void TestResultsTracker::AddTestResult(const TestResult& result) {
   aggregate_test_result.test_results.push_back(result);
 }
 
+void TestResultsTracker::AddLeakedItems(
+    int count,
+    const std::vector<std::string>& test_names) {
+  DCHECK(count);
+  per_iteration_data_.back().leaked_temp_items.emplace_back(count, test_names);
+}
+
 void TestResultsTracker::GeneratePlaceholderIteration() {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  CHECK(thread_checker_.CalledOnValidThread());
 
   for (auto& full_test_name : test_placeholders_) {
     std::string test_name = TestNameWithoutDisabledPrefix(full_test_name);
 
-    // Ignore disabled tests.
-    if (disabled_tests_.find(test_name) != disabled_tests_.end())
-      continue;
-
     TestResult test_result;
-    test_result.full_name = test_name;
+    test_result.full_name = full_test_name;
     test_result.status = TestResult::TEST_NOT_RUN;
 
     // There shouldn't be any existing results when we generate placeholder
     // results.
-    DCHECK(
+    CHECK(
         per_iteration_data_[iteration_].results[test_name].test_results.empty())
         << test_name;
     per_iteration_data_[iteration_].results[test_name].test_results.push_back(
@@ -320,10 +327,17 @@ void TestResultsTracker::PrintSummaryOfCurrentIteration() const {
              "had unknown result");
   PrintTests(tests_by_status[TestResult::TEST_NOT_RUN].begin(),
              tests_by_status[TestResult::TEST_NOT_RUN].end(), "not run");
+
+  if (print_temp_leaks_) {
+    for (const auto& leaking_tests :
+         per_iteration_data_.back().leaked_temp_items) {
+      PrintLeaks(leaking_tests.first, leaking_tests.second);
+    }
+  }
 }
 
 void TestResultsTracker::PrintSummaryOfAllIterations() const {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  CHECK(thread_checker_.CalledOnValidThread());
 
   TestStatusMap tests_by_status(GetTestStatusMapForAllIterations());
 
@@ -433,8 +447,16 @@ bool TestResultsTracker::SaveSummaryAsJSON(
         Base64Encode(test_result.output_snippet, &base64_output_snippet);
         test_result_value->SetStringKey("output_snippet_base64",
                                         base64_output_snippet);
-
-        std::unique_ptr<ListValue> test_result_parts(new ListValue);
+        if (!test_result.links.empty()) {
+          auto links = std::make_unique<DictionaryValue>();
+          for (const auto& link : test_result.links) {
+            auto link_info = std::make_unique<DictionaryValue>();
+            link_info->SetStringKey("content", link.second);
+            links->Set(link.first, std::move(link_info));
+          }
+          test_result_value->Set("links", std::move(links));
+        }
+        auto test_result_parts = std::make_unique<ListValue>();
         for (const TestResultPart& result_part :
              test_result.test_result_parts) {
           std::unique_ptr<DictionaryValue> result_part_value(
@@ -570,11 +592,21 @@ void TestResultsTracker::PrintTests(InputIterator first,
   for (InputIterator it = first; it != last; ++it) {
     const std::string& test_name = *it;
     const auto location_it = test_locations_.find(test_name);
-    DCHECK(location_it != test_locations_.end()) << test_name;
+    CHECK(location_it != test_locations_.end()) << test_name;
     const CodeLocation& location = location_it->second;
     fprintf(stdout, "    %s (%s:%d)\n", test_name.c_str(),
             location.file.c_str(), location.line);
   }
+  fflush(stdout);
+}
+
+void TestResultsTracker::PrintLeaks(
+    int count,
+    const std::vector<std::string>& test_names) const {
+  fprintf(stdout,
+          "ERROR: %d files and/or directories were left behind in the temporary"
+          " directory by one or more of these tests: %s\n",
+          count, JoinString(test_names, ":").c_str());
   fflush(stdout);
 }
 

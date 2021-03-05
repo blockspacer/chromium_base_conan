@@ -32,7 +32,7 @@ The conversion priority for `Numeric` type coercions is:
 ## Common patterns and use-cases
 
 The following covers the preferred style for the most common uses of this
-library. Please don't cargo-cult from anywhere else. ?
+library. Please don't cargo-cult from anywhere else. ðŸ˜‰
 
 ### Performing checked arithmetic type conversions
 
@@ -115,7 +115,7 @@ of corner cases and employ various optimizations.
 
 ### Calculating a buffer size (checked arithmetic)
 
-When making exact calculations—such as for buffer lengths—it's often necessary
+When making exact calculationsâ€”such as for buffer lengthsâ€”it's often necessary
 to know when those calculations trigger an overflow, undefined behavior, or
 other boundary conditions. The `CheckedNumeric` template does this by storing
 a bit determining whether or not some arithmetic operation has occured that
@@ -136,7 +136,7 @@ if (!CheckAdd(kHeaderSize, CheckMul(count, kItemSize)).AssignIfValid(&size)) {
 
 ### Calculating clamped coordinates (non-sticky saturating arithmetic)
 
-Certain classes of calculations—such as coordinate calculations—require
+Certain classes of calculationsâ€”such as coordinate calculationsâ€”require
 well-defined semantics that always produce a valid result on boundary
 conditions. The `ClampedNumeric` template addresses this by providing
 performant, non-sticky saturating arithmetic operations.
@@ -388,7 +388,7 @@ direction of the sign. The potentially unusual cases are:
 
 *   **Division:** Division by zero returns the saturated limit in the direction
     of sign of the dividend (first argument). The one exception is 0/0, which
-  returns zero (although logically is NaN).
+	returns zero (although logically is NaN).
 *   **Modulus:** Division by zero returns the dividend (first argument).
 *   **Left shift:** Non-zero values saturate in the direction of the signed
     limit (max/min), even for shifts larger than the bit width. 0 shifted any

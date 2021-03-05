@@ -6,8 +6,8 @@
 
 #include <utility>
 
+#include "base/check_op.h"
 #include "base/lazy_instance.h"
-#include "base/logging.h"
 #include "base/threading/thread_local.h"
 
 namespace base {
@@ -25,11 +25,7 @@ SequenceLocalStorageMap::~SequenceLocalStorageMap() = default;
 ScopedSetSequenceLocalStorageMapForCurrentThread::
     ScopedSetSequenceLocalStorageMapForCurrentThread(
         SequenceLocalStorageMap* sequence_local_storage) {
-
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   DCHECK(!tls_current_sequence_local_storage.Get().Get());
-#endif
-
   tls_current_sequence_local_storage.Get().Set(sequence_local_storage);
 }
 

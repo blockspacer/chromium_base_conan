@@ -10,23 +10,30 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 
-#include "base/clang_coverage_buildflags.h"
+#include <utility>
+
+#include "base/clang_profiling_buildflags.h"
 #include "base/debug/activity_tracker.h"
 #include "base/files/scoped_file.h"
 #include "base/logging.h"
+#include "base/optional.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/process/kill.h"
-#include "base/test/clang_coverage.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/trace_event/base_tracing.h"
 #include "build/build_config.h"
 
-#if defined(OS_MACOSX)
+#if defined(OS_MAC)
 #include <sys/event.h>
+#endif
+
+#if BUILDFLAG(CLANG_PROFILING)
+#include "base/test/clang_profiling.h"
 #endif
 
 namespace {
 
-#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL_NONSFI)
 
 bool WaitpidWithTimeout(base::ProcessHandle handle,
                         int* status,
@@ -90,7 +97,7 @@ bool WaitpidWithTimeout(base::ProcessHandle handle,
   return ret_pid > 0;
 }
 
-#if defined(OS_MACOSX)
+#if defined(OS_MAC)
 // Using kqueue on Mac so that we can wait on non-child processes.
 // We can't use kqueues on child processes because we need to reap
 // our own children using wait.
@@ -178,7 +185,7 @@ bool WaitForSingleNonChildProcess(base::ProcessHandle handle,
 
   return true;
 }
-#endif  // OS_MACOSX
+#endif  // OS_MAC
 
 bool WaitForExitWithTimeoutImpl(base::ProcessHandle handle,
                                 int* exit_code,
@@ -189,17 +196,19 @@ bool WaitForExitWithTimeoutImpl(base::ProcessHandle handle,
     return false;
   }
 
+  TRACE_EVENT0("base", "Process::WaitForExitWithTimeout");
+
   const base::ProcessHandle parent_pid = base::GetParentProcessId(handle);
   const bool exited = (parent_pid < 0);
 
   if (!exited && parent_pid != our_pid) {
-#if defined(OS_MACOSX)
+#if defined(OS_MAC)
     // On Mac we can wait on non child processes.
     return WaitForSingleNonChildProcess(handle, timeout);
 #else
     // Currently on Linux we can't handle non child processes.
     NOTIMPLEMENTED();
-#endif  // OS_MACOSX
+#endif  // OS_MAC
   }
 
   int status;
@@ -259,22 +268,9 @@ Process Process::OpenWithExtraPrivileges(ProcessId pid) {
 }
 
 // static
-Process Process::DeprecatedGetProcessFromHandle(ProcessHandle handle) {
-  DCHECK_NE(handle, GetCurrentProcessHandle());
-  return Process(handle);
-}
-
-#if !defined(OS_LINUX) && !defined(OS_MACOSX) && !defined(OS_AIX)
-// static
-bool Process::CanBackgroundProcesses() {
-  return false;
-}
-#endif  // !defined(OS_LINUX) && !defined(OS_MACOSX) && !defined(OS_AIX)
-
-// static
 void Process::TerminateCurrentProcessImmediately(int exit_code) {
-#if BUILDFLAG(CLANG_COVERAGE)
-  WriteClangCoverageProfile();
+#if BUILDFLAG(CLANG_PROFILING)
+  WriteClangProfilingProfile();
 #endif
   _exit(exit_code);
 }
@@ -294,6 +290,10 @@ Process Process::Duplicate() const {
   return Process(process_);
 }
 
+ProcessHandle Process::Release() {
+  return std::exchange(process_, kNullProcessHandle);
+}
+
 ProcessId Process::Pid() const {
   DCHECK(IsValid());
   return GetProcId(process_);
@@ -310,7 +310,7 @@ void Process::Close() {
   // end up w/ a zombie when it does finally exit.
 }
 
-#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL_NONSFI)
 bool Process::Terminate(int exit_code, bool wait) const {
   // exit_code isn't supportable.
   DCHECK(IsValid());
@@ -338,17 +338,16 @@ bool Process::WaitForExit(int* exit_code) const {
 }
 
 bool Process::WaitForExitWithTimeout(TimeDelta timeout, int* exit_code) const {
-  // Intentionally avoid instantiating ScopedBlockingCallWithBaseSyncPrimitives.
-  // In some cases, this function waits on a child Process doing CPU work.
-  // http://crbug.com/905788
-  if (!timeout.is_zero())
-    internal::AssertBaseSyncPrimitivesAllowed();
-
-#if defined(OS_EMSCRIPTEN)
-  return false; // TODO
-#else
   // Record the event that this thread is blocking upon (for hang diagnosis).
-  base::debug::ScopedProcessWaitActivity process_activity(this);
+  Optional<debug::ScopedProcessWaitActivity> process_activity;
+  if (!timeout.is_zero()) {
+    process_activity.emplace(this);
+    // Assert that this thread is allowed to wait below. This intentionally
+    // doesn't use ScopedBlockingCallWithBaseSyncPrimitives because the process
+    // being waited upon tends to itself be using the CPU and considering this
+    // thread non-busy causes more issue than it fixes: http://crbug.com/905788
+    internal::AssertBaseSyncPrimitivesAllowed();
+  }
 
   int local_exit_code = 0;
   bool exited = WaitForExitWithTimeoutImpl(Handle(), &local_exit_code, timeout);
@@ -358,26 +357,9 @@ bool Process::WaitForExitWithTimeout(TimeDelta timeout, int* exit_code) const {
       *exit_code = local_exit_code;
   }
   return exited;
-#endif
 }
 
 void Process::Exited(int exit_code) const {}
-
-#if !defined(OS_LINUX) && !defined(OS_MACOSX) && !defined(OS_AIX)
-bool Process::IsProcessBackgrounded() const {
-  // See SetProcessBackgrounded().
-  DCHECK(IsValid());
-  return false;
-}
-
-bool Process::SetProcessBackgrounded(bool value) {
-  // Not implemented for POSIX systems other than Linux and Mac. With POSIX, if
-  // we were to lower the process priority we wouldn't be able to raise it back
-  // to its initial priority.
-  NOTIMPLEMENTED();
-  return false;
-}
-#endif  // !defined(OS_LINUX) && !defined(OS_MACOSX) && !defined(OS_AIX)
 
 int Process::GetPriority() const {
   DCHECK(IsValid());

@@ -10,7 +10,8 @@ import android.content.ComponentCallbacks2;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.support.test.InstrumentationRegistry;
-import android.support.test.filters.SmallTest;
+
+import androidx.test.filters.SmallTest;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,7 +53,7 @@ public class AdvancedMockContextTest {
     @SmallTest
     public void testComponentCallbacksForTargetContext() {
         Context targetContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        Application targetApplication = (Application) targetContext.getApplicationContext();
+        Application targetApplication = BaseJUnit4ClassRunner.getApplication();
         AdvancedMockContext context = new AdvancedMockContext(targetContext);
         Callback1 callback1 = new Callback1();
         Callback2 callback2 = new Callback2();

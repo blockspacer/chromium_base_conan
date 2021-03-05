@@ -7,11 +7,13 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <type_traits>
 #include <vector>
 
+#include "base/macros.h"
 #include "base/test/gtest_util.h"
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 using ::testing::ElementsAre;
 
@@ -102,6 +104,7 @@ void swap(TestObject& lhs, TestObject& rhs) {
 }
 
 class NonTriviallyDestructible {
+ public:
   ~NonTriviallyDestructible() {}
 };
 
@@ -169,6 +172,35 @@ class DeleteNewOperators {
   void* operator new(size_t, void*) = delete;
   void* operator new[](size_t) = delete;
   void* operator new[](size_t, void*) = delete;
+};
+
+class TriviallyDestructibleOverloadAddressOf {
+ public:
+  // Unfortunately, since this can be called as part of placement-new (if it
+  // forgets to call std::addressof), we're uninitialized.  So, about the best
+  // we can do is signal a test failure here if either operator& is called.
+  TriviallyDestructibleOverloadAddressOf* operator&() {
+    EXPECT_TRUE(false);
+    return this;
+  }
+
+  // So we can test the const version of operator->.
+  const TriviallyDestructibleOverloadAddressOf* operator&() const {
+    EXPECT_TRUE(false);
+    return this;
+  }
+
+  void const_method() const {}
+  void nonconst_method() {}
+};
+
+class NonTriviallyDestructibleOverloadAddressOf {
+ public:
+  ~NonTriviallyDestructibleOverloadAddressOf() {}
+  NonTriviallyDestructibleOverloadAddressOf* operator&() {
+    EXPECT_TRUE(false);
+    return this;
+  }
 };
 
 }  // anonymous namespace
@@ -2209,6 +2241,32 @@ TEST(OptionalTest, Noexcept) {
       !noexcept(std::declval<Optional<Test2>>() =
                     std::declval<Optional<Test2>>()),
       "move assign for non-noexcept move-assignable T must not be noexcept");
+}
+
+TEST(OptionalTest, OverrideAddressOf) {
+  // Objects with an overloaded address-of should not trigger the overload for
+  // arrow or copy assignment.
+  static_assert(std::is_trivially_destructible<
+                    TriviallyDestructibleOverloadAddressOf>::value,
+                "Trivially...AddressOf must be trivially destructible.");
+  Optional<TriviallyDestructibleOverloadAddressOf> optional;
+  TriviallyDestructibleOverloadAddressOf n;
+  optional = n;
+
+  // operator->() should not call address-of either, for either const or non-
+  // const calls.  It's not strictly necessary that we call a nonconst method
+  // to test the non-const operator->(), but it makes it very clear that the
+  // compiler can't chose the const operator->().
+  optional->nonconst_method();
+  const auto& const_optional = optional;
+  const_optional->const_method();
+
+  static_assert(!std::is_trivially_destructible<
+                    NonTriviallyDestructibleOverloadAddressOf>::value,
+                "NotTrivially...AddressOf must not be trivially destructible.");
+  Optional<NonTriviallyDestructibleOverloadAddressOf> nontrivial_optional;
+  NonTriviallyDestructibleOverloadAddressOf n1;
+  nontrivial_optional = n1;
 }
 
 }  // namespace base

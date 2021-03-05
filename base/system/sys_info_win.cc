@@ -10,15 +10,17 @@
 
 #include <limits>
 
+#include "base/check.h"
 #include "base/files/file_path.h"
-#include "base/logging.h"
+#include "base/notreached.h"
 #include "base/process/process_metrics.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
+#include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/scoped_blocking_call.h"
+#include "base/win/registry.h"
 #include "base/win/windows_version.h"
-#include "base/win/wmi.h"
 
 namespace {
 
@@ -40,8 +42,7 @@ bool GetDiskSpaceInfo(const base::FilePath& path,
   ULARGE_INTEGER available;
   ULARGE_INTEGER total;
   ULARGE_INTEGER free;
-  if (!GetDiskFreeSpaceExW(base::as_wcstr(path.value()), &available, &total,
-                           &free))
+  if (!GetDiskFreeSpaceExW(path.value().c_str(), &available, &total, &free))
     return false;
 
   if (available_bytes) {
@@ -167,16 +168,37 @@ void SysInfo::OperatingSystemVersionNumbers(int32_t* major_version,
 }
 
 // static
-SysInfo::HardwareInfo SysInfo::GetHardwareInfoSync() {
-  win::WmiComputerSystemInfo wmi_info = win::WmiComputerSystemInfo::Get();
+std::string ReadHardwareInfoFromRegistry(const wchar_t* reg_value_name) {
+  // On some systems or VMs, the system information and some of the below
+  // locations may be missing info. Attempt to find the info from the below
+  // registry keys in the order provided.
+  static const wchar_t* const kSystemInfoRegKeyPaths[] = {
+      L"HARDWARE\\DESCRIPTION\\System\\BIOS",
+      L"SYSTEM\\CurrentControlSet\\Control\\SystemInformation",
+      L"SYSTEM\\HardwareConfig\\Current",
+  };
 
-  HardwareInfo info;
-  info.manufacturer = UTF16ToUTF8(wmi_info.manufacturer());
-  info.model = UTF16ToUTF8(wmi_info.model());
-  info.serial_number = UTF16ToUTF8(wmi_info.serial_number());
-  DCHECK(IsStringUTF8(info.manufacturer));
-  DCHECK(IsStringUTF8(info.model));
-  DCHECK(IsStringUTF8(info.serial_number));
+  std::wstring value;
+  for (const wchar_t* system_info_reg_key_path : kSystemInfoRegKeyPaths) {
+    base::win::RegKey system_information_key;
+    if (system_information_key.Open(HKEY_LOCAL_MACHINE,
+                                    system_info_reg_key_path,
+                                    KEY_READ) == ERROR_SUCCESS) {
+      if ((system_information_key.ReadValue(reg_value_name, &value) ==
+           ERROR_SUCCESS) &&
+          !value.empty()) {
+        break;
+      }
+    }
+  }
+
+  return base::SysWideToUTF8(value);
+}
+
+// static
+SysInfo::HardwareInfo SysInfo::GetHardwareInfoSync() {
+  HardwareInfo info = {ReadHardwareInfoFromRegistry(L"SystemManufacturer"),
+                       ReadHardwareInfoFromRegistry(L"SystemProductName")};
   return info;
 }
 

@@ -5,10 +5,12 @@
 #include "base/win/com_init_check_hook.h"
 
 #include <windows.h>
+
 #include <objbase.h>
 #include <stdint.h>
 #include <string.h>
 
+#include "base/notreached.h"
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
 #include "base/win/com_init_util.h"
@@ -145,7 +147,8 @@ class HookManager {
     // See banner comment above why this subtracts 5 bytes.
     co_create_instance_padded_address_ =
         reinterpret_cast<uint32_t>(
-            GetProcAddress(ole32_library_, "CoCreateInstance")) - 5;
+            GetProcAddress(ole32_library_, "CoCreateInstance")) -
+        5;
 
     // See banner comment above why this adds 7 bytes.
     original_co_create_instance_body_function_ =
@@ -267,23 +270,26 @@ class HookManager {
     return true;
   }
 
-  static HRESULT __stdcall DCheckedCoCreateInstance(const CLSID& rclsid,
-                                                    IUnknown* pUnkOuter,
-                                                    DWORD dwClsContext,
-                                                    REFIID riid,
-                                                    void** ppv) {
+  // Indirect call to original_co_create_instance_body_function_ triggers CFI
+  // so this function must have CFI disabled.
+  static DISABLE_CFI_ICALL HRESULT __stdcall DCheckedCoCreateInstance(
+      const CLSID& rclsid,
+      IUnknown* pUnkOuter,
+      DWORD dwClsContext,
+      REFIID riid,
+      void** ppv) {
     // Chromium COM callers need to make sure that their thread is configured to
     // process COM objects to avoid creating an implicit MTA or silently failing
     // STA object creation call due to the SUCCEEDED() pattern for COM calls.
     //
     // If you hit this assert as part of migrating to the Task Scheduler,
     // evaluate your threading guarantees and dispatch your work with
-    // base::CreateCOMSTATaskRunnerWithTraits().
+    // base::CreateCOMSTATaskRunner().
     //
     // If you need MTA support, ping //base/task/thread_pool/OWNERS.
     AssertComInitialized(
         "CoCreateInstance calls in Chromium require explicit COM "
-        "initialization via base::CreateCOMSTATaskRunnerWithTraits() or "
+        "initialization via base::CreateCOMSTATaskRunner() or "
         "ScopedCOMInitializer. See the comment in DCheckedCoCreateInstance for "
         "more details.");
     return original_co_create_instance_body_function_(rclsid, pUnkOuter,

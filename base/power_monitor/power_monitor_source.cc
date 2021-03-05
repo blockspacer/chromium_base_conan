@@ -17,12 +17,25 @@ bool PowerMonitorSource::IsOnBatteryPower() {
   return on_battery_power_;
 }
 
+PowerObserver::DeviceThermalState PowerMonitorSource::GetCurrentThermalState() {
+  return PowerObserver::DeviceThermalState::kUnknown;
+}
+
+void PowerMonitorSource::SetCurrentThermalState(
+    PowerObserver::DeviceThermalState state) {}
+
+#if defined(OS_ANDROID)
+int PowerMonitorSource::GetRemainingBatteryCapacity() {
+  return 0;
+}
+#endif  // defined(OS_ANDROID)
+
+// static
 void PowerMonitorSource::ProcessPowerEvent(PowerEvent event_id) {
-  PowerMonitor* monitor = PowerMonitor::Get();
-  if (!monitor)
+  if (!PowerMonitor::IsInitialized())
     return;
 
-  PowerMonitorSource* source = monitor->Source();
+  PowerMonitorSource* source = PowerMonitor::Source();
 
   // Suppress duplicate notifications.  Some platforms may
   // send multiple notifications of the same event.
@@ -41,29 +54,58 @@ void PowerMonitorSource::ProcessPowerEvent(PowerEvent event_id) {
         }
 
         if (changed)
-          monitor->NotifyPowerStateChange(new_on_battery_power);
+          PowerMonitor::NotifyPowerStateChange(new_on_battery_power);
       }
       break;
     case RESUME_EVENT:
       if (source->suspended_) {
         source->suspended_ = false;
-        monitor->NotifyResume();
+        PowerMonitor::NotifyResume();
       }
       break;
     case SUSPEND_EVENT:
       if (!source->suspended_) {
         source->suspended_ = true;
-        monitor->NotifySuspend();
+        PowerMonitor::NotifySuspend();
       }
       break;
   }
 }
 
+// static
+void PowerMonitorSource::ProcessThermalEvent(
+    PowerObserver::DeviceThermalState new_thermal_state) {
+  if (!PowerMonitor::IsInitialized())
+    return;
+  PowerMonitor::NotifyThermalStateChange(new_thermal_state);
+}
+
 void PowerMonitorSource::SetInitialOnBatteryPowerState(bool on_battery_power) {
-  // Must only be called before a monitor exists, otherwise the caller should
-  // have just used a normal ProcessPowerEvent(POWER_STATE_EVENT) call.
-  DCHECK(!PowerMonitor::Get());
+  // Must only be called before an initialized PowerMonitor exists, otherwise
+  // the caller should have just used a normal
+  // ProcessPowerEvent(POWER_STATE_EVENT) call.
+  DCHECK(!PowerMonitor::Source());
+  AutoLock auto_lock(battery_lock_);
   on_battery_power_ = on_battery_power;
+}
+
+// static
+const char* PowerMonitorSource::DeviceThermalStateToString(
+    PowerObserver::DeviceThermalState state) {
+  switch (state) {
+    case PowerObserver::DeviceThermalState::kUnknown:
+      return "Unknown";
+    case PowerObserver::DeviceThermalState::kNominal:
+      return "Nominal";
+    case PowerObserver::DeviceThermalState::kFair:
+      return "Fair";
+    case PowerObserver::DeviceThermalState::kSerious:
+      return "Serious";
+    case PowerObserver::DeviceThermalState::kCritical:
+      return "Critical";
+  }
+  NOTREACHED();
+  return "Unknown";
 }
 
 }  // namespace base

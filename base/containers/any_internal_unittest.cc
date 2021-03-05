@@ -4,7 +4,7 @@
 
 #include "base/containers/any_internal.h"
 
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace internal {
@@ -13,6 +13,8 @@ namespace {
 struct OutOfLineStruct {
   void* one;
   void* two;
+  void* three;
+  void* four;
 };
 }  // namespace
 
@@ -26,7 +28,7 @@ TEST(AnyInternalTest, InlineOrOutlineStorage) {
       "std::unique_ptr<int> should be stored inline");
   static_assert(
       !AnyInternal::InlineStorageHelper<OutOfLineStruct>::kUseInlineStorage,
-      "A struct with two pointers should be stored out of line");
+      "A struct with four pointers should be stored out of line");
 }
 
 }  // namespace internal

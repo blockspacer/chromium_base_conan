@@ -8,6 +8,7 @@
 
 #include "base/files/file_path.h"
 #include "base/logging.h"
+#include "base/notreached.h"
 #include "base/numerics/safe_math.h"
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
@@ -34,6 +35,7 @@ MemoryMappedFile::~MemoryMappedFile() {
 bool MemoryMappedFile::Initialize(const FilePath& file_name, Access access) {
   if (IsValid())
     return false;
+
   uint32_t flags = 0;
   switch (access) {
     case READ_ONLY:
@@ -54,18 +56,16 @@ bool MemoryMappedFile::Initialize(const FilePath& file_name, Access access) {
 #endif
   }
   file_.Initialize(file_name, flags);
+
   if (!file_.IsValid()) {
     DLOG(ERROR) << "Couldn't open " << file_name.AsUTF8Unsafe();
     return false;
   }
+
   if (!MapFileRegionToMemory(Region::kWholeFile, access)) {
     CloseHandles();
     return false;
   }
-
-  DCHECK(length()>0);
-  DCHECK(data());
-  DCHECK(IsValid());
 
   return true;
 }

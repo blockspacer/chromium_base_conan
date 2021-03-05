@@ -6,8 +6,8 @@
 
 #include <string>
 
+#include "base/check_op.h"
 #include "base/debug/activity_tracker.h"
-#include "base/logging.h"
 #include "base/posix/safe_strerror.h"
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
@@ -48,7 +48,7 @@ std::string SystemErrorCodeToString(int error_code) {
 // Lock::PriorityInheritanceAvailable still must be checked as the code may
 // compile but the underlying platform still may not correctly support priority
 // inheritance locks.
-#if defined(OS_NACL) || defined(OS_ANDROID) || defined(OS_FUCHSIA) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL) || defined(OS_ANDROID) || defined(OS_FUCHSIA)
 #define PRIORITY_INHERITANCE_LOCKS_POSSIBLE() 0
 #else
 #define PRIORITY_INHERITANCE_LOCKS_POSSIBLE() 1
@@ -80,27 +80,8 @@ LockImpl::~LockImpl() {
   DCHECK_EQ(rv, 0) << ". " << SystemErrorCodeToString(rv);
 }
 
-bool LockImpl::Try() {
-  int rv = pthread_mutex_trylock(&native_handle_);
-  DCHECK(rv == 0 || rv == EBUSY) << ". " << SystemErrorCodeToString(rv);
-  return rv == 0;
-}
-
-void LockImpl::Lock() {
-  // The ScopedLockAcquireActivity below is relatively expensive and so its
-  // actions can become significant due to the very large number of locks
-  // that tend to be used throughout the build. To avoid this cost in the
-  // vast majority of the calls, simply "try" the lock first and only do the
-  // (tracked) blocking call if that fails. Since "try" itself is a system
-  // call, and thus also somewhat expensive, don't bother with it unless
-  // tracking is actually enabled.
-#if !defined(OS_EMSCRIPTEN)
-  if (base::debug::GlobalActivityTracker::IsEnabled())
-    if (Try())
-      return;
-
+void LockImpl::LockInternalWithTracking() {
   base::debug::ScopedLockAcquireActivity lock_activity(this);
-#endif // !defined(OS_EMSCRIPTEN)
   int rv = pthread_mutex_lock(&native_handle_);
   DCHECK_EQ(rv, 0) << ". " << SystemErrorCodeToString(rv);
 }
@@ -109,7 +90,7 @@ void LockImpl::Lock() {
 bool LockImpl::PriorityInheritanceAvailable() {
 #if BUILDFLAG(ENABLE_MUTEX_PRIORITY_INHERITANCE)
   return true;
-#elif PRIORITY_INHERITANCE_LOCKS_POSSIBLE() && defined(OS_MACOSX)
+#elif PRIORITY_INHERITANCE_LOCKS_POSSIBLE() && defined(OS_APPLE)
   return true;
 #else
   // Security concerns prevent the use of priority inheritance mutexes on Linux.

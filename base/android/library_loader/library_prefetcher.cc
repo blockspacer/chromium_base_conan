@@ -23,8 +23,8 @@
 #include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/macros.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/posix/eintr_wrapper.h"
+#include "base/process/process_metrics.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
@@ -40,34 +40,8 @@ namespace android {
 
 namespace {
 
-// Android defines the background priority to this value since at least 2009
-// (see Process.java).
-constexpr int kBackgroundPriority = 10;
 // Valid for all Android architectures.
 constexpr size_t kPageSize = 4096;
-
-// Reads a byte per page between |start| and |end| to force it into the page
-// cache.
-// Heap allocations, syscalls and library functions are not allowed in this
-// function.
-// Returns true for success.
-#if defined(ADDRESS_SANITIZER)
-// Disable AddressSanitizer instrumentation for this function. It is touching
-// memory that hasn't been allocated by the app, though the addresses are
-// valid. Furthermore, this takes place in a child process. See crbug.com/653372
-// for the context.
-__attribute__((no_sanitize_address))
-#endif
-void Prefetch(size_t start, size_t end) {
-  unsigned char* start_ptr = reinterpret_cast<unsigned char*>(start);
-  unsigned char* end_ptr = reinterpret_cast<unsigned char*>(end);
-  unsigned char dummy = 0;
-  for (unsigned char* ptr = start_ptr; ptr < end_ptr; ptr += kPageSize) {
-    // Volatile is required to prevent the compiler from eliminating this
-    // loop.
-    dummy ^= *static_cast<volatile unsigned char*>(ptr);
-  }
-}
 
 // Populates the per-page residency between |start| and |end| in |residency|. If
 // successful, |residency| has the size of |end| - |start| in pages.
@@ -94,7 +68,7 @@ std::pair<size_t, size_t> GetTextRange() {
   // Set the end to the page on which the beginning of the last symbol is. The
   // actual symbol may spill into the next page by a few bytes, but this is
   // outside of the executable code range anyway.
-  size_t end_page = base::bits::Align(kEndOfText, kPageSize);
+  size_t end_page = base::bits::AlignUp(kEndOfText, kPageSize);
   return {start_page, end_page};
 }
 
@@ -104,7 +78,7 @@ std::pair<size_t, size_t> GetOrderedTextRange() {
   size_t start_page = kStartOfOrderedText - kStartOfOrderedText % kPageSize;
   // kEndOfUnorderedText is not considered ordered, but the byte immediately
   // before is considered ordered and so can not be contained in the start page.
-  size_t end_page = base::bits::Align(kEndOfOrderedText, kPageSize);
+  size_t end_page = base::bits::AlignUp(kEndOfOrderedText, kPageSize);
   return {start_page, end_page};
 }
 
@@ -188,9 +162,32 @@ void DumpResidency(size_t start,
   }
 }
 
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-// Used for "LibraryLoader.PrefetchDetailedStatus".
+#if !BUILDFLAG(ORDERFILE_INSTRUMENTATION)
+// Reads a byte per page between |start| and |end| to force it into the page
+// cache.
+// Heap allocations, syscalls and library functions are not allowed in this
+// function.
+// Returns true for success.
+#if defined(ADDRESS_SANITIZER)
+// Disable AddressSanitizer instrumentation for this function. It is touching
+// memory that hasn't been allocated by the app, though the addresses are
+// valid. Furthermore, this takes place in a child process. See crbug.com/653372
+// for the context.
+__attribute__((no_sanitize_address))
+#endif
+void Prefetch(size_t start, size_t end) {
+  unsigned char* start_ptr = reinterpret_cast<unsigned char*>(start);
+  unsigned char* end_ptr = reinterpret_cast<unsigned char*>(end);
+  unsigned char dummy = 0;
+  for (unsigned char* ptr = start_ptr; ptr < end_ptr; ptr += kPageSize) {
+    // Volatile is required to prevent the compiler from eliminating this
+    // loop.
+    dummy ^= *static_cast<volatile unsigned char*>(ptr);
+  }
+}
+
+// These values were used in the past for recording
+// "LibraryLoader.PrefetchDetailedStatus".
 enum class PrefetchStatus {
   kSuccess = 0,
   kWrongOrdering = 1,
@@ -220,6 +217,9 @@ PrefetchStatus ForkAndPrefetch(bool ordered_only) {
 
   pid_t pid = fork();
   if (pid == 0) {
+    // Android defines the background priority to this value since at least 2009
+    // (see Process.java).
+    constexpr int kBackgroundPriority = 10;
     setpriority(PRIO_PROCESS, 0, kBackgroundPriority);
     // _exit() doesn't call the atexit() handlers.
     for (const auto& range : ranges) {
@@ -256,6 +256,7 @@ PrefetchStatus ForkAndPrefetch(bool ordered_only) {
     return PrefetchStatus::kChildProcessKilled;
   }
 }
+#endif  // !BUILDFLAG(ORDERFILE_INSTRUMENTATION)
 
 }  // namespace
 
@@ -265,16 +266,13 @@ void NativeLibraryPrefetcher::ForkAndPrefetchNativeLibrary(bool ordered_only) {
   // Avoid forking with orderfile instrumentation because the child process
   // would create a dump as well.
   return;
-#endif
-
+#else
   PrefetchStatus status = ForkAndPrefetch(ordered_only);
-  UMA_HISTOGRAM_BOOLEAN("LibraryLoader.PrefetchStatus",
-                        status == PrefetchStatus::kSuccess);
-  UMA_HISTOGRAM_ENUMERATION("LibraryLoader.PrefetchDetailedStatus", status);
   if (status != PrefetchStatus::kSuccess) {
     LOG(WARNING) << "Cannot prefetch the library. status = "
                  << static_cast<int>(status);
   }
+#endif  // BUILDFLAG(ORDERFILE_INSTRUMENTATION)
 }
 
 // static

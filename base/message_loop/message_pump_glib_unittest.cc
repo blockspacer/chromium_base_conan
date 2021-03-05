@@ -11,17 +11,25 @@
 #include <vector>
 
 #include "base/bind.h"
-#include "base/bind_helpers.h"
 #include "base/callback.h"
+#include "base/callback_helpers.h"
+#include "base/files/file_util.h"
+#include "base/logging.h"
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
-#include "base/message_loop/message_loop.h"
-#include "base/message_loop/message_loop_current.h"
+#include "base/message_loop/message_pump_type.h"
+#include "base/posix/eintr_wrapper.h"
 #include "base/run_loop.h"
 #include "base/single_thread_task_runner.h"
+#include "base/synchronization/waitable_event.h"
+#include "base/synchronization/waitable_event_watcher.h"
+#include "base/task/current_thread.h"
+#include "base/task/single_thread_task_executor.h"
+#include "base/test/task_environment.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_task_runner_handle.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {
@@ -157,26 +165,14 @@ void PostMessageLoopTask(const Location& from_here, OnceClosure task) {
 // Test fixture.
 class MessagePumpGLibTest : public testing::Test {
  public:
-  MessagePumpGLibTest() : loop_(nullptr), injector_(nullptr) {}
-
-  // Overridden from testing::Test:
-  void SetUp() override {
-    loop_ = new MessageLoop(MessageLoop::TYPE_UI);
-    injector_ = new EventInjector();
-  }
-  void TearDown() override {
-    delete injector_;
-    injector_ = nullptr;
-    delete loop_;
-    loop_ = nullptr;
-  }
-
-  MessageLoop* loop() const { return loop_; }
-  EventInjector* injector() const { return injector_; }
+  MessagePumpGLibTest() = default;
+  EventInjector* injector() { return &injector_; }
 
  private:
-  MessageLoop* loop_;
-  EventInjector* injector_;
+  test::SingleThreadTaskEnvironment task_environment_{
+      test::SingleThreadTaskEnvironment::MainThreadType::UI};
+  EventInjector injector_;
+
   DISALLOW_COPY_AND_ASSIGN(MessagePumpGLibTest);
 };
 
@@ -239,14 +235,14 @@ TEST_F(MessagePumpGLibTest, TestWorkWhileWaitingForEvents) {
   // Tests that we process tasks while waiting for new events.
   // The event queue is empty at first.
   for (int i = 0; i < 10; ++i) {
-    loop()->task_runner()->PostTask(FROM_HERE,
-                                    BindOnce(&IncrementInt, &task_count));
+    ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE, BindOnce(&IncrementInt, &task_count));
   }
   // After all the previous tasks have executed, enqueue an event that will
   // quit.
   {
     RunLoop run_loop;
-    loop()->task_runner()->PostTask(
+    ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, BindOnce(&EventInjector::AddEvent, Unretained(injector()), 0,
                             run_loop.QuitClosure()));
     run_loop.Run();
@@ -258,9 +254,9 @@ TEST_F(MessagePumpGLibTest, TestWorkWhileWaitingForEvents) {
   injector()->Reset();
   task_count = 0;
   for (int i = 0; i < 10; ++i) {
-    loop()->task_runner()->PostDelayedTask(FROM_HERE,
-                                           BindOnce(&IncrementInt, &task_count),
-                                           TimeDelta::FromMilliseconds(10 * i));
+    ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE, BindOnce(&IncrementInt, &task_count),
+        TimeDelta::FromMilliseconds(10 * i));
   }
   // After all the previous tasks have executed, enqueue an event that will
   // quit.
@@ -268,7 +264,7 @@ TEST_F(MessagePumpGLibTest, TestWorkWhileWaitingForEvents) {
   // That is verified in message_loop_unittest.cc.
   {
     RunLoop run_loop;
-    loop()->task_runner()->PostDelayedTask(
+    ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
         BindOnce(&EventInjector::AddEvent, Unretained(injector()), 0,
                  run_loop.QuitClosure()),
@@ -374,9 +370,9 @@ TEST_F(MessagePumpGLibTest, TestConcurrentEventPostedTask) {
   injector()->AddEventAsTask(0, BindOnce(&ConcurrentHelper::FromEvent, helper));
 
   // Similarly post 2 tasks.
-  loop()->task_runner()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&ConcurrentHelper::FromTask, helper));
-  loop()->task_runner()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&ConcurrentHelper::FromTask, helper));
 
   run_loop.Run();
@@ -408,7 +404,7 @@ void AddEventsAndDrainGLib(EventInjector* injector, OnceClosure on_drained) {
 TEST_F(MessagePumpGLibTest, TestDrainingGLib) {
   // Tests that draining events using GLib works.
   RunLoop run_loop;
-  loop()->task_runner()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&AddEventsAndDrainGLib, Unretained(injector()),
                           run_loop.QuitClosure()));
   run_loop.Run();
@@ -452,8 +448,6 @@ class GLibLoopRunner : public RefCounted<GLibLoopRunner> {
 };
 
 void TestGLibLoopInternal(EventInjector* injector, OnceClosure done) {
-  // Allow tasks to be processed from 'native' event loops.
-  MessageLoopCurrent::Get()->SetNestableTasksAllowed(true);
   scoped_refptr<GLibLoopRunner> runner = new GLibLoopRunner();
 
   int task_count = 0;
@@ -477,7 +471,10 @@ void TestGLibLoopInternal(EventInjector* injector, OnceClosure done) {
       TimeDelta::FromMilliseconds(40));
 
   // Run a nested, straight GLib message loop.
-  runner->RunGLib();
+  {
+    CurrentThread::ScopedNestableTaskAllower allow_nestable_tasks;
+    runner->RunGLib();
+  }
 
   ASSERT_EQ(3, task_count);
   EXPECT_EQ(4, injector->processed_events());
@@ -485,8 +482,6 @@ void TestGLibLoopInternal(EventInjector* injector, OnceClosure done) {
 }
 
 void TestGtkLoopInternal(EventInjector* injector, OnceClosure done) {
-  // Allow tasks to be processed from 'native' event loops.
-  MessageLoopCurrent::Get()->SetNestableTasksAllowed(true);
   scoped_refptr<GLibLoopRunner> runner = new GLibLoopRunner();
 
   int task_count = 0;
@@ -510,7 +505,10 @@ void TestGtkLoopInternal(EventInjector* injector, OnceClosure done) {
       TimeDelta::FromMilliseconds(40));
 
   // Run a nested, straight Gtk message loop.
-  runner->RunLoop();
+  {
+    CurrentThread::ScopedNestableTaskAllower allow_nestable_tasks;
+    runner->RunLoop();
+  }
 
   ASSERT_EQ(3, task_count);
   EXPECT_EQ(4, injector->processed_events());
@@ -525,7 +523,7 @@ TEST_F(MessagePumpGLibTest, TestGLibLoop) {
   // Note that in this case we don't make strong guarantees about niceness
   // between events and posted tasks.
   RunLoop run_loop;
-  loop()->task_runner()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&TestGLibLoopInternal, Unretained(injector()),
                           run_loop.QuitClosure()));
   run_loop.Run();
@@ -537,10 +535,226 @@ TEST_F(MessagePumpGLibTest, TestGtkLoop) {
   // Note that in this case we don't make strong guarantees about niceness
   // between events and posted tasks.
   RunLoop run_loop;
-  loop()->task_runner()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&TestGtkLoopInternal, Unretained(injector()),
                           run_loop.QuitClosure()));
   run_loop.Run();
+}
+
+// Tests for WatchFileDescriptor API
+class MessagePumpGLibFdWatchTest : public testing::Test {
+ protected:
+  MessagePumpGLibFdWatchTest()
+      : io_thread_("MessagePumpGLibFdWatchTestIOThread") {}
+  ~MessagePumpGLibFdWatchTest() override = default;
+
+  void SetUp() override {
+    Thread::Options options(MessagePumpType::IO, 0);
+    ASSERT_TRUE(io_thread_.StartWithOptions(options));
+    int ret = pipe(pipefds_);
+    ASSERT_EQ(0, ret);
+  }
+
+  void TearDown() override {
+    if (IGNORE_EINTR(close(pipefds_[0])) < 0)
+      PLOG(ERROR) << "close";
+    if (IGNORE_EINTR(close(pipefds_[1])) < 0)
+      PLOG(ERROR) << "close";
+  }
+
+  void WaitUntilIoThreadStarted() {
+    ASSERT_TRUE(io_thread_.WaitUntilThreadStarted());
+  }
+
+  scoped_refptr<SingleThreadTaskRunner> io_runner() const {
+    return io_thread_.task_runner();
+  }
+
+  void SimulateEvent(MessagePumpGlib* pump,
+                     MessagePumpGlib::FdWatchController* controller) {
+    controller->poll_fd_->revents = G_IO_IN | G_IO_OUT;
+    pump->HandleFdWatchDispatch(controller);
+  }
+
+  int pipefds_[2];
+
+ private:
+  Thread io_thread_;
+};
+
+namespace {
+
+class BaseWatcher : public MessagePumpGlib::FdWatcher {
+ public:
+  explicit BaseWatcher(MessagePumpGlib::FdWatchController* controller)
+      : controller_(controller) {
+    DCHECK(controller_);
+  }
+  ~BaseWatcher() override = default;
+
+  // base:MessagePumpGlib::FdWatcher interface
+  void OnFileCanReadWithoutBlocking(int /* fd */) override { NOTREACHED(); }
+  void OnFileCanWriteWithoutBlocking(int /* fd */) override { NOTREACHED(); }
+
+ protected:
+  MessagePumpGlib::FdWatchController* controller_;
+};
+
+class DeleteWatcher : public BaseWatcher {
+ public:
+  explicit DeleteWatcher(
+      std::unique_ptr<MessagePumpGlib::FdWatchController> controller)
+      : BaseWatcher(controller.get()),
+        owned_controller_(std::move(controller)) {}
+
+  ~DeleteWatcher() override { DCHECK(!controller_); }
+
+  void OnFileCanWriteWithoutBlocking(int /* fd */) override {
+    DCHECK(owned_controller_);
+    owned_controller_.reset();
+    controller_ = nullptr;
+  }
+
+ private:
+  std::unique_ptr<MessagePumpGlib::FdWatchController> owned_controller_;
+};
+
+class StopWatcher : public BaseWatcher {
+ public:
+  explicit StopWatcher(MessagePumpGlib::FdWatchController* controller)
+      : BaseWatcher(controller) {}
+
+  ~StopWatcher() override = default;
+
+  void OnFileCanWriteWithoutBlocking(int /* fd */) override {
+    controller_->StopWatchingFileDescriptor();
+  }
+};
+
+void QuitMessageLoopAndStart(OnceClosure quit_closure) {
+  std::move(quit_closure).Run();
+
+  RunLoop runloop(RunLoop::Type::kNestableTasksAllowed);
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, runloop.QuitClosure());
+  runloop.Run();
+}
+
+class NestedPumpWatcher : public MessagePumpGlib::FdWatcher {
+ public:
+  NestedPumpWatcher() = default;
+  ~NestedPumpWatcher() override = default;
+
+  void OnFileCanReadWithoutBlocking(int /* fd */) override {
+    RunLoop runloop;
+    ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE, BindOnce(&QuitMessageLoopAndStart, runloop.QuitClosure()));
+    runloop.Run();
+  }
+
+  void OnFileCanWriteWithoutBlocking(int /* fd */) override {}
+};
+
+class QuitWatcher : public BaseWatcher {
+ public:
+  QuitWatcher(MessagePumpGlib::FdWatchController* controller,
+              base::OnceClosure quit_closure)
+      : BaseWatcher(controller), quit_closure_(std::move(quit_closure)) {}
+
+  void OnFileCanReadWithoutBlocking(int /* fd */) override {
+    if (quit_closure_)
+      std::move(quit_closure_).Run();
+  }
+
+ private:
+  base::OnceClosure quit_closure_;
+};
+
+void WriteFDWrapper(const int fd,
+                    const char* buf,
+                    int size,
+                    WaitableEvent* event) {
+  ASSERT_TRUE(WriteFileDescriptor(fd, buf, size));
+}
+
+}  // namespace
+
+// Tests that MessagePumpGlib::FdWatcher::OnFileCanReadWithoutBlocking is not
+// called for a READ_WRITE event, when the controller is destroyed in
+// OnFileCanWriteWithoutBlocking callback.
+TEST_F(MessagePumpGLibFdWatchTest, DeleteWatcher) {
+  auto pump = std::make_unique<MessagePumpGlib>();
+  auto controller_ptr =
+      std::make_unique<MessagePumpGlib::FdWatchController>(FROM_HERE);
+  auto* controller = controller_ptr.get();
+
+  DeleteWatcher watcher(std::move(controller_ptr));
+  pump->WatchFileDescriptor(pipefds_[1], false,
+                            MessagePumpGlib::WATCH_READ_WRITE, controller,
+                            &watcher);
+
+  SimulateEvent(pump.get(), controller);
+}
+
+// Tests that MessagePumpGlib::FdWatcher::OnFileCanReadWithoutBlocking is not
+// called for a READ_WRITE event, when the watcher calls
+// StopWatchingFileDescriptor in OnFileCanWriteWithoutBlocking callback.
+TEST_F(MessagePumpGLibFdWatchTest, StopWatcher) {
+  std::unique_ptr<MessagePumpGlib> pump(new MessagePumpGlib);
+  MessagePumpGlib::FdWatchController controller(FROM_HERE);
+  StopWatcher watcher(&controller);
+  pump->WatchFileDescriptor(pipefds_[1], false,
+                            MessagePumpGlib::WATCH_READ_WRITE, &controller,
+                            &watcher);
+
+  SimulateEvent(pump.get(), &controller);
+}
+
+// Tests that FdWatcher works properly with nested loops.
+TEST_F(MessagePumpGLibFdWatchTest, NestedPumpWatcher) {
+  test::SingleThreadTaskEnvironment task_environment(
+      test::SingleThreadTaskEnvironment::MainThreadType::UI);
+  std::unique_ptr<MessagePumpGlib> pump(new MessagePumpGlib);
+  MessagePumpGlib::FdWatchController controller(FROM_HERE);
+  NestedPumpWatcher watcher;
+  pump->WatchFileDescriptor(pipefds_[1], false, MessagePumpGlib::WATCH_READ,
+                            &controller, &watcher);
+
+  SimulateEvent(pump.get(), &controller);
+}
+
+// Tests that MessagePumpGlib quits immediately when it is quit from
+// libevent's event_base_loop().
+TEST_F(MessagePumpGLibFdWatchTest, QuitWatcher) {
+  MessagePumpGlib* pump = new MessagePumpGlib();
+  SingleThreadTaskExecutor executor(WrapUnique(pump));
+  RunLoop run_loop;
+  MessagePumpGlib::FdWatchController controller(FROM_HERE);
+  QuitWatcher delegate(&controller, run_loop.QuitClosure());
+  WaitableEvent event;
+  auto watcher = std::make_unique<WaitableEventWatcher>();
+
+  pump->WatchFileDescriptor(pipefds_[0], false, MessagePumpGlib::WATCH_READ,
+                            &controller, &delegate);
+
+  // Make the IO thread wait for |event| before writing to pipefds[1].
+  const char buf = 0;
+  WaitableEventWatcher::EventCallback write_fd_task =
+      BindOnce(&WriteFDWrapper, pipefds_[1], &buf, 1);
+  io_runner()->PostTask(
+      FROM_HERE, BindOnce(IgnoreResult(&WaitableEventWatcher::StartWatching),
+                          Unretained(watcher.get()), &event,
+                          std::move(write_fd_task), io_runner()));
+
+  // Queue |event| to signal on |CurrentUIThread::Get()|.
+  ThreadTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, BindOnce(&WaitableEvent::Signal, Unretained(&event)));
+
+  // Now run the MessageLoop.
+  run_loop.Run();
+
+  // StartWatching can move |watcher| to IO thread. Release on IO thread.
+  io_runner()->PostTask(FROM_HERE, BindOnce(&WaitableEventWatcher::StopWatching,
+                                            Owned(std::move(watcher))));
 }
 
 }  // namespace base

@@ -6,7 +6,10 @@
 #define BASE_TIME_TIME_OVERRIDE_H_
 
 #include "base/base_export.h"
+#include "base/macros.h"
+#include "base/optional.h"
 #include "base/time/time.h"
+#include "build/build_config.h"
 
 namespace base {
 
@@ -33,12 +36,12 @@ class BASE_EXPORT ScopedTimeClockOverrides {
   // Restores the platform default Now() functions.
   ~ScopedTimeClockOverrides();
 
- private:
-#if DCHECK_IS_ON()
-  static bool overrides_active_;
-#endif
+  static bool overrides_active() { return overrides_active_; }
 
-  DISALLOW_IMPLICIT_CONSTRUCTORS(ScopedTimeClockOverrides);
+ private:
+  static bool overrides_active_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedTimeClockOverrides);
 };
 
 // These methods return the platform default Time::Now / TimeTicks::Now /
@@ -50,6 +53,12 @@ BASE_EXPORT Time TimeNowIgnoringOverride();
 BASE_EXPORT Time TimeNowFromSystemTimeIgnoringOverride();
 BASE_EXPORT TimeTicks TimeTicksNowIgnoringOverride();
 BASE_EXPORT ThreadTicks ThreadTicksNowIgnoringOverride();
+
+#if defined(OS_POSIX)
+// Equivalent to TimeTicksNowIgnoringOverride(), but is allowed to fail and
+// return base::nullopt. This may safely be used in a signal handler.
+BASE_EXPORT base::Optional<TimeTicks> MaybeTimeTicksNowIgnoringOverride();
+#endif
 
 }  // namespace subtle
 

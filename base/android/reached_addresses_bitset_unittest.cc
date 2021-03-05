@@ -6,8 +6,8 @@
 
 #include <utility>
 
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace android {

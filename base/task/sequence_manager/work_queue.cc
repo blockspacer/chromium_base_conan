@@ -4,8 +4,10 @@
 
 #include "base/task/sequence_manager/work_queue.h"
 
+#include "base/debug/alias.h"
 #include "base/task/sequence_manager/sequence_manager_impl.h"
 #include "base/task/sequence_manager/work_queue_sets.h"
+#include "build/build_config.h"
 
 namespace base {
 namespace sequence_manager {
@@ -16,11 +18,11 @@ WorkQueue::WorkQueue(TaskQueueImpl* task_queue,
                      QueueType queue_type)
     : task_queue_(task_queue), name_(name), queue_type_(queue_type) {}
 
-void WorkQueue::AsValueInto(TimeTicks now,
-                            trace_event::TracedValue* state) const {
-  for (const Task& task : tasks_) {
-    TaskQueueImpl::TaskAsValueInto(task, now, state);
-  }
+Value WorkQueue::AsValue(TimeTicks now) const {
+  Value state(Value::Type::LIST);
+  for (const Task& task : tasks_)
+    state.Append(TaskQueueImpl::TaskAsValue(task, now));
+  return state;
 }
 
 WorkQueue::~WorkQueue() {
@@ -200,8 +202,31 @@ bool WorkQueue::RemoveAllCanceledTasksFromFront() {
   if (!work_queue_sets_)
     return false;
   bool task_removed = false;
-  while (!tasks_.empty() &&
-         (!tasks_.front().task || tasks_.front().task.IsCancelled())) {
+  while (!tasks_.empty()) {
+    const auto& pending_task = tasks_.front();
+#if !defined(OS_NACL)
+    // Record some debugging information about the task.
+    // TODO(skyostil): Remove once crbug.com/1071475 is resolved.
+    DEBUG_ALIAS_FOR_CSTR(debug_file_name,
+                         pending_task.posted_from.file_name()
+                             ? pending_task.posted_from.file_name()
+                             : "",
+                         16);
+    DEBUG_ALIAS_FOR_CSTR(debug_function_name,
+                         pending_task.posted_from.function_name()
+                             ? pending_task.posted_from.function_name()
+                             : "",
+                         16);
+    int debug_line_number = pending_task.posted_from.line_number();
+    const void* debug_pc = pending_task.posted_from.program_counter();
+    const void* debug_bind_state =
+        reinterpret_cast<const void*>(&pending_task.task);
+    base::debug::Alias(&debug_line_number);
+    base::debug::Alias(&debug_pc);
+    base::debug::Alias(&debug_bind_state);
+#endif  // !defined(OS_NACL)
+    if (pending_task.task && !pending_task.task.IsCancelled())
+      break;
     tasks_.pop_front();
     task_removed = true;
   }
@@ -291,18 +316,20 @@ void WorkQueue::MaybeShrinkQueue() {
   tasks_.MaybeShrinkQueue();
 }
 
-void WorkQueue::DeletePendingTasks() {
-  tasks_.clear();
-
-  if (work_queue_sets_ && heap_handle().IsValid())
-    work_queue_sets_->OnQueuesFrontTaskChanged(this);
-  DCHECK(!heap_handle_.IsValid());
-}
-
 void WorkQueue::PopTaskForTesting() {
   if (tasks_.empty())
     return;
   tasks_.pop_front();
+}
+
+void WorkQueue::CollectTasksOlderThan(EnqueueOrder reference,
+                                      std::vector<const Task*>* result) const {
+  for (const Task& task : tasks_) {
+    if (task.enqueue_order() >= reference)
+      break;
+
+    result->push_back(&task);
+  }
 }
 
 }  // namespace internal

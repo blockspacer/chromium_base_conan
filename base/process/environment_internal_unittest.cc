@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/platform_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 using EnvironmentInternalTest = PlatformTest;
 
@@ -19,9 +19,9 @@ namespace internal {
 #if defined(OS_WIN)
 
 namespace {
-void ExpectEnvironmentBlock(const std::vector<string16>& vars,
-                            const string16& block) {
-  string16 expected;
+void ExpectEnvironmentBlock(const std::vector<std::wstring>& vars,
+                            const std::wstring& block) {
+  std::wstring expected;
   for (const auto& var : vars) {
     expected += var;
     expected.push_back('\0');
@@ -46,7 +46,7 @@ TEST_F(EnvironmentInternalTest, AlterEnvironment) {
   ExpectEnvironmentBlock({L"A=1"}, e);
 
   changes.clear();
-  changes[L"A"] = string16();
+  changes[L"A"] = std::wstring();
   e = AlterEnvironment(empty, changes);
   ExpectEnvironmentBlock({}, e);
 
@@ -60,23 +60,23 @@ TEST_F(EnvironmentInternalTest, AlterEnvironment) {
   ExpectEnvironmentBlock({L"A=1"}, e);
 
   changes.clear();
-  changes[L"A"] = string16();
+  changes[L"A"] = std::wstring();
   e = AlterEnvironment(a2, changes);
   ExpectEnvironmentBlock({}, e);
 
   changes.clear();
-  changes[L"A"] = string16();
-  changes[L"B"] = string16();
+  changes[L"A"] = std::wstring();
+  changes[L"B"] = std::wstring();
   e = AlterEnvironment(a2b3, changes);
   ExpectEnvironmentBlock({}, e);
 
   changes.clear();
-  changes[L"A"] = string16();
+  changes[L"A"] = std::wstring();
   e = AlterEnvironment(a2b3, changes);
   ExpectEnvironmentBlock({L"B=3"}, e);
 
   changes.clear();
-  changes[L"B"] = string16();
+  changes[L"B"] = std::wstring();
   e = AlterEnvironment(a2b3, changes);
   ExpectEnvironmentBlock({L"A=2"}, e);
 

@@ -4,9 +4,8 @@
 
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
+#include "base/base_jni_headers/CommandLine_jni.h"
 #include "base/command_line.h"
-#include "base/logging.h"
-#include "jni/CommandLine_jni.h"
 
 using base::android::ConvertUTF8ToJavaString;
 using base::android::ConvertJavaStringToUTF8;
@@ -50,6 +49,18 @@ static ScopedJavaLocalRef<jstring> JNI_CommandLine_GetSwitchValue(
   return ConvertUTF8ToJavaString(env, value);
 }
 
+static ScopedJavaLocalRef<jobjectArray> JNI_CommandLine_GetSwitchesFlattened(
+    JNIEnv* env) {
+  // JNI doesn't support returning Maps. Instead, express this map as a 1
+  // dimensional array: [ key1, value1, key2, value2, ... ]
+  std::vector<std::string> keys_and_values;
+  for (const auto& entry : CommandLine::ForCurrentProcess()->GetSwitches()) {
+    keys_and_values.push_back(entry.first);
+    keys_and_values.push_back(entry.second);
+  }
+  return base::android::ToJavaArrayOfStrings(env, keys_and_values);
+}
+
 static void JNI_CommandLine_AppendSwitch(JNIEnv* env,
                                          const JavaParamRef<jstring>& jswitch) {
   std::string switch_string(ConvertJavaStringToUTF8(env, jswitch));
@@ -70,6 +81,12 @@ static void JNI_CommandLine_AppendSwitchesAndArguments(
     JNIEnv* env,
     const JavaParamRef<jobjectArray>& array) {
   JNI_CommandLine_AppendJavaStringArrayToCommandLine(env, array, false);
+}
+
+static void JNI_CommandLine_RemoveSwitch(JNIEnv* env,
+                                         const JavaParamRef<jstring>& jswitch) {
+  std::string switch_string(ConvertJavaStringToUTF8(env, jswitch));
+  CommandLine::ForCurrentProcess()->RemoveSwitch(switch_string);
 }
 
 static void JNI_CommandLine_Init(

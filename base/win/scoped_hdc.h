@@ -7,8 +7,8 @@
 
 #include <windows.h>
 
+#include "base/check.h"
 #include "base/debug/gdi_debug_util_win.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/win/scoped_handle.h"
 
@@ -19,9 +19,7 @@ namespace win {
 // GetDC.
 class ScopedGetDC {
  public:
-  explicit ScopedGetDC(HWND hwnd)
-      : hwnd_(hwnd),
-        hdc_(GetDC(hwnd)) {
+  explicit ScopedGetDC(HWND hwnd) : hwnd_(hwnd), hdc_(GetDC(hwnd)) {
     if (hwnd_) {
       DCHECK(IsWindow(hwnd_));
       DCHECK(hdc_);
@@ -54,17 +52,11 @@ class CreateDCTraits {
  public:
   typedef HDC Handle;
 
-  static bool CloseHandle(HDC handle) {
-    return ::DeleteDC(handle) != FALSE;
-  }
+  static bool CloseHandle(HDC handle) { return ::DeleteDC(handle) != FALSE; }
 
-  static bool IsHandleValid(HDC handle) {
-    return handle != NULL;
-  }
+  static bool IsHandleValid(HDC handle) { return handle != NULL; }
 
-  static HDC NullHandle() {
-    return NULL;
-  }
+  static HDC NullHandle() { return NULL; }
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(CreateDCTraits);

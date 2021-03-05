@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+#include "base/allocator/buildflags.h"
+#include "base/allocator/partition_allocator/partition_alloc_features.h"
 #include "base/base_export.h"
 #include "build/build_config.h"
 
@@ -49,6 +51,9 @@ struct AllocatorDispatch {
   using AllocFn = void*(const AllocatorDispatch* self,
                         size_t size,
                         void* context);
+  using AllocUncheckedFn = void*(const AllocatorDispatch* self,
+                                 size_t size,
+                                 void* context);
   using AllocZeroInitializedFn = void*(const AllocatorDispatch* self,
                                        size_t n,
                                        size_t size,
@@ -98,6 +103,7 @@ struct AllocatorDispatch {
                              void* context);
 
   AllocFn* const alloc_function;
+  AllocUncheckedFn* const alloc_unchecked_function;
   AllocZeroInitializedFn* const alloc_zero_initialized_function;
   AllocAlignedFn* const alloc_aligned_function;
   ReallocFn* const realloc_function;
@@ -141,10 +147,30 @@ BASE_EXPORT void InsertAllocatorDispatch(AllocatorDispatch* dispatch);
 // in malloc(), which we really don't want.
 BASE_EXPORT void RemoveAllocatorDispatchForTesting(AllocatorDispatch* dispatch);
 
-#if defined(OS_MACOSX)
+#if BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC) && defined(OS_WIN)
+// Configures the allocator for the caller's allocation domain. Allocations that
+// take place prior to this configuration step will succeed, but will not
+// benefit from its one-time mitigations. As such, this function must be called
+// as early as possible during startup.
+BASE_EXPORT void ConfigurePartitionAlloc();
+#endif  // defined(OS_WIN)
+
+#if defined(OS_APPLE)
 // On macOS, the allocator shim needs to be turned on during runtime.
 BASE_EXPORT void InitializeAllocatorShim();
-#endif  // defined(OS_MACOSX)
+#endif  // defined(OS_APPLE)
+
+#if BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC)
+BASE_EXPORT void EnablePartitionAllocMemoryReclaimer();
+
+BASE_EXPORT void ReconfigurePartitionAllocLazyCommit();
+
+BASE_EXPORT void ConfigurePartitionRefCountSupport(bool enable_ref_count);
+#endif
+
+#if BUILDFLAG(USE_PARTITION_ALLOC_AS_MALLOC) && PA_ALLOW_PCSCAN
+BASE_EXPORT void EnablePCScan();
+#endif
 
 }  // namespace allocator
 }  // namespace base

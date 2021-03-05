@@ -11,15 +11,13 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/icu_test_util.h"
 #include "base/time/time.h"
-#include GTEST_HEADER_INCLUDE
+#include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
+#include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/icu/source/common/unicode/uversion.h"
 #include "third_party/icu/source/i18n/unicode/calendar.h"
 #include "third_party/icu/source/i18n/unicode/timezone.h"
 #include "third_party/icu/source/i18n/unicode/tzfmt.h"
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
 
 namespace base {
 namespace {
@@ -68,30 +66,12 @@ string16 TimeDurationFormatWithSecondsString(const TimeDelta& delta,
   return str;
 }
 
-class ScopedRestoreDefaultTimezone {
- public:
-  ScopedRestoreDefaultTimezone(const char* zoneid) {
-    original_zone_.reset(icu::TimeZone::createDefault());
-    icu::TimeZone::adoptDefault(icu::TimeZone::createTimeZone(zoneid));
-  }
-  ~ScopedRestoreDefaultTimezone() {
-    icu::TimeZone::adoptDefault(original_zone_.release());
-  }
-
-  ScopedRestoreDefaultTimezone(const ScopedRestoreDefaultTimezone&) = delete;
-  ScopedRestoreDefaultTimezone& operator=(const ScopedRestoreDefaultTimezone&) =
-      delete;
-
- private:
-  std::unique_ptr<icu::TimeZone> original_zone_;
-};
-
 TEST(TimeFormattingTest, TimeFormatTimeOfDayDefault12h) {
   // Test for a locale defaulted to 12h clock.
   // As an instance, we use third_party/icu/source/data/locales/en.txt.
   test::ScopedRestoreICUDefaultLocale restore_locale;
   i18n::SetICUDefaultLocale("en_US");
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   Time time;
   EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
@@ -129,7 +109,7 @@ TEST(TimeFormattingTest, TimeFormatTimeOfDayDefault24h) {
   // As an instance, we use third_party/icu/source/data/locales/en_GB.txt.
   test::ScopedRestoreICUDefaultLocale restore_locale;
   i18n::SetICUDefaultLocale("en_GB");
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   Time time;
   EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
@@ -167,7 +147,7 @@ TEST(TimeFormattingTest, TimeFormatTimeOfDayJP) {
   // As an instance, we use third_party/icu/source/data/locales/ja.txt.
   test::ScopedRestoreICUDefaultLocale restore_locale;
   i18n::SetICUDefaultLocale("ja_JP");
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   Time time;
   EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
@@ -194,7 +174,7 @@ TEST(TimeFormattingTest, TimeFormatTimeOfDayDE) {
   // German uses 24h by default, but uses 'AM', 'PM' for 12h format.
   test::ScopedRestoreICUDefaultLocale restore_locale;
   i18n::SetICUDefaultLocale("de");
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   Time time;
   EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
@@ -225,12 +205,42 @@ TEST(TimeFormattingTest, TimeFormatTimeOfDayDE) {
                                                  kDropAmPm));
 }
 
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+TEST(TimeFormattingTest, TimeMonthYearInUTC) {
+  // See third_party/icu/source/data/locales/en.txt.
+  // The date patterns are "EEEE, MMMM d, y", "MMM d, y", and "M/d/yy".
+  test::ScopedRestoreICUDefaultLocale restore_locale;
+  i18n::SetICUDefaultLocale("en_US");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+
+  Time time;
+  EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
+  EXPECT_EQ(
+      ASCIIToUTF16("April 2011"),
+      TimeFormatMonthAndYear(time, /*time_zone=*/icu::TimeZone::getGMT()));
+  EXPECT_EQ(ASCIIToUTF16("April 2011"),
+            TimeFormatMonthAndYear(time, /*time_zone=*/nullptr));
+
+  const Time::Exploded kDiffMonthsForDiffTzTime = {
+      2011, 4, 5, 1,  // Fri, Apr 1, 2011 UTC = Thurs, March 31, 2011 US PDT.
+      0,    0, 0, 0   // 00:00:00.000 UTC = 05:00:00 previous day US PDT.
+  };
+
+  EXPECT_TRUE(Time::FromUTCExploded(kDiffMonthsForDiffTzTime, &time));
+  EXPECT_EQ(
+      ASCIIToUTF16("April 2011"),
+      TimeFormatMonthAndYear(time, /*time_zone=*/icu::TimeZone::getGMT()));
+  EXPECT_EQ(ASCIIToUTF16("March 2011"),
+            TimeFormatMonthAndYear(time, /*time_zone=*/nullptr));
+}
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+
 TEST(TimeFormattingTest, TimeFormatDateUS) {
   // See third_party/icu/source/data/locales/en.txt.
   // The date patterns are "EEEE, MMMM d, y", "MMM d, y", and "M/d/yy".
   test::ScopedRestoreICUDefaultLocale restore_locale;
   i18n::SetICUDefaultLocale("en_US");
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   Time time;
   EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
@@ -257,7 +267,7 @@ TEST(TimeFormattingTest, TimeFormatDateGB) {
   // The date patterns are "EEEE, d MMMM y", "d MMM y", and "dd/MM/yyyy".
   test::ScopedRestoreICUDefaultLocale restore_locale;
   i18n::SetICUDefaultLocale("en_GB");
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   Time time;
   EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
@@ -277,7 +287,7 @@ TEST(TimeFormattingTest, TimeFormatDateGB) {
 
 TEST(TimeFormattingTest, TimeFormatWithPattern) {
   test::ScopedRestoreICUDefaultLocale restore_locale;
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   Time time;
   EXPECT_TRUE(Time::FromUTCExploded(kTestDateTimeExploded, &time));
@@ -318,9 +328,9 @@ TEST(TimeFormattingTest, TimeDurationFormat) {
   i18n::SetICUDefaultLocale("da");
   EXPECT_EQ(ASCIIToUTF16("15 timer og 42 minutter"),
             TimeDurationFormatString(delta, DURATION_WIDTH_WIDE));
-  EXPECT_EQ(ASCIIToUTF16("15 t og 42 min."),
+  EXPECT_EQ(ASCIIToUTF16("15 t. og 42 min."),
             TimeDurationFormatString(delta, DURATION_WIDTH_SHORT));
-  EXPECT_EQ(ASCIIToUTF16("15 t og 42 min"),
+  EXPECT_EQ(ASCIIToUTF16("15 t og 42 m"),
             TimeDurationFormatString(delta, DURATION_WIDTH_NARROW));
   EXPECT_EQ(ASCIIToUTF16("15.42"),
             TimeDurationFormatString(delta, DURATION_WIDTH_NUMERIC));
@@ -396,7 +406,7 @@ TEST(TimeFormattingTest, TimeDurationFormatWithSeconds) {
 TEST(TimeFormattingTest, TimeIntervalFormat) {
   test::ScopedRestoreICUDefaultLocale restore_locale;
   i18n::SetICUDefaultLocale("en_US");
-  ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
+  test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
 
   const Time::Exploded kTestIntervalEndTimeExploded = {
       2011, 5,  6, 28,  // Sat, May 28, 2012
@@ -424,7 +434,7 @@ TEST(TimeFormattingTest, TimeIntervalFormat) {
 
   i18n::SetICUDefaultLocale("en_GB");
   EXPECT_EQ(
-      UTF8ToUTF16(u8"Monday 16 – Saturday 28 May"),
+      UTF8ToUTF16(u8"Monday 16 May – Saturday 28 May"),
       DateIntervalFormat(begin_time, end_time, DATE_FORMAT_MONTH_WEEKDAY_DAY));
 
   i18n::SetICUDefaultLocale("ja");

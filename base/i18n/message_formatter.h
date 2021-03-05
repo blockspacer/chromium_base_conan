@@ -16,11 +16,9 @@
 #include "base/strings/string_piece.h"
 #include "third_party/icu/source/common/unicode/uversion.h"
 
-#if !UCONFIG_NO_FORMATTING
 U_NAMESPACE_BEGIN
 class Formattable;
 U_NAMESPACE_END
-#endif // UCONFIG_NO_FORMATTING
 
 namespace base {
 
@@ -49,9 +47,7 @@ class BASE_I18N_EXPORT MessageArg {
   MessageArg();
   // Tests if this argument has a value, and if so increments *count.
   bool has_value(int* count) const;
-#if !UCONFIG_NO_FORMATTING
   std::unique_ptr<icu::Formattable> formattable;
-#endif // UCONFIG_NO_FORMATTING
   DISALLOW_COPY_AND_ASSIGN(MessageArg);
 };
 

@@ -4,11 +4,16 @@
 
 #include "base/memory/shared_memory_tracker.h"
 
-#include "base/memory/shared_memory.h"
+#include "base/check.h"
+#include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/trace_event/memory_allocator_dump_guid.h"
-#include "base/trace_event/memory_dump_manager.h"
-#include "base/trace_event/process_memory_dump.h"
+#include "base/trace_event/base_tracing.h"
+#include "base/tracing_buildflags.h"
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+#include "base/trace_event/memory_dump_manager.h"  // no-presubmit-check
+#include "base/trace_event/process_memory_dump.h"  // no-presubmit-check
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 
 namespace base {
 
@@ -34,16 +39,6 @@ SharedMemoryTracker::GetGlobalDumpIdForTracing(const UnguessableToken& id) {
   return trace_event::MemoryAllocatorDumpGuid(dump_name);
 }
 
-// static
-const trace_event::MemoryAllocatorDump*
-SharedMemoryTracker::GetOrCreateSharedMemoryDump(
-    const SharedMemory* shared_memory,
-    trace_event::ProcessMemoryDump* pmd) {
-  return GetOrCreateSharedMemoryDumpInternal(shared_memory->memory(),
-                                             shared_memory->mapped_size(),
-                                             shared_memory->mapped_id(), pmd);
-}
-
 const trace_event::MemoryAllocatorDump*
 SharedMemoryTracker::GetOrCreateSharedMemoryDump(
     const SharedMemoryMapping& shared_memory,
@@ -51,14 +46,6 @@ SharedMemoryTracker::GetOrCreateSharedMemoryDump(
   return GetOrCreateSharedMemoryDumpInternal(shared_memory.raw_memory_ptr(),
                                              shared_memory.mapped_size(),
                                              shared_memory.guid(), pmd);
-}
-
-void SharedMemoryTracker::IncrementMemoryUsage(
-    const SharedMemory& shared_memory) {
-  AutoLock hold(usages_lock_);
-  DCHECK(usages_.find(shared_memory.memory()) == usages_.end());
-  usages_.emplace(shared_memory.memory(), UsageInfo(shared_memory.mapped_size(),
-                                                    shared_memory.mapped_id()));
 }
 
 void SharedMemoryTracker::IncrementMemoryUsage(
@@ -70,13 +57,6 @@ void SharedMemoryTracker::IncrementMemoryUsage(
 }
 
 void SharedMemoryTracker::DecrementMemoryUsage(
-    const SharedMemory& shared_memory) {
-  AutoLock hold(usages_lock_);
-  DCHECK(usages_.find(shared_memory.memory()) != usages_.end());
-  usages_.erase(shared_memory.memory());
-}
-
-void SharedMemoryTracker::DecrementMemoryUsage(
     const SharedMemoryMapping& mapping) {
   AutoLock hold(usages_lock_);
   DCHECK(usages_.find(mapping.raw_memory_ptr()) != usages_.end());
@@ -84,8 +64,10 @@ void SharedMemoryTracker::DecrementMemoryUsage(
 }
 
 SharedMemoryTracker::SharedMemoryTracker() {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
   trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
       this, "SharedMemoryTracker", nullptr);
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 }
 
 SharedMemoryTracker::~SharedMemoryTracker() = default;
@@ -109,6 +91,7 @@ SharedMemoryTracker::GetOrCreateSharedMemoryDumpInternal(
     size_t mapped_size,
     const UnguessableToken& mapped_id,
     trace_event::ProcessMemoryDump* pmd) {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
   const std::string dump_name = GetDumpNameForTracing(mapped_id);
   trace_event::MemoryAllocatorDump* local_dump =
       pmd->GetAllocatorDump(dump_name);
@@ -142,6 +125,10 @@ SharedMemoryTracker::GetOrCreateSharedMemoryDumpInternal(
   pmd->AddOverridableOwnershipEdge(local_dump->guid(), global_dump->guid(),
                                    0 /* importance */);
   return local_dump;
+#else   // BUILDFLAG(ENABLE_BASE_TRACING)
+  NOTREACHED();
+  return nullptr;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
 }
 
 }  // namespace

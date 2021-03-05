@@ -4,12 +4,11 @@
 
 #include "base/strings/utf_string_conversions.h"
 
-#include <climits>
-#include <cstdint>
+#include <limits.h>
+#include <stdint.h>
 
 #include <type_traits>
 
-#include "base/bit_cast.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversion_utils.h"
@@ -339,5 +338,17 @@ std::string UTF16ToASCII(StringPiece16 utf16) {
   DCHECK(IsStringASCII(utf16)) << UTF16ToUTF8(utf16);
   return std::string(utf16.begin(), utf16.end());
 }
+
+#if defined(WCHAR_T_IS_UTF16)
+std::wstring ASCIIToWide(StringPiece ascii) {
+  DCHECK(IsStringASCII(ascii)) << ascii;
+  return std::wstring(ascii.begin(), ascii.end());
+}
+
+std::string WideToASCII(WStringPiece wide) {
+  DCHECK(IsStringASCII(wide)) << wide;
+  return std::string(wide.begin(), wide.end());
+}
+#endif  // defined(WCHAR_T_IS_UTF16)
 
 }  // namespace base

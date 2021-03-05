@@ -4,7 +4,7 @@
 
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -62,6 +62,24 @@ TEST(StrAppend, 16Bit) {
   result = ASCIIToUTF16("foo");
   StrAppend(&result, {arg1, arg2, arg3});
   EXPECT_EQ(ASCIIToUTF16("foo122333"), result);
+}
+
+TEST(StrAppendT, ReserveAdditionalIfNeeded) {
+  std::string str = "foo";
+  const char* prev_data = str.data();
+  size_t prev_capacity = str.capacity();
+  // Fully exhaust current capacity.
+  StrAppend(&str, {std::string(str.capacity() - str.size(), 'o')});
+  // Expect that we hit capacity, but didn't require a re-alloc.
+  EXPECT_EQ(str.capacity(), str.size());
+  EXPECT_EQ(prev_data, str.data());
+  EXPECT_EQ(prev_capacity, str.capacity());
+
+  // Force a re-alloc by appending another character.
+  StrAppend(&str, {"o"});
+
+  // Expect at least 2x growth in capacity.
+  EXPECT_LE(2 * prev_capacity, str.capacity());
 }
 
 }  // namespace base

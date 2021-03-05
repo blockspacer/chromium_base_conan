@@ -120,7 +120,7 @@ namespace base {
 //                            my_embedder::MyExtensionTrait::kValueA};
 //
 // // Extension traits can also be specified directly when posting a task.
-// base::PostTaskWithTraits(FROM_HERE,
+// base::PostTask(FROM_HERE,
 //                          {my_embedder::MyExtensionTrait::kValueB},
 //                          base::BindOnce(...));
 
@@ -192,17 +192,13 @@ struct TaskTraitsExtension {
   template <class... ArgTypes,
             class CheckCanMakeExtension =
                 decltype(MakeTaskTraitsExtension(std::declval<ArgTypes>()...))>
-  constexpr TaskTraitsExtension(ArgTypes... args) {
-    ((void)(UNREFERENCED_PARAMETER(args)), ...);
-  }
+  constexpr TaskTraitsExtension(ArgTypes... args) {}
 };
 
 // Tests that that a trait extension accepts all |ArgsTypes...|.
 template <class... ArgTypes>
-struct AreValidTraitsForExtension
-    : std::integral_constant<
-          bool,
-          std::is_constructible<TaskTraitsExtension, ArgTypes...>::value> {};
+using AreValidTraitsForExtension =
+    std::is_constructible<TaskTraitsExtension, ArgTypes...>;
 
 // Helper function that returns the TaskTraitsExtensionStorage of a
 // serialized extension created with |args...| if there are arguments that are
@@ -212,7 +208,6 @@ template <class... ArgTypes>
 constexpr TaskTraitsExtensionStorage GetTaskTraitsExtension(
     std::true_type base_traits,
     ArgTypes... args) {
-  ((void)(UNREFERENCED_PARAMETER(args)), ...);
   return TaskTraitsExtensionStorage();
 }
 

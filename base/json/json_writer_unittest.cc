@@ -3,12 +3,14 @@
 // found in the LICENSE file.
 
 #include "base/json/json_writer.h"
+#include "base/json/json_reader.h"
 
 #include "base/containers/span.h"
 #include "base/memory/ptr_util.h"
+#include "base/strings/stringprintf.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -39,11 +41,11 @@ TEST(JSONWriterTest, BasicTypes) {
   EXPECT_TRUE(JSONWriter::Write(Value(1.0), &output_js));
   EXPECT_EQ("1.0", output_js);
 
-  // Test Real values in the the range (-1, 1) must have leading zeros
+  // Test Real values in the range (-1, 1) must have leading zeros
   EXPECT_TRUE(JSONWriter::Write(Value(0.2), &output_js));
   EXPECT_EQ("0.2", output_js);
 
-  // Test Real values in the the range (-1, 1) must have leading zeros
+  // Test Real values in the range (-1, 1) must have leading zeros
   EXPECT_TRUE(JSONWriter::Write(Value(-0.8), &output_js));
   EXPECT_EQ("-0.8", output_js);
 
@@ -61,9 +63,9 @@ TEST(JSONWriterTest, NestedTypes) {
   ListValue list;
   DictionaryValue inner_dict;
   inner_dict.SetIntKey("inner int", 10);
-  list.GetList().push_back(std::move(inner_dict));
-  list.GetList().emplace_back(Value::Type::LIST);
-  list.GetList().emplace_back(true);
+  list.Append(std::move(inner_dict));
+  list.Append(Value(Value::Type::LIST));
+  list.Append(true);
   root_dict.SetKey("list", std::move(list));
 
   // Test the pretty-printer.
@@ -121,11 +123,11 @@ TEST(JSONWriterTest, BinaryValues) {
   EXPECT_TRUE(output_js.empty());
 
   ListValue binary_list;
-  binary_list.GetList().emplace_back(kBufferSpan);
-  binary_list.GetList().emplace_back(5);
-  binary_list.GetList().emplace_back(kBufferSpan);
-  binary_list.GetList().emplace_back(2);
-  binary_list.GetList().emplace_back(kBufferSpan);
+  binary_list.Append(Value(kBufferSpan));
+  binary_list.Append(5);
+  binary_list.Append(Value(kBufferSpan));
+  binary_list.Append(2);
+  binary_list.Append(Value(kBufferSpan));
   EXPECT_FALSE(JSONWriter::Write(binary_list, &output_js));
   EXPECT_TRUE(JSONWriter::WriteWithOptions(
       binary_list, JSONWriter::OPTIONS_OMIT_BINARY_VALUES, &output_js));
@@ -152,6 +154,60 @@ TEST(JSONWriterTest, DoublesAsInts) {
       double_value, JSONWriter::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
       &output_js));
   EXPECT_EQ("10000000000", output_js);
+}
+
+TEST(JSONWriterTest, StackOverflow) {
+  std::string output_js;
+  ListValue deep_list;
+  ListValue* next_list = &deep_list;
+
+  const size_t max_depth = 100000;
+
+  for (size_t i = 0; i < max_depth; ++i) {
+    ListValue inner_list;
+    next_list->Append(std::move(inner_list));
+    next_list->GetList(0, &next_list);
+  }
+
+  EXPECT_FALSE(JSONWriter::Write(deep_list, &output_js));
+  EXPECT_FALSE(JSONWriter::WriteWithOptions(
+      deep_list, JSONWriter::OPTIONS_PRETTY_PRINT, &output_js));
+
+  // We cannot just let deep_list tear down since it
+  // would cause a stack overflow. Therefore, we tear
+  // down from the inner lists outwards safely.
+  const size_t step = 200;
+  for (size_t i = max_depth - step; i > 0; i -= step) {
+    next_list = &deep_list;
+    for (size_t curr_depth = 0; curr_depth < i && next_list; ++curr_depth) {
+      if (!next_list->GetList(0, &next_list))
+        next_list = nullptr;
+    }
+    if (next_list)
+      next_list->Remove(0, nullptr);
+  }
+}
+
+TEST(JSONWriterTest, TestMaxDepthWithValidNodes) {
+  // Create JSON to the max depth - 1.  Nodes at that depth are still valid
+  // for writing which matches the JSONParser logic.
+  std::string nested_json;
+  for (int i = 0; i < 199; ++i) {
+    std::string node = "[";
+    for (int j = 0; j < 5; j++) {
+      node.append(StringPrintf("%d,", j));
+    }
+    nested_json.insert(0, node);
+    nested_json.append("]");
+  }
+
+  // Ensure we can read and write the JSON
+  JSONReader::ValueWithError json_val = JSONReader::ReadAndReturnValueWithError(
+      nested_json, JSON_ALLOW_TRAILING_COMMAS);
+  EXPECT_TRUE(json_val.value);
+  const Value& value = json_val.value.value();
+  std::string serialized;
+  EXPECT_TRUE(JSONWriter::Write(value, &serialized));
 }
 
 }  // namespace base

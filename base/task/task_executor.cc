@@ -6,8 +6,11 @@
 
 #include <type_traits>
 
+#include "base/check.h"
+#include "base/no_destructor.h"
 #include "base/task/task_traits.h"
 #include "base/task/task_traits_extension.h"
+#include "base/threading/thread_local.h"
 
 namespace base {
 
@@ -30,6 +33,21 @@ static_assert(
 
 }  // namespace
 
+ThreadLocalPointer<TaskExecutor>* GetTLSForCurrentTaskExecutor() {
+  static NoDestructor<ThreadLocalPointer<TaskExecutor>> instance;
+  return instance.get();
+}
+
+void SetTaskExecutorForCurrentThread(TaskExecutor* task_executor) {
+  DCHECK(!task_executor || !GetTLSForCurrentTaskExecutor()->Get() ||
+         GetTLSForCurrentTaskExecutor()->Get() == task_executor);
+  GetTLSForCurrentTaskExecutor()->Set(task_executor);
+}
+
+TaskExecutor* GetTaskExecutorForCurrentThread() {
+  return GetTLSForCurrentTaskExecutor()->Get();
+}
+
 void RegisterTaskExecutor(uint8_t extension_id, TaskExecutor* task_executor) {
   DCHECK_NE(extension_id, TaskTraitsExtensionStorage::kInvalidExtensionId);
   DCHECK_LE(extension_id, TaskTraitsExtensionStorage::kMaxExtensionId);
@@ -50,13 +68,14 @@ TaskExecutor* GetRegisteredTaskExecutorForTraits(const TaskTraits& traits) {
   uint8_t extension_id = traits.extension_id();
   if (extension_id != TaskTraitsExtensionStorage::kInvalidExtensionId) {
     TaskExecutor* executor = (*GetTaskExecutorMap())[extension_id - 1];
-    DCHECK(executor);
+    DCHECK(executor)
+        << "A TaskExecutor wasn't yet registered for this extension.\nHint: if "
+           "this is in a unit test, you're likely missing a "
+           "content::BrowserTaskEnvironment member in your fixture.";
     return executor;
   }
 
   return nullptr;
 }
-
-TaskExecutor::~TaskExecutor() {}
 
 }  // namespace base

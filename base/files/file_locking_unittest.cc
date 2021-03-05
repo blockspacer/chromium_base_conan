@@ -6,14 +6,13 @@
 #include "base/files/file.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/macros.h"
 #include "base/test/multiprocess_test.h"
 #include "base/test/test_timeouts.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/multiprocess_func_list.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/multiprocess_func_list.h"
 
 using base::File;
 using base::FilePath;
@@ -133,6 +132,8 @@ MULTIPROCESS_TEST_MAIN(ChildMain) {
 class FileLockingTest : public testing::Test {
  public:
   FileLockingTest() = default;
+  FileLockingTest(const FileLockingTest&) = delete;
+  FileLockingTest& operator=(const FileLockingTest&) = delete;
 
  protected:
   void SetUp() override {
@@ -193,9 +194,6 @@ class FileLockingTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
   base::File lock_file_;
   base::Process lock_child_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(FileLockingTest);
 };
 
 // Test that locks are released by Unlock().

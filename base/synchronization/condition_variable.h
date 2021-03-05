@@ -58,9 +58,6 @@
 // thread that has Wait()ed the longest is selected. The default policy
 // may improve performance, as the selected thread may have a greater chance of
 // having some of its stack data in various CPU caches.
-//
-// For a discussion of the many very subtle implementation details, see the FAQ
-// at the end of condition_variable_win.cc.
 
 #ifndef BASE_SYNCHRONIZATION_CONDITION_VARIABLE_H_
 #define BASE_SYNCHRONIZATION_CONDITION_VARIABLE_H_
@@ -70,7 +67,8 @@
 #endif
 
 #include "base/base_export.h"
-#include "base/logging.h"
+#include "base/check_op.h"
+#include "base/compiler_specific.h"
 #include "base/macros.h"
 #include "base/synchronization/lock.h"
 #include "build/build_config.h"
@@ -93,8 +91,8 @@ class BASE_EXPORT ConditionVariable {
   // Wait() releases the caller's critical section atomically as it starts to
   // sleep, and the reacquires it when it is signaled. The wait functions are
   // susceptible to spurious wakeups. (See usage note 1 for more details.)
-  void Wait();
-  void TimedWait(const TimeDelta& max_time);
+  void NOT_TAIL_CALLED Wait();
+  void NOT_TAIL_CALLED TimedWait(const TimeDelta& max_time);
 
   // Broadcast() revives all waiting threads. (See usage note 2 for more
   // details.)

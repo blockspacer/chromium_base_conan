@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 
 #include <utility>
 
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
 #include "base/threading/platform_thread.h"
@@ -173,13 +173,11 @@ void TimerBase::PostNewScheduledTask(TimeDelta delay) {
   if (delay > TimeDelta::FromMicroseconds(0)) {
     // TODO(gab): Posting BaseTimerTaskInternal::Run to another sequence makes
     // this code racy. https://crbug.com/587199
-    DCHECK(GetTaskRunner());
     GetTaskRunner()->PostDelayedTask(
         posted_from_,
         BindOnce(&BaseTimerTaskInternal::Run, Owned(scheduled_task_)), delay);
     scheduled_run_time_ = desired_run_time_ = Now() + delay;
   } else {
-    DCHECK(GetTaskRunner());
     GetTaskRunner()->PostTask(
         posted_from_,
         BindOnce(&BaseTimerTaskInternal::Run, Owned(scheduled_task_)));
@@ -286,21 +284,12 @@ RepeatingTimer::RepeatingTimer(const Location& posted_from,
 void RepeatingTimer::Start(const Location& posted_from,
                            TimeDelta delay,
                            RepeatingClosure user_task) {
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  printf("RepeatingTimer::Start not supported on ST WASM");
-  DCHECK(false);
-  NOTIMPLEMENTED();
-  NOTREACHED();
-#endif
   user_task_ = std::move(user_task);
   StartInternal(posted_from, delay);
 }
 
 void RepeatingTimer::OnStop() {}
 void RepeatingTimer::RunUserTask() {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-  #warning "TODO: port timers, see https://github.com/trevorlinton/webkit.js/blob/master/src/WebCoreSupport/AcceleratedContext.cpp#L155"
-#endif
   // Make a local copy of the task to run in case the task destroy the timer
   // instance.
   RepeatingClosure task = user_task_;

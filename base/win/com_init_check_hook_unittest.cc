@@ -12,7 +12,7 @@
 #include "base/win/com_init_util.h"
 #include "base/win/patch_util.h"
 #include "base/win/scoped_com_initializer.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace win {
@@ -72,7 +72,8 @@ TEST(ComInitCheckHook, UnexpectedHook) {
 
   uint32_t co_create_instance_padded_address =
       reinterpret_cast<uint32_t>(
-          GetProcAddress(ole32_library, "CoCreateInstance")) - 5;
+          GetProcAddress(ole32_library, "CoCreateInstance")) -
+      5;
   const unsigned char* co_create_instance_bytes =
       reinterpret_cast<const unsigned char*>(co_create_instance_padded_address);
   const unsigned char original_byte = co_create_instance_bytes[0];

@@ -12,14 +12,6 @@
 #include "base/macros.h"
 #include "base/strings/string_piece.h"
 
-// BEFORE
-//
-// hello?world
-//
-// AFTER
-//
-// aGVsbG8_d29ybGQ
-//
 namespace base {
 
 enum class Base64UrlEncodePolicy {

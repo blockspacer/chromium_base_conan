@@ -14,15 +14,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
-
-#if UCONFIG_NO_BREAK_ITERATION
-#error "found icu with UCONFIG_NO_BREAK_ITERATION"
-#endif // UCONFIG_NO_BREAK_ITERATION
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace i18n {

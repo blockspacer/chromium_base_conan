@@ -7,6 +7,7 @@
 #include "base/bind.h"
 #include "base/process/process_iterator.h"
 #include "base/task/post_task.h"
+#include "base/task/thread_pool.h"
 #include "base/time/time.h"
 
 namespace base {
@@ -40,7 +41,7 @@ void EnsureProcessTerminated(Process process) {
   if (process.WaitForExitWithTimeout(TimeDelta(), nullptr))
     return;
 
-  PostDelayedTaskWithTraits(
+  ThreadPool::PostDelayedTask(
       FROM_HERE,
       {TaskPriority::BEST_EFFORT, TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
       BindOnce(

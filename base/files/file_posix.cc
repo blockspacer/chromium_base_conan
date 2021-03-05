@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,15 +7,16 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
-#include "base/logging.h"
+#include "base/check_op.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/notreached.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 
 #if defined(OS_ANDROID)
 #include "base/os_compat_android.h"
@@ -29,19 +30,6 @@ static_assert(File::FROM_BEGIN == SEEK_SET && File::FROM_CURRENT == SEEK_CUR &&
               "whence mapping must match the system headers");
 
 namespace {
-
-#if defined(OS_BSD) || defined(OS_MACOSX) || defined(OS_NACL) || \
-  defined(OS_FUCHSIA) || (defined(OS_ANDROID) && __ANDROID_API__ < 21)
-int CallFstat(int fd, stat_wrapper_t *sb) {
-  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
-  return fstat(fd, sb);
-}
-#else
-int CallFstat(int fd, stat_wrapper_t *sb) {
-  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
-  return fstat64(fd, sb);
-}
-#endif
 
 // NaCl doesn't provide the following system calls, so either simulate them or
 // wrap them in order to minimize the number of #ifdef's in this file.
@@ -130,7 +118,14 @@ void File::Info::FromStat(const stat_wrapper_t& stat_info) {
   is_symbolic_link = S_ISLNK(stat_info.st_mode);
   size = stat_info.st_size;
 
-#if defined(OS_LINUX)
+  // Get last modification time, last access time, and creation time from
+  // |stat_info|.
+  // Note: st_ctime is actually last status change time when the inode was last
+  // updated, which happens on any metadata change. It is not the file's
+  // creation time. However, other than on Mac & iOS where the actual file
+  // creation time is included as st_birthtime, the rest of POSIX platforms have
+  // no portable way to get the creation time.
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_FUCHSIA)
   time_t last_modified_sec = stat_info.st_mtim.tv_sec;
   int64_t last_modified_nsec = stat_info.st_mtim.tv_nsec;
   time_t last_accessed_sec = stat_info.st_atim.tv_sec;
@@ -144,7 +139,14 @@ void File::Info::FromStat(const stat_wrapper_t& stat_info) {
   int64_t last_accessed_nsec = stat_info.st_atime_nsec;
   time_t creation_time_sec = stat_info.st_ctime;
   int64_t creation_time_nsec = stat_info.st_ctime_nsec;
-#elif defined(OS_MACOSX) || defined(OS_IOS) || defined(OS_BSD)
+#elif defined(OS_APPLE)
+  time_t last_modified_sec = stat_info.st_mtimespec.tv_sec;
+  int64_t last_modified_nsec = stat_info.st_mtimespec.tv_nsec;
+  time_t last_accessed_sec = stat_info.st_atimespec.tv_sec;
+  int64_t last_accessed_nsec = stat_info.st_atimespec.tv_nsec;
+  time_t creation_time_sec = stat_info.st_birthtimespec.tv_sec;
+  int64_t creation_time_nsec = stat_info.st_birthtimespec.tv_nsec;
+#elif defined(OS_BSD)
   time_t last_modified_sec = stat_info.st_mtimespec.tv_sec;
   int64_t last_modified_nsec = stat_info.st_mtimespec.tv_nsec;
   time_t last_accessed_sec = stat_info.st_atimespec.tv_sec;
@@ -203,12 +205,7 @@ int64_t File::Seek(Whence whence, int64_t offset) {
 
   SCOPED_FILE_TRACE_WITH_SIZE("Seek", offset);
 
-#if defined(OS_EMSCRIPTEN)
-  #warning "off_t must be 64 bits"
-  // https://github.com/mmicko/VeriEMU/blob/master/src/osd/modules/file/posixfile.cpp#L139
-  return lseek(file_.get(), static_cast<off_t>(offset),
-               static_cast<int>(whence));
-#elif defined(OS_ANDROID)
+#if defined(OS_ANDROID)
   static_assert(sizeof(int64_t) == sizeof(off64_t), "off64_t must be 64 bits");
   return lseek64(file_.get(), static_cast<off64_t>(offset),
                  static_cast<int>(whence));
@@ -352,7 +349,7 @@ int64_t File::GetLength() {
   SCOPED_FILE_TRACE("GetLength");
 
   stat_wrapper_t file_info;
-  if (CallFstat(file_.get(), &file_info))
+  if (Fstat(file_.get(), &file_info))
     return -1;
 
   return file_info.st_size;
@@ -385,7 +382,7 @@ bool File::GetInfo(Info* info) {
   SCOPED_FILE_TRACE("GetInfo");
 
   stat_wrapper_t file_info;
-  if (CallFstat(file_.get(), &file_info))
+  if (Fstat(file_.get(), &file_info))
     return false;
 
   info->FromStat(file_info);
@@ -410,11 +407,11 @@ File File::Duplicate() const {
 
   SCOPED_FILE_TRACE("Duplicate");
 
-  PlatformFile other_fd = HANDLE_EINTR(dup(GetPlatformFile()));
-  if (other_fd == -1)
+  ScopedPlatformFile other_fd(HANDLE_EINTR(dup(GetPlatformFile())));
+  if (!other_fd.is_valid())
     return File(File::GetLastFileError());
 
-  return File(other_fd, async());
+  return File(std::move(other_fd), async());
 }
 
 // Static.
@@ -459,7 +456,6 @@ File::Error File::OSErrorToFileError(int saved_errno) {
 #if !defined(OS_NACL)
 // TODO(erikkay): does it make sense to support FLAG_EXCLUSIVE_* here?
 void File::DoInitialize(const FilePath& path, uint32_t flags) {
-    P_LOG("File::DoInitialize %s\n", path.value().c_str());
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   DCHECK(!IsValid());
 
@@ -510,11 +506,10 @@ void File::DoInitialize(const FilePath& path, uint32_t flags) {
   static_assert(O_RDONLY == 0, "O_RDONLY must equal zero");
 
   int mode = S_IRUSR | S_IWUSR;
-#if defined(OS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
   mode |= S_IRGRP | S_IROTH;
 #endif
 
-  P_LOG("File::DoInitialize 2 %s\n", path.value().c_str());
   int descriptor = HANDLE_EINTR(open(path.value().c_str(), open_flags, mode));
 
   if (flags & FLAG_OPEN_ALWAYS) {
@@ -554,9 +549,10 @@ bool File::Flush() {
 #if defined(OS_NACL)
   NOTIMPLEMENTED();  // NaCl doesn't implement fsync.
   return true;
-#elif defined(OS_LINUX) || defined(OS_ANDROID)
+#elif defined(OS_ANDROID) || defined(OS_CHROMEOS) || defined(OS_FUCHSIA) || \
+    defined(OS_LINUX)
   return !HANDLE_EINTR(fdatasync(file_.get()));
-#elif defined(OS_MACOSX) || defined(OS_IOS)
+#elif defined(OS_APPLE)
   // On macOS and iOS, fsync() is guaranteed to send the file's data to the
   // underlying storage device, but may return before the device actually writes
   // the data to the medium. When used by database systems, this may result in
@@ -587,5 +583,34 @@ void File::SetPlatformFile(PlatformFile file) {
 File::Error File::GetLastFileError() {
   return base::File::OSErrorToFileError(errno);
 }
+
+#if defined(OS_BSD) || defined(OS_APPLE) || defined(OS_NACL) || \
+    defined(OS_FUCHSIA) || (defined(OS_ANDROID) && __ANDROID_API__ < 21)
+int File::Stat(const char* path, stat_wrapper_t* sb) {
+  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+  return stat(path, sb);
+}
+int File::Fstat(int fd, stat_wrapper_t* sb) {
+  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+  return fstat(fd, sb);
+}
+int File::Lstat(const char* path, stat_wrapper_t* sb) {
+  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+  return lstat(path, sb);
+}
+#else
+int File::Stat(const char* path, stat_wrapper_t* sb) {
+  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+  return stat64(path, sb);
+}
+int File::Fstat(int fd, stat_wrapper_t* sb) {
+  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+  return fstat64(fd, sb);
+}
+int File::Lstat(const char* path, stat_wrapper_t* sb) {
+  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+  return lstat64(path, sb);
+}
+#endif
 
 }  // namespace base

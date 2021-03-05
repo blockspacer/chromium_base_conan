@@ -4,10 +4,10 @@
 
 #include "base/build_time.h"
 
-// Imports the generated build date, i.e. BASE_BUILD_DATE.
+// Imports the generated build date, i.e. BUILD_DATE.
 #include "base/generated_build_date.h"
 
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/time/time.h"
 
 namespace base {
@@ -15,9 +15,9 @@ namespace base {
 Time GetBuildTime() {
   Time integral_build_time;
   // BUILD_DATE is exactly "Mmm DD YYYY HH:MM:SS".
-  // See //build/write_build_date_header.py. "HH:MM:SS" is normally expected to
-  // be "05:00:00" but is not enforced here.
-  bool result = Time::FromUTCString(BASE_BUILD_DATE, &integral_build_time);
+  // See //build/write_build_date_header.py. "HH:MM:SS" is expected to
+  // be "05:00:00" in non-official builds but is not enforced here.
+  bool result = Time::FromUTCString(BUILD_DATE, &integral_build_time);
   DCHECK(result);
   return integral_build_time;
 }

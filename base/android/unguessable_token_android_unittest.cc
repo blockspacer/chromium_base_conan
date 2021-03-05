@@ -5,7 +5,7 @@
 #include "base/android/unguessable_token_android.h"
 
 #include "base/android/jni_android.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace android {

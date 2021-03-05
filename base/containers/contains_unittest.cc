@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tests_common.hpp"
-
 #include "base/containers/contains.h"
 
 #include <set>
@@ -13,6 +11,8 @@
 #include "base/functional/identity.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -27,20 +27,12 @@ TEST(ContainsTest, GenericContains) {
   static_assert(Contains(allowed_chars_including_nul, 0), "");
 }
 
-// ASCII-specific tolower.  The standard library's tolower is locale sensitive,
-// so we don't want to use it here.
-template <typename CharT,
-          typename = std::enable_if_t<std::is_integral<CharT>::value>>
-CharT lowerASCII(CharT c) {
-  return (c >= 'A' && c <= 'Z') ? (c + ('a' - 'A')) : c;
-}
-
 TEST(ContainsTest, GenericContainsWithProjection) {
   const char allowed_chars[] = {'A', 'B', 'C', 'D'};
 
-  EXPECT_TRUE(Contains(allowed_chars, 'a', &lowerASCII<char>));
-  EXPECT_FALSE(Contains(allowed_chars, 'z', &lowerASCII<char>));
-  EXPECT_FALSE(Contains(allowed_chars, 0, &lowerASCII<char>));
+  EXPECT_TRUE(Contains(allowed_chars, 'a', &ToLowerASCII<char>));
+  EXPECT_FALSE(Contains(allowed_chars, 'z', &ToLowerASCII<char>));
+  EXPECT_FALSE(Contains(allowed_chars, 0, &ToLowerASCII<char>));
 }
 
 TEST(ContainsTest, GenericSetContainsWithProjection) {

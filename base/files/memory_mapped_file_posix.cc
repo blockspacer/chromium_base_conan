@@ -66,9 +66,6 @@ bool MemoryMappedFile::MapFileRegionToMemory(
     length_ = region.size;
   }
 
-  DCHECK(length()>0);
-  DCHECK(length_>0);
-
   int flags = 0;
   switch (access) {
     case READ_ONLY:
@@ -88,23 +85,14 @@ bool MemoryMappedFile::MapFileRegionToMemory(
       break;
   }
 
-  DCHECK(file_.GetPlatformFile() != base::kInvalidPlatformFile);
-
   data_ = static_cast<uint8_t*>(mmap(nullptr, map_size, flags, MAP_SHARED,
                                      file_.GetPlatformFile(), map_start));
-
   if (data_ == MAP_FAILED) {
     DPLOG(ERROR) << "mmap " << file_.GetPlatformFile();
     return false;
   }
 
   data_ += data_offset;
-
-  DCHECK(data_);
-  DCHECK(length()>0);
-  DCHECK(data());
-  DCHECK(IsValid());
-
   return true;
 }
 #endif

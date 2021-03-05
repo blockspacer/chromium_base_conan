@@ -4,13 +4,17 @@
 
 #include "base/profiler/native_unwinder_win.h"
 
+#include <winnt.h>
+
+#include "base/check_op.h"
+#include "base/notreached.h"
 #include "base/profiler/native_unwinder.h"
 #include "base/profiler/win32_stack_frame_unwinder.h"
 
 namespace base {
 
-bool NativeUnwinderWin::CanUnwindFrom(const Frame* current_frame) const {
-  return current_frame->module && current_frame->module->IsNative();
+bool NativeUnwinderWin::CanUnwindFrom(const Frame& current_frame) const {
+  return current_frame.module && current_frame.module->IsNative();
 }
 
 // Attempts to unwind the frame represented by the context values. If
@@ -18,7 +22,6 @@ bool NativeUnwinderWin::CanUnwindFrom(const Frame* current_frame) const {
 // returns false.
 UnwindResult NativeUnwinderWin::TryUnwind(RegisterContext* thread_context,
                                           uintptr_t stack_top,
-                                          ModuleCache* module_cache,
                                           std::vector<Frame>* stack) const {
   // We expect the frame correponding to the |thread_context| register state to
   // exist within |stack|.
@@ -49,8 +52,7 @@ UnwindResult NativeUnwinderWin::TryUnwind(RegisterContext* thread_context,
       return UnwindResult::UNRECOGNIZED_FRAME;
     }
 
-    const uintptr_t prev_stack_pointer =
-        RegisterContextStackPointer(thread_context);
+    uintptr_t prev_stack_pointer = RegisterContextStackPointer(thread_context);
     if (!frame_unwinder.TryUnwind(stack->size() == 1u, thread_context,
                                   stack->back().module)) {
       return UnwindResult::ABORTED;
@@ -59,16 +61,31 @@ UnwindResult NativeUnwinderWin::TryUnwind(RegisterContext* thread_context,
     if (ContextPC(thread_context) == 0)
       return UnwindResult::COMPLETED;
 
+    // Exclusive range of expected stack pointer values after the unwind.
+    struct {
+      uintptr_t start;
+      uintptr_t end;
+    } expected_stack_pointer_range = {prev_stack_pointer, stack_top};
+
     // Abort if the unwind produced an invalid stack pointer.
-    if (RegisterContextStackPointer(thread_context) <= prev_stack_pointer ||
-        RegisterContextStackPointer(thread_context) >= stack_top) {
+#if defined(ARCH_CPU_ARM64)
+    // Leaf frames on Arm can re-use the stack pointer, so they can validly have
+    // the same stack pointer as the previous frame.
+    if (stack->size() == 1u) {
+      expected_stack_pointer_range.start--;
+    }
+#endif
+    if (RegisterContextStackPointer(thread_context) <=
+            expected_stack_pointer_range.start ||
+        RegisterContextStackPointer(thread_context) >=
+            expected_stack_pointer_range.end) {
       return UnwindResult::ABORTED;
     }
 
     // Record the frame to which we just unwound.
     stack->emplace_back(
         ContextPC(thread_context),
-        module_cache->GetModuleForAddress(ContextPC(thread_context)));
+        module_cache()->GetModuleForAddress(ContextPC(thread_context)));
   }
 
   NOTREACHED();

@@ -11,6 +11,8 @@
 #include "base/files/file_util.h"
 #include "base/logging.h"
 #include "base/mac/scoped_cftyperef.h"
+#include "base/strings/strcat.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/thread_restrictions.h"
@@ -23,7 +25,7 @@ static NativeLibraryObjCStatus GetObjCStatusForImage(
   if (!dladdr(function_pointer, &info))
     return OBJC_UNKNOWN;
 
-  // See if the the image contains an "ObjC image info" segment. This method
+  // See if the image contains an "ObjC image info" segment. This method
   // of testing is used in _CFBundleGrokObjcImageInfoFromFile in
   // CF-744/CFBundle.c, around lines 2447-2474.
   //
@@ -117,12 +119,12 @@ void* GetFunctionPointerFromNativeLibrary(NativeLibrary library,
 
 std::string GetNativeLibraryName(StringPiece name) {
   DCHECK(IsStringASCII(name));
-  return "lib" + name.as_string() + ".dylib";
+  return StrCat({"lib", name, ".dylib"});
 }
 
 std::string GetLoadableModuleName(StringPiece name) {
   DCHECK(IsStringASCII(name));
-  return name.as_string() + ".so";
+  return StrCat({name, ".so"});
 }
 
 }  // namespace base

@@ -20,11 +20,7 @@ bool AdjustOOMScore(ProcessId process, int score) {
 }
 
 void TerminateBecauseOutOfMemory(size_t size) {
-#if defined(OS_EMSCRIPTEN)
-  printf("ERROR: base::TerminateBecauseOutOfMemory\n");
-#else
   abort();
-#endif
 }
 
 // UncheckedMalloc and Calloc exist so that platforms making use of

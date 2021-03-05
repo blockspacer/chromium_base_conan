@@ -5,14 +5,14 @@
 #include "base/synchronization/atomic_flag.h"
 
 #include "base/bind.h"
-#include "base/logging.h"
+#include "base/check_op.h"
 #include "base/single_thread_task_runner.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/test/gtest_util.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/thread.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

@@ -4,7 +4,7 @@
 
 #include "base/strings/string_tokenizer.h"
 
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 using std::string;
 
@@ -371,6 +371,36 @@ TEST(StringTokenizerTest, ParseQuotedString_EscapedQuotes) {
 TEST(StringTokenizerTest, ParseQuotedString_EscapedQuotes2) {
   string input = "foo='a, b', bar";
   StringTokenizer t(input, ", ");
+  t.set_quote_chars("'");
+
+  EXPECT_TRUE(t.GetNext());
+  EXPECT_EQ("foo='a, b'", t.token());
+
+  EXPECT_TRUE(t.GetNext());
+  EXPECT_EQ("bar", t.token());
+
+  EXPECT_FALSE(t.GetNext());
+}
+
+TEST(StringTokenizerTest, ParseWithWhitespace_NoQuotes) {
+  string input = "\t\t\t     foo=a,\r\n b,\r\n\t\t\t      bar\t ";
+  StringTokenizer t(input, ",", StringTokenizer::WhitespacePolicy::kSkipOver);
+
+  EXPECT_TRUE(t.GetNext());
+  EXPECT_EQ("foo=a", t.token());
+
+  EXPECT_TRUE(t.GetNext());
+  EXPECT_EQ("b", t.token());
+
+  EXPECT_TRUE(t.GetNext());
+  EXPECT_EQ("bar", t.token());
+
+  EXPECT_FALSE(t.GetNext());
+}
+
+TEST(StringTokenizerTest, ParseWithWhitespace_Quotes) {
+  string input = "\t\t\t     foo='a, b',\t\t\t      bar\t ";
+  StringTokenizer t(input, ",", StringTokenizer::WhitespacePolicy::kSkipOver);
   t.set_quote_chars("'");
 
   EXPECT_TRUE(t.GetNext());

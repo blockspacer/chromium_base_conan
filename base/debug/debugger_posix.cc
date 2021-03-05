@@ -17,9 +17,11 @@
 #include <memory>
 #include <vector>
 
-#include "base/clang_coverage_buildflags.h"
+#include "base/check_op.h"
+#include "base/clang_profiling_buildflags.h"
+#include "base/notreached.h"
 #include "base/stl_util.h"
-#include "base/test/clang_coverage.h"
+#include "base/strings/string_util.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
@@ -28,11 +30,11 @@
 #include <cxxabi.h>
 #endif
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 #include <AvailabilityMacros.h>
 #endif
 
-#if defined(OS_MACOSX) || defined(OS_BSD)
+#if defined(OS_APPLE) || defined(OS_BSD)
 #include <sys/sysctl.h>
 #endif
 
@@ -40,30 +42,35 @@
 #include <sys/user.h>
 #endif
 
+#if defined(OS_FUCHSIA)
+#include <zircon/process.h>
+#include <zircon/syscalls.h>
+#endif
+
 #include <ostream>
 
+#include "base/check.h"
 #include "base/debug/alias.h"
 #include "base/debug/debugging_buildflags.h"
 #include "base/environment.h"
 #include "base/files/file_util.h"
-#include "base/logging.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/process/process.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
 
-#if defined(USE_SYMBOLIZE)
-#include "base/third_party/symbolize/symbolize.h"
+#if BUILDFLAG(CLANG_PROFILING)
+#include "base/test/clang_profiling.h"
 #endif
 
-#if defined(OS_EMSCRIPTEN)
-#include <emscripten.h>
+#if defined(USE_SYMBOLIZE)
+#include "base/third_party/symbolize/symbolize.h"
 #endif
 
 namespace base {
 namespace debug {
 
-#if defined(OS_MACOSX) || defined(OS_BSD)
+#if defined(OS_APPLE) || defined(OS_BSD)
 
 // Based on Apple's recommended method as described in
 // http://developer.apple.com/qa/qa2004/qa1361.html
@@ -129,9 +136,25 @@ bool BeingDebugged() {
   return being_debugged;
 }
 
-void VerifyDebugger() {}
+void VerifyDebugger() {
+#if BUILDFLAG(ENABLE_LLDBINIT_WARNING)
+  if (Environment::Create()->HasVar("CHROMIUM_LLDBINIT_SOURCED"))
+    return;
+  if (!BeingDebugged())
+    return;
+  DCHECK(false)
+      << "Detected lldb without sourcing //tools/lldb/lldbinit.py. lldb may "
+         "not be able to find debug symbols. Please see debug instructions for "
+         "using //tools/lldb/lldbinit.py:\n"
+         "https://chromium.googlesource.com/chromium/src/+/master/docs/"
+         "lldbinit.md\n"
+         "To continue anyway, type 'continue' in lldb. To always skip this "
+         "check, define an environment variable CHROMIUM_LLDBINIT_SOURCED=1";
+#endif
+}
 
-#elif defined(OS_LINUX) || defined(OS_ANDROID) || defined(OS_AIX)
+#elif defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_ANDROID) || \
+    defined(OS_AIX)
 
 // We can look in /proc/self/status for TracerPid.  We are likely used in crash
 // handling, so we are careful not to use the heap or have side effects.
@@ -183,13 +206,8 @@ bool BeingDebugged() {
 
 void VerifyDebugger() {
 #if BUILDFLAG(ENABLE_GDBINIT_WARNING)
-
-#if defined(OS_EMSCRIPTEN)
-#error "EMSCRIPTEN can`t support ENABLE_GDBINIT_WARNING"
-#endif
-
   // Quick check before potentially slower GetDebuggerProcess().
-  if (Environment::Create()->HasVar("BASE_GDBINIT_SOURCED"))
+  if (Environment::Create()->HasVar("CHROMIUM_GDBINIT_SOURCED"))
     return;
 
   Process proc = GetDebuggerProcess();
@@ -214,15 +232,19 @@ void VerifyDebugger() {
          "https://chromium.googlesource.com/chromium/src/+/master/docs/"
          "gdbinit.md\n"
          "To continue anyway, type 'continue' in gdb.  To always skip this "
-         "check, define an environment variable BASE_GDBINIT_SOURCED=1";
+         "check, define an environment variable CHROMIUM_GDBINIT_SOURCED=1";
 #endif
 }
 
 #elif defined(OS_FUCHSIA)
 
 bool BeingDebugged() {
-  // TODO(fuchsia): No gdb/gdbserver in the SDK yet.
-  return false;
+  zx_info_process_t info = {};
+  // Ignore failures. The 0-initialization above will result in "false" for
+  // error cases.
+  zx_object_get_info(zx_process_self(), ZX_INFO_PROCESS, &info, sizeof(info),
+                     nullptr, nullptr);
+  return info.debugger_attached;
 }
 
 void VerifyDebugger() {}
@@ -253,11 +275,7 @@ void VerifyDebugger() {}
 //        SIGABRT
 // Mac: Always send SIGTRAP.
 
-#if defined(OS_EMSCRIPTEN)
-// see https://github.com/google/xrtl/blob/master/xrtl/base/debugging.h#L78
-// to popup the browser debugger
-#define DEBUG_BREAK_ASM() EM_ASM({ debugger; });
-#elif defined(ARCH_CPU_ARMEL)
+#if defined(ARCH_CPU_ARMEL)
 #define DEBUG_BREAK_ASM() asm("bkpt 0")
 #elif defined(ARCH_CPU_ARM64)
 #define DEBUG_BREAK_ASM() asm("brk 0")
@@ -267,14 +285,14 @@ void VerifyDebugger() {}
 #define DEBUG_BREAK_ASM() asm("int3")
 #endif
 
-#if defined(NDEBUG) && !defined(OS_MACOSX) && !defined(OS_ANDROID)  && !defined(OS_EMSCRIPTEN)
+#if defined(NDEBUG) && !defined(OS_APPLE) && !defined(OS_ANDROID)
 #define DEBUG_BREAK() abort()
 #elif defined(OS_NACL)
 // The NaCl verifier doesn't let use use int3.  For now, we call abort().  We
 // should ask for advice from some NaCl experts about the optimum thing here.
 // http://code.google.com/p/nativeclient/issues/detail?id=645
 #define DEBUG_BREAK() abort()
-#elif !defined(OS_MACOSX)
+#elif !defined(OS_APPLE)
 // Though Android has a "helpful" process called debuggerd to catch native
 // signals on the general assumption that they are fatal errors. If no debugger
 // is attached, we call abort since Breakpad needs SIGABRT to create a dump.
@@ -310,8 +328,8 @@ void DebugBreak() {
 #endif
 
 void BreakDebugger() {
-#if BUILDFLAG(CLANG_COVERAGE)
-  WriteClangCoverageProfile();
+#if BUILDFLAG(CLANG_PROFILING)
+  WriteClangProfilingProfile();
 #endif
 
   // NOTE: This code MUST be async-signal safe (it's used by in-process
@@ -332,7 +350,13 @@ void BreakDebugger() {
   // setting the 'go' variable above.
 #elif defined(NDEBUG)
   // Terminate the program after signaling the debug break.
+  // When DEBUG_BREAK() expands to abort(), this is unreachable code. Rather
+  // than carefully tracking in which cases DEBUG_BREAK()s is noreturn, just
+  // disable the unreachable code warning here.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
   _exit(1);
+#pragma GCC diagnostic pop
 #endif
 }
 

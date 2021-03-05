@@ -46,22 +46,6 @@ public class BuildConfig {
     public static MAYBE_FINAL boolean IS_CHROME_BRANDED MAYBE_FALSE;
 #endif
 
-    // Sorted list of locales that have a compressed .pak within assets.
-    // Stored as an array because AssetManager.list() is slow.
-#if defined(COMPRESSED_LOCALE_LIST)
-    public static MAYBE_FINAL String[] COMPRESSED_LOCALES = COMPRESSED_LOCALE_LIST;
-#else
-    public static MAYBE_FINAL String[] COMPRESSED_LOCALES = {};
-#endif
-
-    // Sorted list of locales that have an uncompressed .pak within assets.
-    // Stored as an array because AssetManager.list() is slow.
-#if defined(UNCOMPRESSED_LOCALE_LIST)
-    public static MAYBE_FINAL String[] UNCOMPRESSED_LOCALES = UNCOMPRESSED_LOCALE_LIST;
-#else
-    public static MAYBE_FINAL String[] UNCOMPRESSED_LOCALES = {};
-#endif
-
     // The ID of the android string resource that stores the product version.
     // This layer of indirection is necessary to make the resource dependency
     // optional for android_apk targets/base_java (ex. for cronet).
@@ -83,5 +67,29 @@ public class BuildConfig {
     public static MAYBE_FINAL int MIN_SDK_VERSION = _MIN_SDK_VERSION;
 #else
     public static MAYBE_FINAL int MIN_SDK_VERSION = 1;
+#endif
+
+#if defined(_BUNDLES_SUPPORTED)
+    public static MAYBE_FINAL boolean BUNDLES_SUPPORTED = true;
+#else
+    public static MAYBE_FINAL boolean BUNDLES_SUPPORTED MAYBE_FALSE;
+#endif
+
+#if defined(_IS_INCREMENTAL_INSTALL)
+    public static MAYBE_FINAL boolean IS_INCREMENTAL_INSTALL = true;
+#else
+    public static MAYBE_FINAL boolean IS_INCREMENTAL_INSTALL MAYBE_FALSE;
+#endif
+
+#if defined(_IS_CHROMECAST_BRANDING_INTERNAL)
+    public static MAYBE_FINAL boolean IS_CHROMECAST_BRANDING_INTERNAL = true;
+#else
+    public static MAYBE_FINAL boolean IS_CHROMECAST_BRANDING_INTERNAL MAYBE_FALSE;
+#endif
+
+#if defined(_ISOLATED_SPLITS_ENABLED)
+    public static MAYBE_FINAL boolean ISOLATED_SPLITS_ENABLED = true;
+#else
+    public static MAYBE_FINAL boolean ISOLATED_SPLITS_ENABLED MAYBE_FALSE;
 #endif
 }

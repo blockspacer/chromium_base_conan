@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#pragma once
+#ifndef BASE_HASH_MD5_CONSTEXPR_INTERNAL_H_
+#define BASE_HASH_MD5_CONSTEXPR_INTERNAL_H_
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/hash/md5.h"
 
 namespace base {
@@ -321,3 +322,5 @@ constexpr uint32_t MD5Hash32Constexpr(const char* string, uint32_t length) {
 }
 
 }  // namespace base
+
+#endif  // BASE_HASH_MD5_CONSTEXPR_INTERNAL_H_

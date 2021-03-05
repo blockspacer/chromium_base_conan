@@ -4,7 +4,6 @@
 
 #include "base/files/file_path_watcher.h"
 
-#include "base/macros.h"
 #include "base/memory/ptr_util.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 
@@ -14,11 +13,13 @@ namespace {
 
 class FilePathWatcherImpl : public FilePathWatcher::PlatformDelegate {
  public:
-  FilePathWatcherImpl() {}
-  ~FilePathWatcherImpl() override {}
+  FilePathWatcherImpl() = default;
+  FilePathWatcherImpl(const FilePathWatcherImpl&) = delete;
+  FilePathWatcherImpl& operator=(const FilePathWatcherImpl&) = delete;
+  ~FilePathWatcherImpl() override = default;
 
   bool Watch(const FilePath& path,
-             bool recursive,
+             Type type,
              const FilePathWatcher::Callback& callback) override;
 
   void Cancel() override;
@@ -26,12 +27,10 @@ class FilePathWatcherImpl : public FilePathWatcher::PlatformDelegate {
  private:
   FilePathWatcher::Callback callback_;
   FilePath target_;
-
-  DISALLOW_COPY_AND_ASSIGN(FilePathWatcherImpl);
 };
 
 bool FilePathWatcherImpl::Watch(const FilePath& path,
-                                bool recursive,
+                                Type type,
                                 const FilePathWatcher::Callback& callback) {
   DCHECK(!callback.is_null());
   DCHECK(callback_.is_null());

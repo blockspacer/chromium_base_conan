@@ -7,11 +7,11 @@
 namespace base {
 
 PowerMonitorDeviceSource::PowerMonitorDeviceSource() {
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
   PlatformInit();
 #endif
 
-#if defined(OS_WIN) || defined(OS_MACOSX)
+#if defined(OS_WIN) || defined(OS_APPLE)
   // Provide the correct battery status if possible. Others platforms, such as
   // Android and ChromeOS, will update their status once their backends are
   // actually initialized.
@@ -20,14 +20,9 @@ PowerMonitorDeviceSource::PowerMonitorDeviceSource() {
 }
 
 PowerMonitorDeviceSource::~PowerMonitorDeviceSource() {
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
   PlatformDestroy();
 #endif
 }
-
-// PowerMonitorDeviceSource does not need to take any special action to ensure
-// that it doesn't callback into PowerMonitor after this phase of shutdown has
-// completed.
-void PowerMonitorDeviceSource::Shutdown() {}
 
 }  // namespace base

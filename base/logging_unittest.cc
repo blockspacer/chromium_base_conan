@@ -19,12 +19,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_logging_settings.h"
-#include "base/test/scoped_task_environment.h"
+#include "base/test/task_environment.h"
 #include "build/build_config.h"
-#include "base/build/chromeos_buildflags.h"
+#include "build/chromeos_buildflags.h"
 
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 #if defined(OS_POSIX)
 #include <signal.h>
@@ -75,9 +75,8 @@ class LoggingTest : public testing::Test {
   }
 
  private:
-  //base::test::SingleThreadTaskEnvironment task_environment_{
-  //    base::test::SingleThreadTaskEnvironment::MainThreadType::IO};
-  base::test::ScopedTaskEnvironment scoped_task_environment_;
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::SingleThreadTaskEnvironment::MainThreadType::IO};
   ScopedLoggingSettings scoped_logging_settings_;
 };
 
@@ -93,8 +92,6 @@ class MockLogAssertHandler {
       void(const char*, int, const base::StringPiece, const base::StringPiece));
 };
 
-/// \todo affected by `--vmodule=*=9999`
-#if 0
 TEST_F(LoggingTest, BasicLogging) {
   MockLogSource mock_log_source;
   EXPECT_CALL(mock_log_source, Log())
@@ -186,7 +183,6 @@ TEST_F(LoggingTest, LoggingIsLazyBySeverity) {
   DVPLOG(1) << mock_log_source.Log();
   DVPLOG_IF(1, true) << mock_log_source.Log();
 }
-#endif
 
 TEST_F(LoggingTest, LoggingIsLazyByDestination) {
   MockLogSource mock_log_source;

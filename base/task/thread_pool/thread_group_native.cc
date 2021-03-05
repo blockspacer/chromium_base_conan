@@ -13,11 +13,13 @@
 namespace base {
 namespace internal {
 
-class ThreadGroupNative::ScopedWorkersExecutor
-    : public ThreadGroup::BaseScopedWorkersExecutor {
+class ThreadGroupNative::ScopedCommandsExecutor
+    : public ThreadGroup::BaseScopedCommandsExecutor {
  public:
-  ScopedWorkersExecutor(ThreadGroupNative* outer) : outer_(outer) {}
-  ~ScopedWorkersExecutor() {
+  explicit ScopedCommandsExecutor(ThreadGroupNative* outer) : outer_(outer) {}
+  ScopedCommandsExecutor(const ScopedCommandsExecutor&) = delete;
+  ScopedCommandsExecutor& operator=(const ScopedCommandsExecutor&) = delete;
+  ~ScopedCommandsExecutor() {
     CheckedLock::AssertNoLockHeldOnCurrentThread();
 
     for (size_t i = 0; i < num_threadpool_work_to_submit_; ++i)
@@ -33,8 +35,6 @@ class ThreadGroupNative::ScopedWorkersExecutor
  private:
   ThreadGroupNative* const outer_;
   size_t num_threadpool_work_to_submit_ = 0;
-
-  DISALLOW_COPY_AND_ASSIGN(ScopedWorkersExecutor);
 };
 
 ThreadGroupNative::ThreadGroupNative(TrackedRef<TaskTracker> task_tracker,
@@ -54,11 +54,13 @@ ThreadGroupNative::~ThreadGroupNative() {
 }
 
 void ThreadGroupNative::Start(WorkerEnvironment worker_environment) {
+  ThreadGroup::Start();
+
   worker_environment_ = worker_environment;
 
   StartImpl();
 
-  ScopedWorkersExecutor executor(this);
+  ScopedCommandsExecutor executor(this);
   CheckedAutoLock auto_lock(lock_);
   DCHECK(!started_);
   started_ = true;
@@ -66,6 +68,11 @@ void ThreadGroupNative::Start(WorkerEnvironment worker_environment) {
 }
 
 void ThreadGroupNative::JoinForTesting() {
+  {
+    CheckedAutoLock auto_lock(lock_);
+    priority_queue_.EnableFlushTaskSourcesOnDestroyForTesting();
+  }
+
   JoinImpl();
 #if DCHECK_IS_ON()
   DCHECK(!join_for_testing_returned_);
@@ -74,7 +81,7 @@ void ThreadGroupNative::JoinForTesting() {
 }
 
 void ThreadGroupNative::RunNextTaskSourceImpl() {
-  scoped_refptr<TaskSource> task_source = GetWork();
+  RegisteredTaskSource task_source = GetWork();
 
   if (task_source) {
     BindToCurrentThread();
@@ -82,80 +89,94 @@ void ThreadGroupNative::RunNextTaskSourceImpl() {
     UnbindFromCurrentThread();
 
     if (task_source) {
-      ScopedWorkersExecutor workers_executor(this);
+      ScopedCommandsExecutor workers_executor(this);
       ScopedReenqueueExecutor reenqueue_executor;
-      auto task_source_and_transaction =
-          TaskSourceAndTransaction::FromTaskSource(std::move(task_source));
+      auto transaction_with_task_source =
+          TransactionWithRegisteredTaskSource::FromTaskSource(
+              std::move(task_source));
       CheckedAutoLock auto_lock(lock_);
       ReEnqueueTaskSourceLockRequired(&workers_executor, &reenqueue_executor,
-                                      std::move(task_source_and_transaction));
+                                      std::move(transaction_with_task_source));
     }
   }
 }
 
-scoped_refptr<TaskSource> ThreadGroupNative::GetWork() {
+void ThreadGroupNative::UpdateMinAllowedPriorityLockRequired() {
+  // Tasks should yield as soon as there is work of higher priority in
+  // |priority_queue_|.
+  if (priority_queue_.IsEmpty()) {
+    max_allowed_sort_key_.store(kMaxYieldSortKey, std::memory_order_relaxed);
+  } else {
+    max_allowed_sort_key_.store({priority_queue_.PeekSortKey().priority(),
+                                 priority_queue_.PeekSortKey().worker_count()},
+                                std::memory_order_relaxed);
+  }
+}
+
+RegisteredTaskSource ThreadGroupNative::GetWork() {
+  ScopedCommandsExecutor workers_executor(this);
   CheckedAutoLock auto_lock(lock_);
   DCHECK_GT(num_pending_threadpool_work_, 0U);
   --num_pending_threadpool_work_;
-  // There can be more pending threadpool work than TaskSources in the
-  // PriorityQueue after RemoveTaskSource().
-  if (priority_queue_.IsEmpty())
-    return nullptr;
 
-  // Enforce the CanRunPolicy.
-  const TaskPriority priority = priority_queue_.PeekSortKey().priority();
-  if (!task_tracker_->CanRunPriority(priority))
-    return nullptr;
-  return priority_queue_.PopTaskSource();
+  RegisteredTaskSource task_source;
+  TaskPriority priority;
+  while (!task_source && !priority_queue_.IsEmpty()) {
+    priority = priority_queue_.PeekSortKey().priority();
+    // Enforce the CanRunPolicy.
+    if (!task_tracker_->CanRunPriority(priority))
+      return nullptr;
+
+    task_source = TakeRegisteredTaskSource(&workers_executor);
+  }
+  UpdateMinAllowedPriorityLockRequired();
+  return task_source;
 }
 
-void ThreadGroupNative::UpdateSortKey(
-    TaskSourceAndTransaction task_source_and_transaction) {
-  ScopedWorkersExecutor executor(this);
-  UpdateSortKeyImpl(&executor, std::move(task_source_and_transaction));
+void ThreadGroupNative::UpdateSortKey(TaskSource::Transaction transaction) {
+  ScopedCommandsExecutor executor(this);
+  UpdateSortKeyImpl(&executor, std::move(transaction));
 }
 
 void ThreadGroupNative::PushTaskSourceAndWakeUpWorkers(
-    TaskSourceAndTransaction task_source_and_transaction) {
-  ScopedWorkersExecutor executor(this);
+    TransactionWithRegisteredTaskSource transaction_with_task_source) {
+  ScopedCommandsExecutor executor(this);
   PushTaskSourceAndWakeUpWorkersImpl(&executor,
-                                     std::move(task_source_and_transaction));
+                                     std::move(transaction_with_task_source));
 }
 
 void ThreadGroupNative::EnsureEnoughWorkersLockRequired(
-    BaseScopedWorkersExecutor* executor) {
+    BaseScopedCommandsExecutor* executor) {
   if (!started_)
     return;
   // Ensure that there is at least one pending threadpool work per TaskSource in
   // the PriorityQueue.
   const size_t desired_num_pending_threadpool_work =
-      GetNumQueuedCanRunBestEffortTaskSources() +
-      GetNumQueuedCanRunForegroundTaskSources();
+      GetNumAdditionalWorkersForBestEffortTaskSourcesLockRequired() +
+      GetNumAdditionalWorkersForForegroundTaskSourcesLockRequired();
 
   if (desired_num_pending_threadpool_work > num_pending_threadpool_work_) {
-    static_cast<ScopedWorkersExecutor*>(executor)
+    static_cast<ScopedCommandsExecutor*>(executor)
         ->set_num_threadpool_work_to_submit(
             desired_num_pending_threadpool_work - num_pending_threadpool_work_);
     num_pending_threadpool_work_ = desired_num_pending_threadpool_work;
   }
+  // This function is called every time a task source is queued or re-enqueued,
+  // hence the minimum priority needs to be updated.
+  UpdateMinAllowedPriorityLockRequired();
 }
 
 size_t ThreadGroupNative::GetMaxConcurrentNonBlockedTasksDeprecated() const {
   // Native thread pools give us no control over the number of workers that are
   // active at one time. Consequently, we cannot report a true value here.
   // Instead, the values were chosen to match
-  // ThreadPool::StartWithDefaultParams.
+  // ThreadPoolInstance::StartWithDefaultParams.
   const int num_cores = SysInfo::NumberOfProcessors();
   return std::max(3, num_cores - 1);
 }
 
-void ThreadGroupNative::ReportHeartbeatMetrics() const {
-  // Native thread pools do not provide the capability to determine the
-  // number of worker threads created.
-}
-
 void ThreadGroupNative::DidUpdateCanRunPolicy() {
-  ScopedWorkersExecutor executor(this);
+  ScopedCommandsExecutor executor(this);
   CheckedAutoLock auto_lock(lock_);
   EnsureEnoughWorkersLockRequired(&executor);
 }

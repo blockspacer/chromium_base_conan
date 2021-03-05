@@ -6,11 +6,14 @@
 #define BASE_OBSERVER_LIST_INTERNAL_H_
 
 #include "base/base_export.h"
+#include "base/check_op.h"
 #include "base/containers/linked_list.h"
-#include "base/logging.h"
-#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list_types.h"
+
+#if DCHECK_IS_ON()
+#include "base/debug/stack_trace.h"
+#endif
 
 namespace base {
 namespace internal {
@@ -20,6 +23,8 @@ class BASE_EXPORT UncheckedObserverAdapter {
  public:
   explicit UncheckedObserverAdapter(const void* observer)
       : ptr_(const_cast<void*>(observer)) {}
+  UncheckedObserverAdapter(const UncheckedObserverAdapter&) = delete;
+  UncheckedObserverAdapter& operator=(const UncheckedObserverAdapter&) = delete;
   UncheckedObserverAdapter(UncheckedObserverAdapter&& other) = default;
   UncheckedObserverAdapter& operator=(UncheckedObserverAdapter&& other) =
       default;
@@ -37,10 +42,15 @@ class BASE_EXPORT UncheckedObserverAdapter {
     return static_cast<ObserverType*>(adapter.ptr_);
   }
 
+#if DCHECK_IS_ON()
+  std::string GetCreationStackString() const { return stack_.ToString(); }
+#endif
+
  private:
   void* ptr_;
-
-  DISALLOW_COPY_AND_ASSIGN(UncheckedObserverAdapter);
+#if DCHECK_IS_ON()
+  base::debug::StackTrace stack_;
+#endif
 };
 
 // Adapter for CheckedObserver types so that they can use the same syntax as a
@@ -56,6 +66,8 @@ class BASE_EXPORT CheckedObserverAdapter {
   // types.
   CheckedObserverAdapter(CheckedObserverAdapter&& other);
   CheckedObserverAdapter& operator=(CheckedObserverAdapter&& other);
+  CheckedObserverAdapter(const CheckedObserverAdapter&) = delete;
+  CheckedObserverAdapter& operator=(const CheckedObserverAdapter&) = delete;
   ~CheckedObserverAdapter();
 
   void MarkForRemoval() {
@@ -90,10 +102,15 @@ class BASE_EXPORT CheckedObserverAdapter {
     return static_cast<ObserverType*>(adapter.weak_ptr_.get());
   }
 
+#if DCHECK_IS_ON()
+  std::string GetCreationStackString() const { return stack_.ToString(); }
+#endif
+
  private:
   WeakPtr<CheckedObserver> weak_ptr_;
-
-  DISALLOW_COPY_AND_ASSIGN(CheckedObserverAdapter);
+#if DCHECK_IS_ON()
+  base::debug::StackTrace stack_;
+#endif
 };
 
 // Wraps a pointer in a stack-allocated, base::LinkNode. The node is
@@ -106,6 +123,8 @@ class WeakLinkNode : public base::LinkNode<WeakLinkNode<ObserverList>> {
  public:
   WeakLinkNode() = default;
   explicit WeakLinkNode(ObserverList* list) { SetList(list); }
+  WeakLinkNode(const WeakLinkNode&) = delete;
+  WeakLinkNode& operator=(const WeakLinkNode&) = delete;
 
   ~WeakLinkNode() { Invalidate(); }
 
@@ -138,8 +157,6 @@ class WeakLinkNode : public base::LinkNode<WeakLinkNode<ObserverList>> {
 
  private:
   ObserverList* list_ = nullptr;
-
-  DISALLOW_COPY_AND_ASSIGN(WeakLinkNode);
 };
 
 }  // namespace internal

@@ -15,24 +15,19 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/synchronization/lock.h"
 #include "base/synchronization/waitable_event.h"
-#include "base/test/bind_test_util.h"
+#include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
-#include "base/test/scoped_task_environment.h"
+#include "base/test/task_environment.h"
 #include "base/test/test_timeouts.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/thread_checker.h"
 #include "base/time/tick_clock.h"
 #include "base/time/time.h"
-#include "base/test/simple_test_clock.h"
-#include "base/test/test_mock_time_task_runner.h"
-#include "base/time/clock.h"
-#include "base/rvalue_cast.h"
 #include "build/build_config.h"
-
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 using testing::ElementsAre;
 using testing::IsEmpty;
@@ -133,17 +128,7 @@ class HangWatcherTest : public testing::Test {
     hang_watcher_.Start();
   }
 
-  void SetUp() override {
-    message_loop_.reset(new base::MessageLoop);
-    task_runner_ = new base::TestMockTimeTaskRunner;
-    message_loop_->SetTaskRunner(task_runner_);
-  }
-
-  void TearDown() override {
-    task_runner_ = nullptr;
-    message_loop_.reset();
-    hang_watcher_.UnitializeOnMainThreadForTesting();
-  }
+  void TearDown() override { hang_watcher_.UnitializeOnMainThreadForTesting(); }
 
   HangWatcherTest(const HangWatcherTest& other) = delete;
   HangWatcherTest& operator=(const HangWatcherTest& other) = delete;
@@ -163,14 +148,8 @@ class HangWatcherTest : public testing::Test {
 
   // Used exclusively for MOCK_TIME. No tasks will be run on the environment.
   // Single threaded to avoid ThreadPool WorkerThreads registering.
-  /// \todo
-  //test::SingleThreadTaskEnvironment task_environment_{
-  //    test::TaskEnvironment::TimeSource::MOCK_TIME};
-  ::base::test::ScopedTaskEnvironment task_environment_;
-
-  std::unique_ptr<base::MessageLoop> message_loop_;
-
-  scoped_refptr<base::TestMockTimeTaskRunner> task_runner_;
+  test::SingleThreadTaskEnvironment task_environment_{
+      test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 class HangWatcherBlockingThreadTest : public HangWatcherTest {
@@ -229,10 +208,6 @@ TEST_F(
   // Register the main test thread for hang watching.
   auto unregister_thread_closure =
       HangWatcher::RegisterThread(base::HangWatcher::ThreadType::kUIThread);
-
-  /// \todo
-  // task_runner_->FastForwardBy(base::TimeDelta::FromMinutes(10));
-  // task_runner_->RunUntilIdle();
 
   {
     HangWatchScopeEnabled expires_instantly(base::TimeDelta{});
@@ -799,9 +774,7 @@ class HangWatcherPeriodicMonitoringTest : public testing::Test {
 
   // Single threaded to avoid ThreadPool WorkerThreads registering. Will run
   // delayed tasks created by the tests.
-  /// \todo
-  //test::SingleThreadTaskEnvironment task_environment_;
-  ::base::test::ScopedTaskEnvironment task_environment_;
+  test::SingleThreadTaskEnvironment task_environment_;
 
   std::unique_ptr<base::TickClock> fake_tick_clock_;
   HangWatcher hang_watcher_;

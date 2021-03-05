@@ -5,13 +5,7 @@
 #include "base/i18n/encoding_detection.h"
 
 #include "build/build_config.h"
-
-#if !defined(DISABLE_COMPACT_ENC_DET)
 #include "third_party/ced/src/compact_enc_det/compact_enc_det.h"
-#else
-#include "base/strings/string_util.h"
-#include "unicode/ucsdet.h"
-#endif // !defined(DISABLE_COMPACT_ENC_DET)
 
 // third_party/ced/src/util/encodings/encodings.h, which is included
 // by the include above, undefs UNICODE because that is a macro used
@@ -25,10 +19,6 @@
 
 namespace base {
 
-// TODO: __EMSCRIPTEN__ remove ced, replace with "unicode/ucsdet.h"
-// https://github.com/blockspacer/cobalt-clone-28052019/blob/master/src/base/i18n/encoding_detection.cc
-
-#if !defined(DISABLE_COMPACT_ENC_DET)
 bool DetectEncoding(const std::string& text, std::string* encoding) {
   int consumed_bytes;
   bool is_reliable;
@@ -47,28 +37,4 @@ bool DetectEncoding(const std::string& text, std::string* encoding) {
   *encoding = MimeEncodingName(enc);
   return true;
 }
-#else
-bool DetectEncoding(const std::string& text, std::string* encoding) {
-  if (IsStringASCII(text)) {
-    *encoding = std::string();
-    return true;
-  }
-
-  UErrorCode status = U_ZERO_ERROR;
-  UCharsetDetector* detector = ucsdet_open(&status);
-  ucsdet_setText(detector, text.data(), static_cast<int32_t>(text.length()),
-                 &status);
-  const UCharsetMatch* match = ucsdet_detect(detector, &status);
-  if (match == NULL)
-    return false;
-  const char* detected_encoding = ucsdet_getName(match, &status);
-  ucsdet_close(detector);
-
-  if (U_FAILURE(status))
-    return false;
-
-  *encoding = detected_encoding;
-  return true;
-}
-#endif // !defined(DISABLE_COMPACT_ENC_DET)
 }  // namespace base

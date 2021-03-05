@@ -25,32 +25,31 @@ class TaskTraits;
 // should be registered by calling RegisterTaskExecutor().
 class BASE_EXPORT TaskExecutor {
  public:
-  virtual ~TaskExecutor() = 0;
+  virtual ~TaskExecutor() = default;
 
   // Posts |task| with a |delay| and specific |traits|. |delay| can be zero. For
   // one off tasks that don't require a TaskRunner. Returns false if the task
   // definitely won't run because of current shutdown state.
-  virtual bool PostDelayedTaskWithTraits(const Location& from_here,
-                                         const TaskTraits& traits,
-                                         OnceClosure task,
-                                         TimeDelta delay) = 0;
+  virtual bool PostDelayedTask(const Location& from_here,
+                               const TaskTraits& traits,
+                               OnceClosure task,
+                               TimeDelta delay) = 0;
 
   // Returns a TaskRunner whose PostTask invocations result in scheduling tasks
   // using |traits|. Tasks may run in any order and in parallel.
-  virtual scoped_refptr<TaskRunner> CreateTaskRunnerWithTraits(
+  virtual scoped_refptr<TaskRunner> CreateTaskRunner(
       const TaskTraits& traits) = 0;
 
   // Returns a SequencedTaskRunner whose PostTask invocations result in
   // scheduling tasks using |traits|. Tasks run one at a time in posting order.
-  virtual scoped_refptr<SequencedTaskRunner>
-  CreateSequencedTaskRunnerWithTraits(const TaskTraits& traits) = 0;
+  virtual scoped_refptr<SequencedTaskRunner> CreateSequencedTaskRunner(
+      const TaskTraits& traits) = 0;
 
   // Returns a SingleThreadTaskRunner whose PostTask invocations result in
   // scheduling tasks using |traits|. Tasks run on a single thread in posting
   // order. If |traits| identifies an existing thread,
   // SingleThreadTaskRunnerThreadMode::SHARED must be used.
-  virtual scoped_refptr<SingleThreadTaskRunner>
-  CreateSingleThreadTaskRunnerWithTraits(
+  virtual scoped_refptr<SingleThreadTaskRunner> CreateSingleThreadTaskRunner(
       const TaskTraits& traits,
       SingleThreadTaskRunnerThreadMode thread_mode) = 0;
 
@@ -60,8 +59,7 @@ class BASE_EXPORT TaskExecutor {
   // run in the same Single-Threaded Apartment in posting order for the returned
   // SingleThreadTaskRunner. If |traits| identifies an existing thread,
   // SingleThreadTaskRunnerThreadMode::SHARED must be used.
-  virtual scoped_refptr<SingleThreadTaskRunner>
-  CreateCOMSTATaskRunnerWithTraits(
+  virtual scoped_refptr<SingleThreadTaskRunner> CreateCOMSTATaskRunner(
       const TaskTraits& traits,
       SingleThreadTaskRunnerThreadMode thread_mode) = 0;
 #endif  // defined(OS_WIN)
@@ -75,6 +73,13 @@ class BASE_EXPORT TaskExecutor {
 void BASE_EXPORT RegisterTaskExecutor(uint8_t extension_id,
                                       TaskExecutor* task_executor);
 void BASE_EXPORT UnregisterTaskExecutorForTesting(uint8_t extension_id);
+
+// Stores the provided TaskExecutor in TLS for the current thread, to be used by
+// tasks with the CurrentThread() trait.
+void BASE_EXPORT SetTaskExecutorForCurrentThread(TaskExecutor* task_executor);
+
+// Returns the task executor registered for the current thread.
+BASE_EXPORT TaskExecutor* GetTaskExecutorForCurrentThread();
 
 // Determines whether a registered TaskExecutor will handle tasks with the given
 // |traits| and, if so, returns a pointer to it. Otherwise, returns |nullptr|.

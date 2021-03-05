@@ -5,22 +5,22 @@
 #include "base/win/wrapped_window_proc.h"
 
 #include "base/atomicops.h"
-#include "base/logging.h"
+#include "base/check.h"
+#include "base/notreached.h"
 #include "base/strings/string_util.h"
 
 namespace {
 
-base::win::WinProcExceptionFilter s_exception_filter = NULL;
+base::win::WinProcExceptionFilter s_exception_filter = nullptr;
 
 HMODULE GetModuleFromWndProc(WNDPROC window_proc) {
-  HMODULE instance = NULL;
+  HMODULE instance = nullptr;
   // Converting a pointer-to-function to a void* is undefined behavior, but
   // Windows (and POSIX) APIs require it to work.
   void* address = reinterpret_cast<void*>(window_proc);
   if (!::GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-                            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                            static_cast<char*>(address),
-                            &instance)) {
+                                GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            static_cast<char*>(address), &instance)) {
     NOTREACHED();
   }
   return instance;
@@ -40,18 +40,18 @@ WinProcExceptionFilter SetWinProcExceptionFilter(
 }
 
 int CallExceptionFilter(EXCEPTION_POINTERS* info) {
-  return s_exception_filter ? s_exception_filter(info) :
-                              EXCEPTION_CONTINUE_SEARCH;
+  return s_exception_filter ? s_exception_filter(info)
+                            : EXCEPTION_CONTINUE_SEARCH;
 }
 
-BASE_EXPORT void InitializeWindowClass(const char16* class_name,
+BASE_EXPORT void InitializeWindowClass(const wchar_t* class_name,
                                        WNDPROC window_proc,
                                        UINT style,
                                        int class_extra,
                                        int window_extra,
                                        HCURSOR cursor,
                                        HBRUSH background,
-                                       const char16* menu_name,
+                                       const wchar_t* menu_name,
                                        HICON large_icon,
                                        HICON small_icon,
                                        WNDCLASSEX* class_out) {
@@ -66,12 +66,12 @@ BASE_EXPORT void InitializeWindowClass(const char16* class_name,
   class_out->hIcon = large_icon;
   class_out->hCursor = cursor;
   class_out->hbrBackground = background;
-  class_out->lpszMenuName = as_wcstr(menu_name);
-  class_out->lpszClassName = as_wcstr(class_name);
+  class_out->lpszMenuName = menu_name;
+  class_out->lpszClassName = class_name;
   class_out->hIconSm = small_icon;
 
   // Check if |window_proc| is valid.
-  DCHECK(class_out->hInstance != NULL);
+  DCHECK(class_out->hInstance != nullptr);
 }
 
 }  // namespace win

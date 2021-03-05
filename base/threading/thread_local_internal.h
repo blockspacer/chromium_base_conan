@@ -1,15 +1,15 @@
-﻿// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_THREADING_THREAD_LOCAL_INTERNAL_H_
 #define BASE_THREADING_THREAD_LOCAL_INTERNAL_H_
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-#elif DCHECK_IS_ON()
+#if DCHECK_IS_ON()
 
 #include <atomic>
 #include <memory>
+#include <ostream>
 
 #include "base/macros.h"
 #include "base/threading/thread_local_storage.h"

@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_METRICS_HISTOGRAM_PERSISTENCE_H_
-#define BASE_METRICS_HISTOGRAM_PERSISTENCE_H_
+#ifndef BASE_METRICS_PERSISTENT_HISTOGRAM_ALLOCATOR_H_
+#define BASE_METRICS_PERSISTENT_HISTOGRAM_ALLOCATOR_H_
 
 #include <map>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "base/atomicops.h"
 #include "base/base_export.h"
@@ -64,9 +66,9 @@ class BASE_EXPORT PersistentSparseHistogramDataManager {
  private:
   friend class PersistentSampleMapRecords;
 
-  // Gets the object holding records for a given sample-map id when |lock_|
-  // has already been acquired.
-  PersistentSampleMapRecords* GetSampleMapRecordsWhileLocked(uint64_t id);
+  // Gets the object holding records for a given sample-map id.
+  PersistentSampleMapRecords* GetSampleMapRecordsWhileLocked(uint64_t id)
+      EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
   // Loads sample-map records looking for those belonging to the specified
   // |load_id|. Records found for other sample-maps are held for later use
@@ -80,13 +82,12 @@ class BASE_EXPORT PersistentSparseHistogramDataManager {
   PersistentMemoryAllocator* allocator_;
 
   // Iterator within the allocator for finding sample records.
-  PersistentMemoryAllocator::Iterator record_iterator_;
+  PersistentMemoryAllocator::Iterator record_iterator_ GUARDED_BY(lock_);
 
   // Mapping of sample-map IDs to their sample records.
   std::map<uint64_t, std::unique_ptr<PersistentSampleMapRecords>>
-      sample_records_;
+      sample_records_ GUARDED_BY(lock_);
 
-  // A lock used for synchronizing changes to sample_records_.
   base::Lock lock_;
 
   DISALLOW_COPY_AND_ASSIGN(PersistentSparseHistogramDataManager);
@@ -277,9 +278,9 @@ class BASE_EXPORT PersistentHistogramAllocator {
   // is done seperately from construction for situations such as when the
   // histograms will be backed by memory provided by this very allocator.
   //
-  // IMPORTANT: Callers must update tools/metrics/histograms/histograms.xml
-  // with the following histograms:
-  //    UMA.PersistentAllocator.name.Allocs
+  // IMPORTANT: tools/metrics/histograms/histograms_xml/uma/histograms.xml must
+  // be updated with the following histograms for each |name| param:
+  //    UMA.PersistentAllocator.name.Errors
   //    UMA.PersistentAllocator.name.UsedPct
   void CreateTrackingHistograms(StringPiece name);
   void UpdateTrackingHistograms();
@@ -385,11 +386,19 @@ class BASE_EXPORT GlobalHistogramAllocator
   // Constructs a filename using a name.
   static FilePath ConstructFilePath(const FilePath& dir, StringPiece name);
 
+  // Constructs a filename using a name for an "active" file.
+  static FilePath ConstructFilePathForActiveFile(const FilePath& dir,
+                                                 StringPiece name);
+
   // Like above but with timestamp and pid for use in upload directories.
   static FilePath ConstructFilePathForUploadDir(const FilePath& dir,
                                                 StringPiece name,
                                                 base::Time stamp,
                                                 ProcessId pid);
+
+  // Override that uses the current time stamp and current process id.
+  static FilePath ConstructFilePathForUploadDir(const FilePath& dir,
+                                                StringPiece name);
 
   // Parses a filename to extract name, timestamp, and pid.
   static bool ParseFilePath(const FilePath& path,
@@ -397,37 +406,9 @@ class BASE_EXPORT GlobalHistogramAllocator
                             Time* out_stamp,
                             ProcessId* out_pid);
 
-  // Constructs a set of names in |dir| based on name that can be used for a
-  // base + active persistent memory mapped location for CreateWithActiveFile().
-  // The spare path is a file that can be pre-created and moved to be active
-  // without any startup penalty that comes from constructing the file. |name|
-  // will be used as the basename of the file inside |dir|. |out_base_path|,
-  // |out_active_path|, or |out_spare_path| may be null if not needed.
-  static void ConstructFilePaths(const FilePath& dir,
-                                 StringPiece name,
-                                 FilePath* out_base_path,
-                                 FilePath* out_active_path,
-                                 FilePath* out_spare_path);
-
-  // As above but puts the base files in a different "upload" directory. This
-  // is useful when moving all completed files into a single directory for easy
-  // upload management.
-  static void ConstructFilePathsForUploadDir(const FilePath& active_dir,
-                                             const FilePath& upload_dir,
-                                             const std::string& name,
-                                             FilePath* out_upload_path,
-                                             FilePath* out_active_path,
-                                             FilePath* out_spare_path);
-
   // Create a "spare" file that can later be made the "active" file. This
   // should be done on a background thread if possible.
   static bool CreateSpareFile(const FilePath& spare_path, size_t size);
-
-  // Same as above but uses standard names. |name| is the name of the allocator
-  // and is also used to create the correct filename.
-  static bool CreateSpareFileInDir(const FilePath& dir_path,
-                                   size_t size,
-                                   StringPiece name);
 #endif
 
   // Create a global allocator using a block of shared memory accessed
@@ -503,4 +484,4 @@ class BASE_EXPORT GlobalHistogramAllocator
 
 }  // namespace base
 
-#endif  // BASE_METRICS_HISTOGRAM_PERSISTENCE_H_
+#endif  // BASE_METRICS_PERSISTENT_HISTOGRAM_ALLOCATOR_H__

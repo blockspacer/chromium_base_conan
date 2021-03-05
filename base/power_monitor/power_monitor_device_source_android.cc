@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/base_jni_headers/PowerMonitor_jni.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/power_monitor/power_monitor_device_source.h"
 #include "base/power_monitor/power_monitor_source.h"
-#include "jni/PowerMonitor_jni.h"
 
 namespace base {
 
@@ -32,6 +32,11 @@ void JNI_PowerMonitor_OnBatteryChargingChanged(JNIEnv* env) {
 bool PowerMonitorDeviceSource::IsOnBatteryPowerImpl() {
   JNIEnv* env = base::android::AttachCurrentThread();
   return base::android::Java_PowerMonitor_isBatteryPower(env);
+}
+
+int PowerMonitorDeviceSource::GetRemainingBatteryCapacity() {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return base::android::Java_PowerMonitor_getRemainingBatteryCapacity(env);
 }
 
 }  // namespace base

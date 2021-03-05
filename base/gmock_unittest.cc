@@ -6,8 +6,8 @@
 // correctly.  It just instantiates a mock object and runs through a couple of
 // the basic mock features.
 
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 // Gmock matchers and actions that we use below.
 using testing::AnyOf;
@@ -44,10 +44,10 @@ class SampleClass {
 // Declare a mock for the class.
 class MockSampleClass : public SampleClass {
  public:
-  MOCK_METHOD0(ReturnSomething, int());
-  MOCK_CONST_METHOD0(ReturnNothingConstly, void());
-  MOCK_METHOD1(OutputParam, void(int* a));
-  MOCK_METHOD2(ReturnSecond, int(int a, int b));
+  MOCK_METHOD(int, ReturnSomething, ());
+  MOCK_METHOD(void, ReturnNothingConstly, (), (const));
+  MOCK_METHOD(void, OutputParam, (int* a));
+  MOCK_METHOD(int, ReturnSecond, (int a, int b));
 };
 
 // Create a couple of custom actions.  Custom actions can be used for adding

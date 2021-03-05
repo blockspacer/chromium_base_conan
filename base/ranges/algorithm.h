@@ -11,7 +11,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/compiler_specific.h"
 #include "base/functional/identity.h"
 #include "base/functional/invoke.h"

@@ -6,11 +6,15 @@
 
 #include <array>
 
+#include "base/check_op.h"
 #include "base/debug/activity_tracker.h"
 #include "base/debug/alias.h"
+#include "base/hash/md5.h"
 #include "base/no_destructor.h"
+#include "base/ranges/algorithm.h"
+#include "base/sys_byteorder.h"
 #include "base/threading/thread_local.h"
-#include "base/trace_event/trace_event.h"
+#include "base/trace_event/base_tracing.h"
 
 namespace base {
 
@@ -30,8 +34,19 @@ ThreadLocalPointer<PendingTask>* GetTLSForCurrentPendingTask() {
   return instance.get();
 }
 
+// Returns the TLS slot that stores scoped IPC-related data (IPC hash and/or
+// IPC interface name). IPC hash or interface name can be known before the
+// associated task object is created; store in the TLS so that this data can be
+// affixed to the associated task.
+ThreadLocalPointer<TaskAnnotator::ScopedSetIpcHash>*
+GetTLSForCurrentScopedIpcHash() {
+  static NoDestructor<ThreadLocalPointer<TaskAnnotator::ScopedSetIpcHash>>
+      instance;
+  return instance.get();
+}
+
 // Determines whether or not the given |task| is a dummy pending task that has
-// been injected by ScopedSetIpcProgramCounter solely for the purposes of
+// been injected by ScopedSetIpcHash solely for the purposes of
 // tracking IPC context.
 bool IsDummyPendingTask(const PendingTask* task) {
   if (task->sequence_num == kSentinelSequenceNum &&
@@ -49,7 +64,7 @@ const PendingTask* TaskAnnotator::CurrentTaskForThread() {
 
   // Don't return "dummy" current tasks that are only used for storing IPC
   // context.
-  if (current_task && IsDummyPendingTask(current_task))
+  if (!current_task || (current_task && IsDummyPendingTask(current_task)))
     return nullptr;
   return current_task;
 }
@@ -64,22 +79,28 @@ void TaskAnnotator::WillQueueTask(const char* trace_event_name,
   DCHECK(trace_event_name);
   DCHECK(pending_task);
   DCHECK(task_queue_name);
-  TRACE_EVENT_WITH_FLOW1(
-      TRACE_DISABLED_BY_DEFAULT("toplevel.flow"), trace_event_name,
-      TRACE_ID_MANGLE(GetTaskTraceID(*pending_task)),
-      TRACE_EVENT_FLAG_FLOW_OUT | TRACE_EVENT_FLAG_DISALLOW_POSTTASK,
-      "task_queue_name", task_queue_name);
+  TRACE_EVENT_WITH_FLOW1("toplevel.flow", trace_event_name,
+                         TRACE_ID_LOCAL(GetTaskTraceID(*pending_task)),
+                         TRACE_EVENT_FLAG_FLOW_OUT, "task_queue_name",
+                         task_queue_name);
 
   DCHECK(!pending_task->task_backtrace[0])
       << "Task backtrace was already set, task posted twice??";
   if (pending_task->task_backtrace[0])
     return;
 
+  DCHECK(!pending_task->ipc_interface_name);
+  DCHECK(!pending_task->ipc_hash);
+  auto* current_ipc_hash = GetTLSForCurrentScopedIpcHash()->Get();
+  if (current_ipc_hash) {
+    pending_task->ipc_interface_name = current_ipc_hash->GetIpcInterfaceName();
+    pending_task->ipc_hash = current_ipc_hash->GetIpcHash();
+  }
+
   const auto* parent_task = CurrentTaskForThread();
   if (!parent_task)
     return;
 
-  pending_task->ipc_program_counter = parent_task->ipc_program_counter;
   pending_task->task_backtrace[0] = parent_task->posted_from.program_counter();
   std::copy(parent_task->task_backtrace.begin(),
             parent_task->task_backtrace.end() - 1,
@@ -96,9 +117,17 @@ void TaskAnnotator::RunTask(const char* trace_event_name,
 
   debug::ScopedTaskRunActivity task_activity(*pending_task);
 
-  TRACE_EVENT_WITH_FLOW0(
-      TRACE_DISABLED_BY_DEFAULT("toplevel.flow"), trace_event_name,
-      TRACE_ID_MANGLE(GetTaskTraceID(*pending_task)), TRACE_EVENT_FLAG_FLOW_IN);
+  TRACE_EVENT(TRACE_DISABLED_BY_DEFAULT("toplevel.ipc"),
+              "TaskAnnotator::RunTask", [&](perfetto::EventContext ctx) {
+                auto* event =
+                    ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
+                event->set_chrome_task_annotator()->set_ipc_hash(
+                    pending_task->ipc_hash);
+              });
+
+  TRACE_EVENT_WITH_FLOW0("toplevel.flow", trace_event_name,
+                         TRACE_ID_LOCAL(GetTaskTraceID(*pending_task)),
+                         TRACE_EVENT_FLAG_FLOW_IN);
 
   // Before running the task, store the IPC context and the task backtrace with
   // the chain of PostTasks that resulted in this call and deliberately alias it
@@ -112,9 +141,9 @@ void TaskAnnotator::RunTask(const char* trace_event_name,
   // Store a marker to locate |task_backtrace| content easily on a memory
   // dump. The layout is as follows:
   //
-  // +------------ +----+---------+-----+-----------+--------+-------------+
-  // | Head Marker | PC | frame 0 | ... | frame N-1 | IPC PC | Tail Marker |
-  // +------------ +----+---------+-----+-----------+--------+-------------+
+  // +------------ +----+---------+-----+-----------+----------+-------------+
+  // | Head Marker | PC | frame 0 | ... | frame N-1 | IPC hash | Tail Marker |
+  // +------------ +----+---------+-----+-----------+----------+-------------+
   //
   // Markers glossary (compliments of wez):
   //      cool code,do it dude!
@@ -125,10 +154,9 @@ void TaskAnnotator::RunTask(const char* trace_event_name,
   task_backtrace.back() = reinterpret_cast<void*>(0x0d00d1d1d178119);
 
   task_backtrace[1] = pending_task->posted_from.program_counter();
-  std::copy(pending_task->task_backtrace.begin(),
-            pending_task->task_backtrace.end(), task_backtrace.begin() + 2);
+  ranges::copy(pending_task->task_backtrace, task_backtrace.begin() + 2);
   task_backtrace[kStackTaskTraceSnapshotSize - 2] =
-      pending_task->ipc_program_counter;
+      reinterpret_cast<void*>(pending_task->ipc_hash);
   debug::Alias(&task_backtrace);
 
   auto* tls = GetTLSForCurrentPendingTask();
@@ -140,6 +168,15 @@ void TaskAnnotator::RunTask(const char* trace_event_name,
   std::move(pending_task->task).Run();
 
   tls->Set(previous_pending_task);
+
+  // Stomp the markers. Otherwise they can stick around on the unused parts of
+  // stack and cause |task_backtrace| to be associated with an unrelated stack
+  // sample on this thread later in the event of a crash. Alias once again after
+  // these writes to make sure the compiler doesn't optimize them out (unused
+  // writes to a local variable).
+  task_backtrace.front() = nullptr;
+  task_backtrace.back() = nullptr;
+  debug::Alias(&task_backtrace);
 }
 
 uint64_t TaskAnnotator::GetTaskTraceID(const PendingTask& task) const {
@@ -159,32 +196,42 @@ void TaskAnnotator::ClearObserverForTesting() {
   g_task_annotator_observer = nullptr;
 }
 
-TaskAnnotator::ScopedSetIpcProgramCounter::ScopedSetIpcProgramCounter(
-    const void* program_counter) {
-  // We store the IPC context in the currently running task. If there is none
-  // then introduce a dummy task.
-  auto* tls = GetTLSForCurrentPendingTask();
-  auto* current_task = tls->Get();
-  if (!current_task) {
-    dummy_pending_task_ = std::make_unique<PendingTask>();
-    dummy_pending_task_->sequence_num = kSentinelSequenceNum;
-    current_task = dummy_pending_task_.get();
-    tls->Set(current_task);
-  }
+TaskAnnotator::ScopedSetIpcHash::ScopedSetIpcHash(uint32_t ipc_hash)
+    : ScopedSetIpcHash(ipc_hash, nullptr) {}
 
-  old_ipc_program_counter_ = current_task->ipc_program_counter;
-  current_task->ipc_program_counter = program_counter;
+TaskAnnotator::ScopedSetIpcHash::ScopedSetIpcHash(
+    const char* ipc_interface_name)
+    : ScopedSetIpcHash(0, ipc_interface_name) {}
+
+TaskAnnotator::ScopedSetIpcHash::ScopedSetIpcHash(
+    uint32_t ipc_hash,
+    const char* ipc_interface_name) {
+  TRACE_EVENT_BEGIN2("base", "ScopedSetIpcHash", "ipc_hash", ipc_hash,
+                     "ipc_interface_name", ipc_interface_name);
+  auto* tls_ipc_hash = GetTLSForCurrentScopedIpcHash();
+  auto* current_ipc_hash = tls_ipc_hash->Get();
+  old_scoped_ipc_hash_ = current_ipc_hash;
+  ipc_hash_ = ipc_hash;
+  ipc_interface_name_ = ipc_interface_name;
+  tls_ipc_hash->Set(this);
 }
 
-TaskAnnotator::ScopedSetIpcProgramCounter::~ScopedSetIpcProgramCounter() {
-  auto* tls = GetTLSForCurrentPendingTask();
-  auto* current_task = tls->Get();
-  DCHECK(current_task);
-  if (current_task == dummy_pending_task_.get()) {
-    tls->Set(nullptr);
-  } else {
-    current_task->ipc_program_counter = old_ipc_program_counter_;
-  }
+// Static
+uint32_t TaskAnnotator::ScopedSetIpcHash::MD5HashMetricName(
+    base::StringPiece name) {
+  base::MD5Digest digest;
+  base::MD5Sum(name.data(), name.size(), &digest);
+  uint32_t value;
+  DCHECK_GE(sizeof(digest.a), sizeof(value));
+  memcpy(&value, digest.a, sizeof(value));
+  return base::NetToHost32(value);
+}
+
+TaskAnnotator::ScopedSetIpcHash::~ScopedSetIpcHash() {
+  auto* tls_ipc_hash = GetTLSForCurrentScopedIpcHash();
+  DCHECK_EQ(this, tls_ipc_hash->Get());
+  tls_ipc_hash->Set(old_scoped_ipc_hash_);
+  TRACE_EVENT_END0("base", "ScopedSetIpcHash");
 }
 
 }  // namespace base

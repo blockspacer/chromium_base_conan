@@ -9,7 +9,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/flat_tree.h"
 

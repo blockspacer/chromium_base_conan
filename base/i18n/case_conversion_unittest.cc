@@ -6,12 +6,8 @@
 #include "base/i18n/rtl.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/icu_test_util.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/icu/source/i18n/unicode/usearch.h"
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
 
 namespace base {
 namespace i18n {

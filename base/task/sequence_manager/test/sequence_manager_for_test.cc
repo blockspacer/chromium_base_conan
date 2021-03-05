@@ -71,7 +71,8 @@ std::unique_ptr<SequenceManagerForTest> SequenceManagerForTest::Create(
 std::unique_ptr<SequenceManagerForTest>
 SequenceManagerForTest::CreateOnCurrentThread(
     SequenceManager::Settings settings) {
-  return Create(CreateThreadControllerImplForCurrentThread(settings.clock),
+  const auto* clock = settings.clock;
+  return Create(CreateThreadControllerImplForCurrentThread(clock),
                 std::move(settings));
 }
 
@@ -80,7 +81,7 @@ size_t SequenceManagerForTest::ActiveQueuesCount() const {
 }
 
 bool SequenceManagerForTest::HasImmediateWork() const {
-  return !main_thread_only().selector.AllEnabledWorkQueuesAreEmpty();
+  return main_thread_only().selector.GetHighestPendingPriority().has_value();
 }
 
 size_t SequenceManagerForTest::PendingTasksCount() const {

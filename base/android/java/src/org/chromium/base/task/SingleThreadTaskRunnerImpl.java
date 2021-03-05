@@ -8,7 +8,8 @@ import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.support.annotation.Nullable;
+
+import androidx.annotation.Nullable;
 
 import org.chromium.base.annotations.JNINamespace;
 
@@ -45,13 +46,10 @@ public class SingleThreadTaskRunnerImpl extends TaskRunnerImpl implements Single
 
     @Override
     public boolean belongsToCurrentThread() {
-        synchronized (mLock) {
-            if (mNativeTaskRunnerAndroid != 0)
-                return nativeBelongsToCurrentThread(mNativeTaskRunnerAndroid);
-        }
-        if (mHandler != null) return mHandler.getLooper().getThread() == Thread.currentThread();
-        assert (false);
-        return false;
+        Boolean belongs = belongsToCurrentThreadInternal();
+        if (belongs != null) return belongs.booleanValue();
+        assert mHandler != null;
+        return mHandler.getLooper().getThread() == Thread.currentThread();
     }
 
     @Override

@@ -5,7 +5,7 @@
 #include "base/test/metrics/histogram_enum_reader.h"
 
 #include "base/optional.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

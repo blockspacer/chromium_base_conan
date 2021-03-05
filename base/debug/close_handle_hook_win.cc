@@ -69,7 +69,7 @@ namespace {
 class AutoProtectMemory {
  public:
   AutoProtectMemory()
-      : changed_(false), address_(NULL), bytes_(0), old_protect_(0) {}
+      : changed_(false), address_(nullptr), bytes_(0), old_protect_(0) {}
 
   ~AutoProtectMemory() {
     RevertProtection();
@@ -122,7 +122,7 @@ void AutoProtectMemory::RevertProtection() {
 
   VirtualProtect(address_, bytes_, old_protect_, &old_protect_);
   changed_ = false;
-  address_ = NULL;
+  address_ = nullptr;
   bytes_ = 0;
   old_protect_ = 0;
 }
@@ -149,12 +149,8 @@ void EATPatch(HMODULE module, const char* function_name,
     return;
 
   // Perform the patch.
-#pragma warning(push)
-#pragma warning(disable : 4311 4302)
-  // These casts generate truncation warnings because they are 32 bit specific.
-  *eat_entry = reinterpret_cast<DWORD>(new_function) -
-               reinterpret_cast<DWORD>(module);
-#pragma warning(pop)
+  *eat_entry = static_cast<DWORD>(reinterpret_cast<uintptr_t>(new_function) -
+                                  reinterpret_cast<uintptr_t>(module));
 }
 
 // Performs an IAT interception.

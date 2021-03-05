@@ -19,10 +19,10 @@ namespace internal {
 // Small helper to detect whether a given type has a nested `key_type` typedef.
 // Used below to catch misuses of the API for associative containers.
 template <typename T, typename SFINAE = void>
-struct ContainsHasKeyType : std::false_type {};
+struct HasKeyType : std::false_type {};
 
 template <typename T>
-struct ContainsHasKeyType<T, void_t<typename T::key_type>> : std::true_type {};
+struct HasKeyType<T, void_t<typename T::key_type>> : std::true_type {};
 
 // Probe whether a `contains` member function exists and return the result of
 // `container.contains(value)` if this is a valid expression. This is the
@@ -65,7 +65,7 @@ constexpr bool ContainsImpl(const Container& container,
                             const Value& value,
                             priority_tag<0>) {
   static_assert(
-      !ContainsHasKeyType<Container>::value,
+      !HasKeyType<Container>::value,
       "Error: About to perform linear search on an associative container. "
       "Either use a more generic comparator (e.g. std::less<>) or, if a linear "
       "search is desired, provide an explicit projection parameter.");

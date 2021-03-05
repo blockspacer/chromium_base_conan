@@ -12,7 +12,7 @@
 #include "base/json/json_file_value_serializer.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

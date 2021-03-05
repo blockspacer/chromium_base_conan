@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tests_common.hpp"
-
 #include "base/containers/fixed_flat_map.h"
 
 #include <string>
@@ -11,6 +9,8 @@
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_piece.h"
 #include "base/test/gtest_util.h"
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 using ::testing::ElementsAre;
 using ::testing::Pair;

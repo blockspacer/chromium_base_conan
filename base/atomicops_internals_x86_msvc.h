@@ -11,17 +11,10 @@
 
 #include <intrin.h>
 
+#include <atomic>
+
 #include "base/macros.h"
 #include "build/build_config.h"
-
-#if defined(ARCH_CPU_64_BITS)
-// windows.h #defines this (only on x64). This causes problems because the
-// public API also uses MemoryBarrier at the public name for this fence. So, on
-// X64, undef it, and call its documented
-// (http://msdn.microsoft.com/en-us/library/windows/desktop/ms684208.aspx)
-// implementation directly.
-#undef MemoryBarrier
-#endif
 
 namespace base {
 namespace subtle {
@@ -56,18 +49,6 @@ inline Atomic32 NoBarrier_AtomicIncrement(volatile Atomic32* ptr,
   return Barrier_AtomicIncrement(ptr, increment);
 }
 
-inline void MemoryBarrier() {
-#if defined(ARCH_CPU_64_BITS)
-  // See #undef and note at the top of this file.
-  __faststorefence();
-#else
-  // We use the implementation of MemoryBarrier from WinNT.h
-  LONG barrier;
-
-  _InterlockedOr(&barrier, 0);
-#endif
-}
-
 inline Atomic32 Acquire_CompareAndSwap(volatile Atomic32* ptr,
                                        Atomic32 old_value,
                                        Atomic32 new_value) {
@@ -84,11 +65,6 @@ inline void NoBarrier_Store(volatile Atomic32* ptr, Atomic32 value) {
   *ptr = value;
 }
 
-inline void Acquire_Store(volatile Atomic32* ptr, Atomic32 value) {
-  NoBarrier_AtomicExchange(ptr, value);
-              // acts as a barrier in this implementation
-}
-
 inline void Release_Store(volatile Atomic32* ptr, Atomic32 value) {
   *ptr = value; // works w/o barrier for current Intel chips as of June 2005
   // See comments in Atomic64 version of Release_Store() below.
@@ -101,11 +77,6 @@ inline Atomic32 NoBarrier_Load(volatile const Atomic32* ptr) {
 inline Atomic32 Acquire_Load(volatile const Atomic32* ptr) {
   Atomic32 value = *ptr;
   return value;
-}
-
-inline Atomic32 Release_Load(volatile const Atomic32* ptr) {
-  MemoryBarrier();
-  return *ptr;
 }
 
 #if defined(_WIN64)
@@ -147,11 +118,6 @@ inline void NoBarrier_Store(volatile Atomic64* ptr, Atomic64 value) {
   *ptr = value;
 }
 
-inline void Acquire_Store(volatile Atomic64* ptr, Atomic64 value) {
-  NoBarrier_AtomicExchange(ptr, value);
-              // acts as a barrier in this implementation
-}
-
 inline void Release_Store(volatile Atomic64* ptr, Atomic64 value) {
   *ptr = value; // works w/o barrier for current Intel chips as of June 2005
 
@@ -170,11 +136,6 @@ inline Atomic64 NoBarrier_Load(volatile const Atomic64* ptr) {
 inline Atomic64 Acquire_Load(volatile const Atomic64* ptr) {
   Atomic64 value = *ptr;
   return value;
-}
-
-inline Atomic64 Release_Load(volatile const Atomic64* ptr) {
-  MemoryBarrier();
-  return *ptr;
 }
 
 inline Atomic64 Acquire_CompareAndSwap(volatile Atomic64* ptr,

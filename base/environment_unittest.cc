@@ -7,8 +7,8 @@
 #include <memory>
 
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/platform_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 typedef PlatformTest EnvironmentTest;
 

@@ -1,3 +1,3 @@
 #pragme once
 
-#include GTEST_HEADER_INCLUDE
+#include <gtest/gtest.h>

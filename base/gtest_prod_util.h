@@ -5,12 +5,7 @@
 #ifndef BASE_GTEST_PROD_UTIL_H_
 #define BASE_GTEST_PROD_UTIL_H_
 
-#include GTEST_HEADER_INCLUDE
-
-// Define our own version of FRIEND_TEST here rather than including
-// gtest_prod.h to avoid depending on any part of GTest in production code.
-#define FRIEND_TEST(test_case_name, test_name) \
-  friend class test_case_name##_##test_name##_Test
+#include "testing/gtest/include/gtest/gtest_prod.h"  // nogncheck
 
 // This is a wrapper for gtest's FRIEND_TEST macro that friends
 // test with all possible prefixes. This is very helpful when changing the test

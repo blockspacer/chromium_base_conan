@@ -10,8 +10,7 @@
 #include "base/task/sequence_manager/enqueue_order.h"
 #include "base/task/sequence_manager/sequenced_task_source.h"
 #include "base/task/sequence_manager/task_queue_impl.h"
-#include "base/trace_event/trace_event.h"
-#include "base/trace_event/traced_value.h"
+#include "base/values.h"
 
 namespace base {
 namespace sequence_manager {
@@ -34,6 +33,8 @@ class BASE_EXPORT WorkQueue {
 
   // Note |task_queue| can be null if queue_type is kNonNestable.
   WorkQueue(TaskQueueImpl* task_queue, const char* name, QueueType queue_type);
+  WorkQueue(const WorkQueue&) = delete;
+  WorkQueue& operator=(const WorkQueue&) = delete;
   ~WorkQueue();
 
   // Associates this work queue with the given work queue sets. This must be
@@ -43,7 +44,7 @@ class BASE_EXPORT WorkQueue {
   // Assigns the current set index.
   void AssignSetIndex(size_t work_queue_set_index);
 
-  void AsValueInto(TimeTicks now, trace_event::TracedValue* state) const;
+  Value AsValue(TimeTicks now) const;
 
   // Returns true if the |tasks_| is empty. This method ignores any fences.
   bool Empty() const { return tasks_.empty(); }
@@ -155,11 +156,13 @@ class BASE_EXPORT WorkQueue {
   // Shrinks |tasks_| if it's wasting memory.
   void MaybeShrinkQueue();
 
-  // Delete all tasks within this WorkQueue.
-  void DeletePendingTasks();
-
   // Test support function. This should not be used in production code.
   void PopTaskForTesting();
+
+  // Iterates through |tasks_| adding any that are older than |reference| to
+  // |result|.
+  void CollectTasksOlderThan(EnqueueOrder reference,
+                             std::vector<const Task*>* result) const;
 
  private:
   bool InsertFenceImpl(EnqueueOrder fence);
@@ -176,8 +179,6 @@ class BASE_EXPORT WorkQueue {
   const char* const name_;
   EnqueueOrder fence_;
   const QueueType queue_type_;
-
-  DISALLOW_COPY_AND_ASSIGN(WorkQueue);
 };
 
 }  // namespace internal

@@ -4,21 +4,37 @@
 
 #include "base/win/windows_version.h"
 
-#include "base/logging.h"
-#include GTEST_HEADER_INCLUDE
+#include "base/check_op.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace win {
 
-TEST(WindowsVersion, GetVersionExAndKernelVersionMatch) {
+TEST(WindowsVersion, GetVersionExAndKernelOsVersionMatch) {
   // If this fails, we're running in compatibility mode, or need to update the
   // application manifest.
-  EXPECT_EQ(OSInfo::GetInstance()->version(),
-            OSInfo::GetInstance()->Kernel32Version());
+  // Note: not all versions of Windows return identical build numbers e.g.
+  // 1909/19H2 kernel32.dll has build number 18362 but OS version build number
+  // 18363.
+  EXPECT_EQ(OSInfo::GetInstance()->Kernel32VersionNumber().major,
+            OSInfo::GetInstance()->version_number().major);
+  EXPECT_EQ(OSInfo::GetInstance()->Kernel32VersionNumber().minor,
+            OSInfo::GetInstance()->version_number().minor);
 }
 
 TEST(OSInfo, MajorMinorBuildToVersion) {
-  EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 32767), Version::WIN10_RS5);
+  EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 32767),
+            Version::WIN10_21H1);
+  EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 19043),
+            Version::WIN10_21H1);
+  EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 19042),
+            Version::WIN10_20H2);
+  EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 19041),
+            Version::WIN10_20H1);
+  EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 18363),
+            Version::WIN10_19H2);
+  EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 18362),
+            Version::WIN10_19H1);
   EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 17763), Version::WIN10_RS5);
   EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 17134), Version::WIN10_RS4);
   EXPECT_EQ(OSInfo::MajorMinorBuildToVersion(10, 0, 16299), Version::WIN10_RS3);

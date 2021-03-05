@@ -5,7 +5,7 @@
 #include "base/trace_event/java_heap_dump_provider_android.h"
 
 #include "base/trace_event/process_memory_dump.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace trace_event {

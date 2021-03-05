@@ -2,16 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// NOTE: Header files that do not require the full definition of Callback or
-// Closure should #include "base/callback_forward.h" instead of this file.
+// NOTE: Header files that do not require the full definition of
+// base::{Once,Repeating}Callback or base::{Once,Repeating}Closure should
+// #include "base/callback_forward.h" instead of this file.
 
 #ifndef BASE_CALLBACK_H_
 #define BASE_CALLBACK_H_
 
 #include <stddef.h>
 
+#include "base/bind.h"
 #include "base/callback_forward.h"
 #include "base/callback_internal.h"
+#include "base/notreached.h"
 
 // -----------------------------------------------------------------------------
 // Usage documentation
@@ -42,7 +45,7 @@
 //
 // Callbacks also support cancellation. A common use is binding the receiver
 // object as a WeakPtr<T>. If that weak pointer is invalidated, calling Run()
-// will be a no-op. Note that |is_cancelled()| and |is_null()| are distinct:
+// will be a no-op. Note that |IsCancelled()| and |is_null()| are distinct:
 // simply cancelling a callback will not also make it null.
 //
 // base::Callback is currently a type alias for base::RepeatingCallback. In the
@@ -55,6 +58,7 @@ namespace base {
 template <typename R, typename... Args>
 class OnceCallback<R(Args...)> : public internal::CallbackBase {
  public:
+  using ResultType = R;
   using RunType = R(Args...);
   using PolymorphicInvoke = R (*)(internal::BindStateBase*,
                                   internal::PassingType<Args>...);
@@ -134,6 +138,7 @@ class OnceCallback<R(Args...)> : public internal::CallbackBase {
 template <typename R, typename... Args>
 class RepeatingCallback<R(Args...)> : public internal::CallbackBaseCopyable {
  public:
+  using ResultType = R;
   using RunType = R(Args...);
   using PolymorphicInvoke = R (*)(internal::BindStateBase*,
                                   internal::PassingType<Args>...);
@@ -158,11 +163,6 @@ class RepeatingCallback<R(Args...)> : public internal::CallbackBaseCopyable {
     return !operator==(other);
   }
 
-  // TODO(http://crbug.com/937566): Deprecated, use == or != instead.
-  bool Equals(const RepeatingCallback& other) const {
-    return EqualsInternal(other);
-  }
-
   R Run(Args... args) const & {
     PolymorphicInvoke f =
         reinterpret_cast<PolymorphicInvoke>(this->polymorphic_invoke());
@@ -177,7 +177,7 @@ class RepeatingCallback<R(Args...)> : public internal::CallbackBaseCopyable {
     RepeatingCallback cb = std::move(*this);
     PolymorphicInvoke f =
         reinterpret_cast<PolymorphicInvoke>(cb.polymorphic_invoke());
-    return f(cb.bind_state_.get(), std::forward<Args>(args)...);
+    return f(std::move(cb).bind_state_.get(), std::forward<Args>(args)...);
   }
 
   // Then() returns a new RepeatingCallback that receives the same arguments as

@@ -10,7 +10,7 @@
 #include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/trace_config.h"
 #include "base/trace_event/trace_config_memory_test_util.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace trace_event {
@@ -31,7 +31,7 @@ const char kCustomTraceConfigString[] =
     "\"event_filters\":["
     "{"
     "\"excluded_categories\":[\"unfiltered_cat\"],"
-    "\"filter_args\":{\"event_name_whitelist\":[\"a snake\",\"a dog\"]},"
+    "\"filter_args\":{\"event_name_allowlist\":[\"a snake\",\"a dog\"]},"
     "\"filter_predicate\":\"event_whitelist_predicate\","
     "\"included_categories\":[\"*\"]"
     "}"
@@ -379,7 +379,7 @@ TEST(TraceConfigTest, TraceConfigFromValidString) {
       "\"event_filters\":["
       "{"
       "\"excluded_categories\":[\"unfiltered_cat\"],"
-      "\"filter_args\":{\"event_name_whitelist\":[\"a snake\",\"a dog\"]},"
+      "\"filter_args\":{\"event_name_allowlist\":[\"a snake\",\"a dog\"]},"
       "\"filter_predicate\":\"event_whitelist_predicate\","
       "\"included_categories\":[\"*\"]"
       "}"
@@ -438,9 +438,9 @@ TEST(TraceConfigTest, TraceConfigFromValidString) {
   std::string json_out;
   base::JSONWriter::Write(event_filter.filter_args(), &json_out);
   EXPECT_STREQ(json_out.c_str(),
-               "{\"event_name_whitelist\":[\"a snake\",\"a dog\"]}");
+               "{\"event_name_allowlist\":[\"a snake\",\"a dog\"]}");
   std::unordered_set<std::string> filter_values;
-  EXPECT_TRUE(event_filter.GetArgAsSet("event_name_whitelist", &filter_values));
+  EXPECT_TRUE(event_filter.GetArgAsSet("event_name_allowlist", &filter_values));
   EXPECT_EQ(2u, filter_values.size());
   EXPECT_EQ(1u, filter_values.count("a snake"));
   EXPECT_EQ(1u, filter_values.count("a dog"));
@@ -672,6 +672,26 @@ TEST(TraceConfigTest, LegacyStringToMemoryDumpConfig) {
       static_cast<uint32_t>(TraceConfig::MemoryDumpConfig::HeapProfiler::
                                 kDefaultBreakdownThresholdBytes),
       tc.memory_dump_config().heap_profiler_options.breakdown_threshold_bytes);
+}
+
+TEST(TraceConfigTest, SystraceEventsSerialization) {
+  TraceConfig tc(MemoryDumpManager::kTraceCategory, "");
+  tc.EnableSystrace();
+  EXPECT_EQ(0U, tc.systrace_events().size());
+  tc.EnableSystraceEvent("power");            // As a events category
+  tc.EnableSystraceEvent("timer:tick_stop");  // As an event
+  EXPECT_EQ(2U, tc.systrace_events().size());
+
+  const TraceConfig tc1(MemoryDumpManager::kTraceCategory,
+                        tc.ToTraceOptionsString());
+  EXPECT_EQ(2U, tc1.systrace_events().size());
+  EXPECT_TRUE(tc1.systrace_events().count("power"));
+  EXPECT_TRUE(tc1.systrace_events().count("timer:tick_stop"));
+
+  const TraceConfig tc2(tc.ToString());
+  EXPECT_EQ(2U, tc2.systrace_events().size());
+  EXPECT_TRUE(tc2.systrace_events().count("power"));
+  EXPECT_TRUE(tc2.systrace_events().count("timer:tick_stop"));
 }
 
 }  // namespace trace_event

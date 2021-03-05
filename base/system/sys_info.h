@@ -17,6 +17,7 @@
 #include "base/gtest_prod_util.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 
 namespace base {
 
@@ -65,24 +66,25 @@ class BASE_EXPORT SysInfo {
   // on failure.
   static int64_t AmountOfTotalDiskSpace(const FilePath& path);
 
+#if defined(OS_FUCHSIA)
+  // Sets the total amount of disk space to report under the specified |path|.
+  // If |bytes| is -ve then any existing entry for |path| is removed.
+  static void SetAmountOfTotalDiskSpace(const FilePath& path, int64_t bytes);
+#endif
+
   // Returns system uptime.
   static TimeDelta Uptime();
 
   // Returns a descriptive string for the current machine model or an empty
   // string if the machine model is unknown or an error occurred.
   // e.g. "MacPro1,1" on Mac, "iPhone9,3" on iOS or "Nexus 5" on Android. Only
-  // implemented on OS X, iOS, and Android. This returns an empty string on
-  // other platforms.
+  // implemented on OS X, iOS, Android and Chrome OS. This returns an empty
+  // string on other platforms.
   static std::string HardwareModelName();
 
   struct HardwareInfo {
     std::string manufacturer;
     std::string model;
-    // On Windows, this is the BIOS serial number. Unsupported platforms will be
-    // set to an empty string.
-    // Note: validate any new usage with the privacy team.
-    // TODO(crbug.com/907518): Implement support on other platforms.
-    std::string serial_number;
   };
   // Returns via |callback| a struct containing descriptive UTF-8 strings for
   // the current machine manufacturer and model, or empty strings if the
@@ -112,6 +114,13 @@ class BASE_EXPORT SysInfo {
   //      whereas a x86-64 kernel on the same CPU will return "x86_64"
   static std::string OperatingSystemArchitecture();
 
+  // Returns the architecture of the running process, which might be different
+  // than the architecture returned by OperatingSystemArchitecture() (e.g.
+  // macOS Rosetta, a 32-bit binary on a 64-bit OS, etc).
+  // Will return one of: "x86", "x86_64", "ARM", "ARM_64", or an empty string if
+  // none of the above.
+  static std::string ProcessCPUArchitecture();
+
   // Avoid using this. Use base/cpu.h to get information about the CPU instead.
   // http://crbug.com/148884
   // Returns the CPU model name of the system. If it can not be figured out,
@@ -122,7 +131,7 @@ class BASE_EXPORT SysInfo {
   // allocate.
   static size_t VMAllocationGranularity();
 
-#if defined(OS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
   // Set |value| and return true if LsbRelease contains information about |key|.
   static bool GetLsbReleaseValue(const std::string& key, std::string* value);
 
@@ -149,13 +158,21 @@ class BASE_EXPORT SysInfo {
   // Returns true when actually running in a Chrome OS environment.
   static bool IsRunningOnChromeOS();
 
-  // Test method to force re-parsing of lsb-release.
+  // Overrides |lsb_release| and |lsb_release_time|. Overrides cannot be nested.
+  // Call ResetChromeOSVersionInfoForTest() to restore the previous values.
   static void SetChromeOSVersionInfoForTest(const std::string& lsb_release,
                                             const Time& lsb_release_time);
 
+  // Undoes the function above.
+  static void ResetChromeOSVersionInfoForTest();
+
   // Returns the kernel version of the host operating system.
   static std::string KernelVersion();
-#endif  // defined(OS_CHROMEOS)
+
+  // Crashes if running on Chrome OS non-test image. Use only for really
+  // sensitive and risky use cases.
+  static void CrashIfChromeOSNonTestImage();
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
 
 #if defined(OS_ANDROID)
   // Returns the Android build's codename.
@@ -163,6 +180,9 @@ class BASE_EXPORT SysInfo {
 
   // Returns the Android build ID.
   static std::string GetAndroidBuildID();
+
+  // Returns the Android hardware EGL system property.
+  static std::string GetAndroidHardwareEGL();
 
   static int DalvikHeapSizeMB();
   static int DalvikHeapGrowthLimitMB();
@@ -177,10 +197,16 @@ class BASE_EXPORT SysInfo {
   static std::string GetIOSBuildNumber();
 #endif  // defined(OS_IOS)
 
-  // Returns true if this is a low-end device.
-  // Low-end device refers to devices having a very low amount of total
-  // system memory, typically <= 1GB.
-  // See also SysUtils.java, method isLowEndDevice.
+  // Returns true for low-end devices that may require extreme tradeoffs,
+  // including user-visible changes, for acceptable performance.
+  // For general memory optimizations, consider |AmountOfPhysicalMemoryMB|.
+  //
+  // On Android this returns:
+  //   true when memory <= 1GB on Android O and later.
+  //   true when memory <= 512MB on Android N and earlier.
+  // This is not the same as "low-memory" and will be false on a large number of
+  // <=1GB pre-O Android devices. See: |detectLowEndDevice| in SysUtils.java.
+  // On Desktop this returns true when memory <= 512MB.
   static bool IsLowEndDevice();
 
  private:
@@ -192,7 +218,8 @@ class BASE_EXPORT SysInfo {
   static bool IsLowEndDeviceImpl();
   static HardwareInfo GetHardwareInfoSync();
 
-#if defined(OS_LINUX) || defined(OS_ANDROID) || defined(OS_AIX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_ANDROID) || \
+    defined(OS_AIX)
   static int64_t AmountOfAvailablePhysicalMemory(
       const SystemMemoryInfoKB& meminfo);
 #endif

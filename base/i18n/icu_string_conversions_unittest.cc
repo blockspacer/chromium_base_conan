@@ -9,19 +9,15 @@
 #include <limits>
 #include <sstream>
 
+#include "base/check_op.h"
 #include "base/format_macros.h"
 #include "base/i18n/icu_string_conversions.h"
-#include "base/logging.h"
 #include "base/stl_util.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-
-#if UCONFIG_NO_COLLATION
-#error "found icu with UCONFIG_NO_COLLATION"
-#endif // UCONFIG_NO_COLLATION
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

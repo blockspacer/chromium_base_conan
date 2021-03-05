@@ -13,8 +13,8 @@
 #include "base/threading/platform_thread.h"
 #include "base/trace_event/trace_buffer.h"
 #include "base/trace_event/traced_value.h"
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace trace_analyzer {
 
@@ -62,10 +62,9 @@ void TraceEventAnalyzerTest::EndTracing() {
   base::WaitableEvent flush_complete_event(
       base::WaitableEvent::ResetPolicy::AUTOMATIC,
       base::WaitableEvent::InitialState::NOT_SIGNALED);
-  base::trace_event::TraceLog::GetInstance()->Flush(
-      base::Bind(&TraceEventAnalyzerTest::OnTraceDataCollected,
-                 base::Unretained(this),
-                 base::Unretained(&flush_complete_event)));
+  base::trace_event::TraceLog::GetInstance()->Flush(base::BindRepeating(
+      &TraceEventAnalyzerTest::OnTraceDataCollected, base::Unretained(this),
+      base::Unretained(&flush_complete_event)));
   flush_complete_event.Wait();
   buffer_.Finish();
 }
@@ -582,17 +581,17 @@ TEST_F(TraceEventAnalyzerTest, AsyncBeginEndAssocationsWithSteps) {
 
   BeginTracing();
   {
-    TRACE_EVENT_ASYNC_STEP_INTO0("c", "n", 0xA, "s1");
-    TRACE_EVENT_ASYNC_END0("c", "n", 0xA);
-    TRACE_EVENT_ASYNC_BEGIN0("c", "n", 0xB);
-    TRACE_EVENT_ASYNC_BEGIN0("c", "n", 0xC);
-    TRACE_EVENT_ASYNC_STEP_PAST0("c", "n", 0xB, "s1");
-    TRACE_EVENT_ASYNC_STEP_INTO0("c", "n", 0xC, "s1");
-    TRACE_EVENT_ASYNC_STEP_INTO1("c", "n", 0xC, "s2", "a", 1);
-    TRACE_EVENT_ASYNC_END0("c", "n", 0xB);
-    TRACE_EVENT_ASYNC_END0("c", "n", 0xC);
-    TRACE_EVENT_ASYNC_BEGIN0("c", "n", 0xA);
-    TRACE_EVENT_ASYNC_STEP_INTO0("c", "n", 0xA, "s2");
+    TRACE_EVENT_ASYNC_STEP_INTO0("cat", "n", 0xA, "s1");
+    TRACE_EVENT_ASYNC_END0("cat", "n", 0xA);
+    TRACE_EVENT_ASYNC_BEGIN0("cat", "n", 0xB);
+    TRACE_EVENT_ASYNC_BEGIN0("cat", "n", 0xC);
+    TRACE_EVENT_ASYNC_STEP_PAST0("cat", "n", 0xB, "s1");
+    TRACE_EVENT_ASYNC_STEP_INTO0("cat", "n", 0xC, "s1");
+    TRACE_EVENT_ASYNC_STEP_INTO1("cat", "n", 0xC, "s2", "a", 1);
+    TRACE_EVENT_ASYNC_END0("cat", "n", 0xB);
+    TRACE_EVENT_ASYNC_END0("cat", "n", 0xC);
+    TRACE_EVENT_ASYNC_BEGIN0("cat", "n", 0xA);
+    TRACE_EVENT_ASYNC_STEP_INTO0("cat", "n", 0xA, "s2");
   }
   EndTracing();
 

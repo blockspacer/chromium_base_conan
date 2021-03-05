@@ -15,37 +15,36 @@ namespace {
 // Whether thread priorities should be used. When disabled,
 // PlatformThread::SetCurrentThreadPriority() no-ops.
 const Feature kThreadPrioritiesFeature{"ThreadPriorities",
-#if defined(OS_EMSCRIPTEN)
-                                       FEATURE_DISABLED_BY_DEFAULT
-#else
-                                       FEATURE_ENABLED_BY_DEFAULT
-#endif
-};
+                                       FEATURE_ENABLED_BY_DEFAULT};
 
 // Whether thread priorities should be used.
 //
 // PlatformThread::SetCurrentThreadPriority() doesn't query the state of the
 // feature directly because FeatureList initialization is not always
 // synchronized with PlatformThread::SetCurrentThreadPriority().
-#if !defined(OS_EMSCRIPTEN)
-/// \note: disabled on both ST & MT WASM
 std::atomic<bool> g_use_thread_priorities(true);
-#endif
 
 }  // namespace
 
 // static
 void PlatformThread::SetCurrentThreadPriority(ThreadPriority priority) {
-#if !defined(OS_EMSCRIPTEN) /// \todo Thread Priority for WASM
   if (g_use_thread_priorities.load())
     SetCurrentThreadPriorityImpl(priority);
-#endif
+}
+
+TimeDelta PlatformThread::GetRealtimePeriod(Delegate* delegate) {
+  if (g_use_thread_priorities.load())
+    return delegate->GetRealtimePeriod();
+  return TimeDelta();
+}
+
+TimeDelta PlatformThread::Delegate::GetRealtimePeriod() {
+  return TimeDelta();
 }
 
 namespace internal {
 
 void InitializeThreadPrioritiesFeature() {
-#if !defined(OS_EMSCRIPTEN)
   // A DCHECK is triggered on FeatureList initialization if the state of a
   // feature has been checked before. To avoid triggering this DCHECK in unit
   // tests that call this before initializing the FeatureList, only check the
@@ -54,6 +53,9 @@ void InitializeThreadPrioritiesFeature() {
       !FeatureList::IsEnabled(kThreadPrioritiesFeature)) {
     g_use_thread_priorities.store(false);
   }
+
+#if defined(OS_APPLE)
+  PlatformThread::InitializeOptimizedRealtimeThreadingFeature();
 #endif
 }
 

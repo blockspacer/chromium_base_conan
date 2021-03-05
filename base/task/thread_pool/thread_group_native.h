@@ -14,6 +14,9 @@ namespace internal {
 
 class BASE_EXPORT ThreadGroupNative : public ThreadGroup {
  public:
+  ThreadGroupNative(const ThreadGroupNative&) = delete;
+  ThreadGroupNative& operator=(const ThreadGroupNative&) = delete;
+
   // Destroying a ThreadGroupNative is not allowed in
   // production; it is always leaked. In tests, it can only be destroyed after
   // JoinForTesting() has returned.
@@ -25,7 +28,6 @@ class BASE_EXPORT ThreadGroupNative : public ThreadGroup {
   // ThreadGroup:
   void JoinForTesting() override;
   size_t GetMaxConcurrentNonBlockedTasksDeprecated() const override;
-  void ReportHeartbeatMetrics() const override;
   void DidUpdateCanRunPolicy() override;
 
  protected:
@@ -45,19 +47,23 @@ class BASE_EXPORT ThreadGroupNative : public ThreadGroup {
   WorkerEnvironment worker_environment_ = WorkerEnvironment::NONE;
 
  private:
-  class ScopedWorkersExecutor;
+  class ScopedCommandsExecutor;
 
   // ThreadGroup:
-  void UpdateSortKey(
-      TaskSourceAndTransaction task_source_and_transaction) override;
+  void UpdateSortKey(TaskSource::Transaction transaction) override;
   void PushTaskSourceAndWakeUpWorkers(
-      TaskSourceAndTransaction task_source_and_transaction) override;
-  void EnsureEnoughWorkersLockRequired(BaseScopedWorkersExecutor* executor)
+      TransactionWithRegisteredTaskSource transaction_with_task_source)
+      override;
+  void EnsureEnoughWorkersLockRequired(BaseScopedCommandsExecutor* executor)
       override EXCLUSIVE_LOCKS_REQUIRED(lock_);
+
+  // Updates the minimum priority allowed to run below which tasks should yield,
+  // based on task sources in |priority_queue_|.
+  void UpdateMinAllowedPriorityLockRequired() EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
   // Returns the top TaskSource off the |priority_queue_|. Returns nullptr
   // if the |priority_queue_| is empty.
-  scoped_refptr<TaskSource> GetWork();
+  RegisteredTaskSource GetWork();
 
   // Indicates whether the thread group has been started yet.
   bool started_ GUARDED_BY(lock_) = false;
@@ -70,8 +76,6 @@ class BASE_EXPORT ThreadGroupNative : public ThreadGroup {
   // Set once JoinForTesting() has returned.
   bool join_for_testing_returned_ = false;
 #endif
-
-  DISALLOW_COPY_AND_ASSIGN(ThreadGroupNative);
 };
 
 }  // namespace internal

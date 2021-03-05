@@ -11,8 +11,9 @@
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/platform_test.h"
+#include "build/chromeos_buildflags.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 namespace base {
 namespace i18n {
@@ -115,6 +116,29 @@ TEST_F(FileUtilICUTest, IsFilenameLegalTest) {
       EXPECT_FALSE(IsFilenameLegal(bad_name)) << bad_name;
   }
 }
+
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+static const struct normalize_name_encoding_test_cases {
+  const char* original_path;
+  const char* normalized_path;
+} kNormalizeFileNameEncodingTestCases[] = {
+  { "foo_na\xcc\x88me.foo", "foo_n\xc3\xa4me.foo"},
+  { "foo_dir_na\xcc\x88me/foo_na\xcc\x88me.foo",
+    "foo_dir_na\xcc\x88me/foo_n\xc3\xa4me.foo"},
+  { "", ""},
+  { "foo_dir_na\xcc\x88me/", "foo_dir_n\xc3\xa4me"}
+};
+
+TEST_F(FileUtilICUTest, NormalizeFileNameEncoding) {
+  for (size_t i = 0; i < size(kNormalizeFileNameEncodingTestCases); i++) {
+    FilePath path(kNormalizeFileNameEncodingTestCases[i].original_path);
+    NormalizeFileNameEncoding(&path);
+    EXPECT_EQ(FilePath(kNormalizeFileNameEncodingTestCases[i].normalized_path),
+              path);
+  }
+}
+
+#endif
 
 }  // namespace i18n
 }  // namespace base

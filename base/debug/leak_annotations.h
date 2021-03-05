@@ -19,7 +19,7 @@
 // ANNOTATE_LEAKING_OBJECT_PTR(X): the heap object referenced by pointer X will
 // be annotated as a leak.
 
-#if defined(LEAK_SANITIZER) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if defined(LEAK_SANITIZER) && !defined(OS_NACL)
 
 #include <sanitizer/lsan_interface.h>
 

@@ -7,7 +7,7 @@
 #include "base/win/scoped_hstring.h"
 
 #include "base/win/windows_version.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace win {

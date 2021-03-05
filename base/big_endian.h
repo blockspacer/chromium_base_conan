@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <type_traits>
 
 #include "base/base_export.h"
 #include "base/strings/string_piece.h"
@@ -20,21 +21,28 @@ namespace base {
 // This would cause SIGBUS on ARMv5 or earlier and ARMv6-M.
 template<typename T>
 inline void ReadBigEndian(const char buf[], T* out) {
-  *out = buf[0];
+  static_assert(std::is_integral<T>::value, "T has to be an integral type.");
+  // Make an unsigned version of the output type to make shift possible
+  // without UB.
+  typename std::make_unsigned<T>::type unsigned_result =
+      static_cast<uint8_t>(buf[0]);
   for (size_t i = 1; i < sizeof(T); ++i) {
-    *out <<= 8;
+    unsigned_result <<= 8;
     // Must cast to uint8_t to avoid clobbering by sign extension.
-    *out |= static_cast<uint8_t>(buf[i]);
+    unsigned_result |= static_cast<uint8_t>(buf[i]);
   }
+  *out = unsigned_result;
 }
 
 // Write an integer (signed or unsigned) |val| to |buf| in Big Endian order.
 // Note: this loop is unrolled with -O1 and above.
 template<typename T>
 inline void WriteBigEndian(char buf[], T val) {
+  static_assert(std::is_integral<T>::value, "T has to be an integral type.");
+  auto unsigned_val = static_cast<typename std::make_unsigned<T>::type>(val);
   for (size_t i = 0; i < sizeof(T); ++i) {
-    buf[sizeof(T)-i-1] = static_cast<char>(val & 0xFF);
-    val >>= 8;
+    buf[sizeof(T) - i - 1] = static_cast<char>(unsigned_val & 0xFF);
+    unsigned_val >>= 8;
   }
 }
 
@@ -46,6 +54,16 @@ inline void ReadBigEndian<uint8_t>(const char buf[], uint8_t* out) {
 
 template <>
 inline void WriteBigEndian<uint8_t>(char buf[], uint8_t val) {
+  buf[0] = static_cast<char>(val);
+}
+
+template <>
+inline void ReadBigEndian<int8_t>(const char buf[], int8_t* out) {
+  *out = buf[0];
+}
+
+template <>
+inline void WriteBigEndian<int8_t>(char buf[], int8_t val) {
   buf[0] = static_cast<char>(val);
 }
 
@@ -67,10 +85,26 @@ class BASE_EXPORT BigEndianReader {
   bool ReadU32(uint32_t* value);
   bool ReadU64(uint64_t* value);
 
+  // Reads a length-prefixed region:
+  // 1. reads a big-endian length L from the buffer;
+  // 2. sets |*out| to a StringPiece over the next L many bytes
+  // of the buffer (beyond the end of the bytes encoding the length); and
+  // 3. skips the main reader past this L-byte substring.
+  //
+  // Fails if reading a U8 or U16 fails, or if the parsed length is greater
+  // than the number of bytes remaining in the stream.
+  //
+  // On failure, leaves the stream at the same position
+  // as before the call.
+  bool ReadU8LengthPrefixed(base::StringPiece* out);
+  bool ReadU16LengthPrefixed(base::StringPiece* out);
+
  private:
   // Hidden to promote type safety.
   template<typename T>
   bool Read(T* v);
+  template <typename T>
+  bool ReadLengthPrefixed(base::StringPiece* out);
 
   const char* ptr_;
   const char* end_;

@@ -24,11 +24,11 @@
 #include "base/threading/thread_id_name_manager.h"
 #include "build/build_config.h"
 
-#if !defined(OS_MACOSX) && !defined(OS_FUCHSIA) && !defined(OS_NACL)
+#if !defined(OS_APPLE) && !defined(OS_FUCHSIA) && !defined(OS_NACL)
 #include "base/posix/can_lower_nice_to.h"
 #endif
 
-#if defined(OS_LINUX) || defined(DISABLE_PTHREADS)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 #include <sys/syscall.h>
 #endif
 
@@ -37,14 +37,6 @@
 #else
 #include <sys/resource.h>
 #endif
-
-#if defined(OS_EMSCRIPTEN)
-#include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
-#ifdef __EMSCRIPTEN_PTHREADS__
-#include <emscripten/threading.h>
-#endif // __EMSCRIPTEN_PTHREADS__
-#endif // OS_EMSCRIPTEN
 
 namespace base {
 
@@ -64,28 +56,23 @@ struct ThreadParams {
 };
 
 void* ThreadFunc(void* params) {
-    P_LOG("ThreadFunc 1\n");
   PlatformThread::Delegate* delegate = nullptr;
-
-#if defined(OS_EMSCRIPTEN)
-  DCHECK(params);
-#endif
 
   {
     std::unique_ptr<ThreadParams> thread_params(
         static_cast<ThreadParams*>(params));
 
     delegate = thread_params->delegate;
-
-#if defined(OS_EMSCRIPTEN)
-    DCHECK(delegate);
-#endif
-    P_LOG("ThreadFunc 2\n");
-
     if (!thread_params->joinable)
       base::ThreadRestrictions::SetSingletonAllowed(false);
 
-#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL)
+
+#if defined(OS_APPLE)
+    PlatformThread::SetCurrentThreadRealtimePeriodValue(
+        PlatformThread::GetRealtimePeriod(delegate));
+#endif
+
     // Threads on linux/android may inherit their priority from the thread
     // where they were created. This explicitly sets the priority of all new
     // threads.
@@ -99,15 +86,11 @@ void* ThreadFunc(void* params) {
 
   delegate->ThreadMain();
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-#else
   ThreadIdNameManager::GetInstance()->RemoveName(
       PlatformThread::CurrentHandle().platform_handle(),
       PlatformThread::CurrentId());
 
   base::TerminateOnThread();
-#endif
-
   return nullptr;
 }
 
@@ -116,22 +99,6 @@ bool CreateThread(size_t stack_size,
                   PlatformThread::Delegate* delegate,
                   PlatformThreadHandle* thread_handle,
                   ThreadPriority priority) {
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  DCHECK(thread_handle);
-  base::InitThreading();
-
-  std::unique_ptr<ThreadParams> params(new ThreadParams);
-  params->delegate = delegate;
-  params->joinable = joinable;
-  params->priority = priority;
-
-  printf("CreateThread 2\n");
-
-  ThreadFunc(params.get());
-
-  return true; // TODO
-#else
-
   DCHECK(thread_handle);
   base::InitThreading();
 
@@ -172,12 +139,11 @@ bool CreateThread(size_t stack_size,
   pthread_attr_destroy(&attributes);
 
   return success;
-#endif
 }
 
-#if defined(OS_LINUX) || defined(DISABLE_PTHREADS)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 
-// Store the thread ids in local storage since calling the SWI can
+// Store the thread ids in local storage since calling the SWI can be
 // expensive and PlatformThread::CurrentId is used liberally. Clear
 // the stored value after a fork() because forking changes the thread
 // id. Forking without going through fork() (e.g. clone()) is not
@@ -190,27 +156,14 @@ thread_local pid_t g_thread_id = -1;
 
 class InitAtFork {
  public:
-
-  // The Emscripten implementation does also not support multiprocessing via fork() and join().
-  // see https://emscripten.org/docs/porting/pthreads.html
-#if defined(OS_EMSCRIPTEN)
-#warning "wasm: Unsupported architecture for pthread_atfork"
-#endif
-
-  InitAtFork() {
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-    return;
-#else
-    pthread_atfork(nullptr, nullptr, internal::ClearTidCache);
-#endif
-  }
+  InitAtFork() { pthread_atfork(nullptr, nullptr, internal::ClearTidCache); }
 };
 
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 
 }  // namespace
 
-#if defined(OS_LINUX) || defined(DISABLE_PTHREADS)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 
 namespace internal {
 
@@ -220,19 +173,15 @@ void ClearTidCache() {
 
 }  // namespace internal
 
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 
 // static
 PlatformThreadId PlatformThread::CurrentId() {
   // Pthreads doesn't have the concept of a thread ID, so we have to reach down
   // into the kernel.
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
   return pthread_mach_thread_np(pthread_self());
-#elif (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  return 0; // TODO
-#elif (defined(OS_EMSCRIPTEN) && !defined(DISABLE_PTHREADS))
-  return reinterpret_cast<pthread_t>(pthread_self());
-#elif defined(OS_LINUX)
+#elif defined(OS_LINUX) || defined(OS_CHROMEOS)
   static NoDestructor<InitAtFork> init_at_fork;
   if (g_thread_id == -1) {
     g_thread_id = syscall(__NR_gettid);
@@ -263,28 +212,17 @@ PlatformThreadId PlatformThread::CurrentId() {
 
 // static
 PlatformThreadRef PlatformThread::CurrentRef() {
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  return PlatformThreadRef(0);
-#else
   return PlatformThreadRef(pthread_self());
-#endif
 }
 
 // static
 PlatformThreadHandle PlatformThread::CurrentHandle() {
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  return PlatformThreadHandle(0);
-#else
   return PlatformThreadHandle(pthread_self());
-#endif
 }
 
 // static
 void PlatformThread::YieldCurrentThread() {
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-#else
   sched_yield();
-#endif
 }
 
 // static
@@ -298,36 +236,8 @@ void PlatformThread::Sleep(TimeDelta duration) {
   duration -= TimeDelta::FromSeconds(sleep_time.tv_sec);
   sleep_time.tv_nsec = duration.InMicroseconds() * 1000;  // nanoseconds
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)) && !defined(HAS_ASYNC)
-  // TODO
-  NOTIMPLEMENTED();
-#elif (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)) && defined(HAS_ASYNC)
-  // TODO
-  NOTIMPLEMENTED();
-  HTML5_ASYNC_SLEEP(duration.InMilliseconds());
-#elif defined(OS_EMSCRIPTEN) // have thread support
-  //#warning "base TODO: port sleep() on wasm!"
-
-  // // see https://github.com/h-s-c/libKD/blob/master/source/kd_threads.c#L861
-  // // see https://emscripten.org/docs/api_reference/emscripten.h.html?highlight=emscripten_sleep#c.emscripten_sleep
-  // // Sleep for ms milliseconds. blocks all other operations while it runs
-  // HTML5_ASYNC_SLEEP(duration.InMilliseconds());
-  // // Sleep for ms milliseconds, while allowing other asynchronous operations, e.g. caused by emscripten_async_call
-  // // emscripten_sleep_with_yield(duration.InMilliseconds());
-  // //
-  // // no need to sleep
-  // remaining.tv_sec = 0;
-  // remaining.tv_nsec = 0;
-  // sleep_time = remaining;
-  //
-  emscripten_thread_sleep(duration.InMilliseconds());
-  //
-  //while (nanosleep(&sleep_time, &remaining) == -1 && errno == EINTR)
-  //  sleep_time = remaining;
-#else
   while (nanosleep(&sleep_time, &remaining) == -1 && errno == EINTR)
     sleep_time = remaining;
-#endif
 }
 
 // static
@@ -339,13 +249,6 @@ const char* PlatformThread::GetName() {
 bool PlatformThread::CreateWithPriority(size_t stack_size, Delegate* delegate,
                                         PlatformThreadHandle* thread_handle,
                                         ThreadPriority priority) {
-//#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-//  // don`t join in main thread
-//  return CreateNonJoinableWithPriority(stack_size, delegate, priority);
-//#else
-//  return CreateThread(stack_size, true /* joinable thread */, delegate,
-//                      thread_handle, priority);
-//#endif
   return CreateThread(stack_size, true /* joinable thread */, delegate,
                       thread_handle, priority);
 }
@@ -369,9 +272,6 @@ bool PlatformThread::CreateNonJoinableWithPriority(size_t stack_size,
 
 // static
 void PlatformThread::Join(PlatformThreadHandle thread_handle) {
-//#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-//  // don`t join in main thread
-//#else
   // Record the event that this thread is blocking upon (for hang diagnosis).
   base::debug::ScopedThreadJoinActivity thread_activity(&thread_handle);
 
@@ -379,27 +279,22 @@ void PlatformThread::Join(PlatformThreadHandle thread_handle) {
   // the thread referred to by |thread_handle| may still be running long-lived /
   // blocking tasks.
   base::internal::ScopedBlockingCallWithBaseSyncPrimitives scoped_blocking_call(
-      base::BlockingType::MAY_BLOCK);
+      FROM_HERE, base::BlockingType::MAY_BLOCK);
   CHECK_EQ(0, pthread_join(thread_handle.platform_handle(), nullptr));
-//#endif
 }
 
 // static
 void PlatformThread::Detach(PlatformThreadHandle thread_handle) {
-// #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-//   // don`t detach in main thread
-// #else
   CHECK_EQ(0, pthread_detach(thread_handle.platform_handle()));
-// #endif
 }
 
 // Mac and Fuchsia have their own Set/GetCurrentThreadPriority()
 // implementations.
-#if !defined(OS_MACOSX) && !defined(OS_FUCHSIA)
+#if !defined(OS_APPLE) && !defined(OS_FUCHSIA)
 
 // static
 bool PlatformThread::CanIncreaseThreadPriority(ThreadPriority priority) {
-#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL)
   return false;
 #else
   auto platform_specific_ability =
@@ -414,7 +309,7 @@ bool PlatformThread::CanIncreaseThreadPriority(ThreadPriority priority) {
 
 // static
 void PlatformThread::SetCurrentThreadPriorityImpl(ThreadPriority priority) {
-#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL)
   NOTIMPLEMENTED();
 #else
   if (internal::SetCurrentThreadPriorityForPlatform(priority))
@@ -436,7 +331,7 @@ void PlatformThread::SetCurrentThreadPriorityImpl(ThreadPriority priority) {
 
 // static
 ThreadPriority PlatformThread::GetCurrentThreadPriority() {
-#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL)
   NOTIMPLEMENTED();
   return ThreadPriority::NORMAL;
 #else
@@ -460,7 +355,7 @@ ThreadPriority PlatformThread::GetCurrentThreadPriority() {
 #endif  // !defined(OS_NACL)
 }
 
-#endif  // !defined(OS_MACOSX) && !defined(OS_FUCHSIA)
+#endif  // !defined(OS_APPLE) && !defined(OS_FUCHSIA)
 
 // static
 size_t PlatformThread::GetDefaultThreadStackSize() {

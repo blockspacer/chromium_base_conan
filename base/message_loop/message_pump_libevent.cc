@@ -13,13 +13,14 @@
 #include "base/compiler_specific.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/notreached.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/third_party/libevent/event.h"
 #include "base/time/time.h"
-#include "base/trace_event/trace_event.h"
+#include "base/trace_event/base_tracing.h"
 #include "build/build_config.h"
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 #include "base/mac/scoped_nsautorelease_pool.h"
 #endif
 
@@ -130,7 +131,7 @@ bool MessagePumpLibevent::WatchFileDescriptor(int fd,
   // threadsafe, and your watcher may never be registered.
   DCHECK(watch_file_descriptor_caller_checker_.CalledOnValidThread());
 
-  TRACE_EVENT_WITH_FLOW1(TRACE_DISABLED_BY_DEFAULT("toplevel.flow"),
+  TRACE_EVENT_WITH_FLOW1("toplevel.flow",
                          "MessagePumpLibevent::WatchFileDescriptor",
                          reinterpret_cast<uintptr_t>(controller) ^ fd,
                          TRACE_EVENT_FLAG_FLOW_OUT, "fd", fd);
@@ -201,53 +202,67 @@ void MessagePumpLibevent::Run(Delegate* delegate) {
   std::unique_ptr<event> timer_event(new event);
 
   for (;;) {
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
     mac::ScopedNSAutoreleasePool autorelease_pool;
 #endif
+    // Do some work and see if the next task is ready right away.
+    Delegate::NextWorkInfo next_work_info = delegate->DoWork();
+    bool immediate_work_available = next_work_info.is_immediate();
 
-    Delegate::NextWorkInfo next_work_info = delegate->DoSomeWork();
-    bool more_work_is_plausible = next_work_info.is_immediate();
     if (!keep_running_)
       break;
 
-    event_base_loop(event_base_, EVLOOP_NONBLOCK);
-    more_work_is_plausible |= processed_io_events_;
+    // Process native events if any are ready. Do not block waiting for more.
+    {
+      auto scoped_do_native_work = delegate->BeginNativeWork();
+      event_base_loop(event_base_, EVLOOP_NONBLOCK);
+    }
+
+    bool attempt_more_work = immediate_work_available || processed_io_events_;
     processed_io_events_ = false;
+
     if (!keep_running_)
       break;
 
-    if (more_work_is_plausible)
+    if (attempt_more_work)
       continue;
 
-    more_work_is_plausible = delegate->DoIdleWork();
+    attempt_more_work = delegate->DoIdleWork();
+
     if (!keep_running_)
       break;
 
-    if (more_work_is_plausible)
+    if (attempt_more_work)
       continue;
 
-    #ifdef __EMSCRIPTEN__
-    const int flags_ONCE = EVLOOP_ONCE | EVLOOP_NONBLOCK;
-    #else
-    const int flags_ONCE = EVLOOP_ONCE;
-    #endif
+    bool did_set_timer = false;
 
-    // EVLOOP_ONCE tells libevent to only block once,
-    // but to service all pending events when it wakes up.
-    if (next_work_info.delayed_run_time.is_max()) {
-      event_base_loop(event_base_, flags_ONCE);
-    } else {
+    // If there is delayed work.
+    DCHECK(!next_work_info.delayed_run_time.is_null());
+    if (!next_work_info.delayed_run_time.is_max()) {
       const TimeDelta delay = next_work_info.remaining_delay();
-      if (delay > TimeDelta()) {
-        struct timeval poll_tv;
-        poll_tv.tv_sec = delay.InSeconds();
-        poll_tv.tv_usec = delay.InMicroseconds() % Time::kMicrosecondsPerSecond;
-        event_set(timer_event.get(), -1, 0, timer_callback, event_base_);
-        event_base_set(event_base_, timer_event.get());
-        event_add(timer_event.get(), &poll_tv);
-        event_base_loop(event_base_, flags_ONCE);
-        event_del(timer_event.get());
-      }
+
+      // Setup a timer to break out of the event loop at the right time.
+      struct timeval poll_tv;
+      poll_tv.tv_sec = delay.InSeconds();
+      poll_tv.tv_usec = delay.InMicroseconds() % Time::kMicrosecondsPerSecond;
+      event_set(timer_event.get(), -1, 0, timer_callback, event_base_);
+      event_base_set(event_base_, timer_event.get());
+      event_add(timer_event.get(), &poll_tv);
+
+      did_set_timer = true;
+    }
+
+    // Block waiting for events and process all available upon waking up. This
+    // is conditionally interrupted to look for more work if we are aware of a
+    // delayed task that will need servicing.
+    delegate->BeforeWait();
+    event_base_loop(event_base_, EVLOOP_ONCE);
+
+    // We previously setup a timer to break out the event loop to look for more
+    // work. Now that we're here delete the event.
+    if (did_set_timer) {
+      event_del(timer_event.get());
     }
 
     if (!keep_running_)
@@ -303,11 +318,10 @@ void MessagePumpLibevent::OnLibeventNotification(int fd,
   FdWatchController* controller = static_cast<FdWatchController*>(context);
   DCHECK(controller);
   TRACE_EVENT0("toplevel", "OnLibevent");
-  TRACE_EVENT_WITH_FLOW1(TRACE_DISABLED_BY_DEFAULT("toplevel.flow"),
-                         "MessagePumpLibevent::OnLibeventNotification",
-                         reinterpret_cast<uintptr_t>(controller) ^ fd,
-                         TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT,
-                         "fd", fd);
+  TRACE_EVENT_WITH_FLOW1(
+      "toplevel.flow", "MessagePumpLibevent::OnLibeventNotification",
+      reinterpret_cast<uintptr_t>(controller) ^ fd,
+      TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT, "fd", fd);
 
   TRACE_HEAP_PROFILER_API_SCOPED_TASK_EXECUTION heap_profiler_scope(
       controller->created_from_location().file_name());

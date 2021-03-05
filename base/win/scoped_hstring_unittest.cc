@@ -9,7 +9,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/core_winrt_util.h"
 #include "base/win/windows_version.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace win {
@@ -38,12 +38,12 @@ TEST(ScopedHStringTest, Init) {
   EXPECT_EQ(kTestString1, contents);
 
   hstring.reset();
-  EXPECT_TRUE(hstring == NULL);
-  EXPECT_EQ(NULL, hstring.get());
+  EXPECT_TRUE(hstring == nullptr);
+  EXPECT_EQ(nullptr, hstring.get());
 
   ScopedHString hstring2 = ScopedHString::Create(kTestString2);
   hstring.swap(hstring2);
-  EXPECT_TRUE(hstring2 == NULL);
+  EXPECT_TRUE(hstring2 == nullptr);
 
   buffer = hstring.GetAsUTF8();
   EXPECT_EQ(kTestString2, UTF8ToWide(buffer));

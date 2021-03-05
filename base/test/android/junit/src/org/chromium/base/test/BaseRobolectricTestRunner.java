@@ -4,15 +4,17 @@
 
 package org.chromium.base.test;
 
+import androidx.test.core.app.ApplicationProvider;
+
 import org.junit.runners.model.InitializationError;
 import org.robolectric.DefaultTestLifecycle;
-import org.robolectric.RuntimeEnvironment;
 import org.robolectric.TestLifecycle;
 
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.LifetimeAssert;
+import org.chromium.base.PathUtils;
 import org.chromium.testing.local.LocalRobolectricTestRunner;
 
 import java.lang.reflect.Method;
@@ -27,17 +29,22 @@ public class BaseRobolectricTestRunner extends LocalRobolectricTestRunner {
     public static class BaseTestLifecycle extends DefaultTestLifecycle {
         @Override
         public void beforeTest(Method method) {
-            ContextUtils.initApplicationContextForTests(RuntimeEnvironment.application);
-            ApplicationStatus.initialize(RuntimeEnvironment.application);
+            ContextUtils.initApplicationContextForTests(
+                    ApplicationProvider.getApplicationContext());
+            ApplicationStatus.initialize(ApplicationProvider.getApplicationContext());
             CommandLine.init(null);
             super.beforeTest(method);
         }
 
         @Override
         public void afterTest(Method method) {
-            ApplicationStatus.destroyForJUnitTests();
-            LifetimeAssert.assertAllInstancesDestroyedForTesting();
-            super.afterTest(method);
+            try {
+                LifetimeAssert.assertAllInstancesDestroyedForTesting();
+            } finally {
+                ApplicationStatus.destroyForJUnitTests();
+                PathUtils.resetForTesting();
+                super.afterTest(method);
+            }
         }
     }
 

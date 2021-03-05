@@ -8,8 +8,8 @@
 #include "base/files/file_util.h"
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
-#include GTEST_HEADER_INCLUDE
-#include "third_party/libxml/chromium/libxml_utils.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/libxml/chromium/xml_reader.h"
 
 namespace base {
 namespace {

@@ -20,6 +20,7 @@
 #include "base/mac/scoped_mach_port.h"
 #include "base/macros.h"
 #include "base/synchronization/lock.h"
+#include "base/thread_annotations.h"
 
 namespace base {
 
@@ -90,7 +91,8 @@ class BASE_EXPORT MachPortRendezvousServer {
   // until the process known by |pid| has either acquired the ports or died.
   //
   // This must be called with the lock from GetLock() held.
-  void RegisterPortsForPid(pid_t pid, const MachPortsForRendezvous& ports);
+  void RegisterPortsForPid(pid_t pid, const MachPortsForRendezvous& ports)
+      EXCLUSIVE_LOCKS_REQUIRED(GetLock());
 
   // Returns a lock on the internal port registration map. The parent process
   // should hold this lock for the duration of launching a process, including
@@ -98,7 +100,7 @@ class BASE_EXPORT MachPortRendezvousServer {
   // cannot race acquiring ports before they are registered. The lock should
   // be released after the child process is launched and the ports are
   // registered.
-  Lock& GetLock() { return lock_; }
+  Lock& GetLock() LOCK_RETURNED(lock_) { return lock_; }
 
  private:
   friend class MachPortRendezvousServerTest;
@@ -148,10 +150,9 @@ class BASE_EXPORT MachPortRendezvousServer {
   // Mach message dispatch source for |server_port_|.
   std::unique_ptr<DispatchSourceMach> dispatch_source_;
 
-  // Lock that protects |client_data_|.
   Lock lock_;
   // Association of pid-to-ports.
-  std::map<pid_t, ClientData> client_data_;
+  std::map<pid_t, ClientData> client_data_ GUARDED_BY(lock_);
 
   DISALLOW_COPY_AND_ASSIGN(MachPortRendezvousServer);
 };
@@ -162,7 +163,9 @@ class BASE_EXPORT MachPortRendezvousClient {
  public:
   // Connects to the MachPortRendezvousServer and requests any registered Mach
   // ports. This only performs the rendezvous once. Subsequent calls to this
-  // method return the same instance.
+  // method return the same instance. If the rendezvous fails, which can happen
+  // if the server is not available, this returns null. Acquiring zero ports
+  // from the exchange is not considered a failure.
   static MachPortRendezvousClient* GetInstance();
 
   // Returns the Mach send right that was registered with |key|. If no such
@@ -195,22 +198,17 @@ class BASE_EXPORT MachPortRendezvousClient {
   bool AcquirePorts();
 
   // Sends the actual IPC message to |server_port| and parses the reply.
-  bool SendRequest(mac::ScopedMachSendRight server_port);
+  bool SendRequest(mac::ScopedMachSendRight server_port)
+      EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
   // Returns a MachRendezvousPort for a given key and removes it from the
   // |ports_| map. If an entry does not exist for that key, then a
   // MachRendezvousPort with MACH_PORT_NULL is returned.
   MachRendezvousPort PortForKey(MachPortsForRendezvous::key_type key);
 
-  bool did_acquire_ports() { return did_acquire_ports_; }
-
-  // Lock for the below data members.
   Lock lock_;
-  // Flag for if the client has attempted to acquire ports. If the client
-  // experienced an error in doing so, this will still be true.
-  bool did_acquire_ports_ = false;
   // The collection of ports that was acquired.
-  MachPortsForRendezvous ports_;
+  MachPortsForRendezvous ports_ GUARDED_BY(lock_);
 
   DISALLOW_COPY_AND_ASSIGN(MachPortRendezvousClient);
 };

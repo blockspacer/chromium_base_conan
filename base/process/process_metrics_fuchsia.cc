@@ -6,10 +6,18 @@
 
 #include <lib/fdio/limits.h>
 
+#include "base/notreached.h"
+
 namespace base {
 
 size_t GetMaxFds() {
   return FDIO_MAX_FD;
+}
+
+size_t GetHandleLimit() {
+  // Duplicated from the internal Magenta kernel constant kMaxHandleCount
+  // (zircon/kernel/object/handle.cc).
+  return 256 * 1024u;
 }
 
 size_t GetSystemCommitCharge() {

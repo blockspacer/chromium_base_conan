@@ -27,15 +27,15 @@
 #if !defined(USE_SYMBOLIZE)
 #include <cxxabi.h>
 #endif
-#if !defined(__UCLIBC__) && !defined(_AIX) && !defined(OS_EMSCRIPTEN)
+#if !defined(__UCLIBC__) && !defined(_AIX)
 #include <execinfo.h>
 #endif
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 #include <AvailabilityMacros.h>
 #endif
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 #include "base/debug/proc_maps_linux.h"
 #endif
 
@@ -63,7 +63,9 @@ namespace {
 
 volatile sig_atomic_t in_signal_handler = 0;
 
-bool (*try_handle_signal)(int, void*, void*) = nullptr;
+#if !defined(OS_NACL)
+bool (*try_handle_signal)(int, siginfo_t*, void*) = nullptr;
+#endif
 
 #if !defined(USE_SYMBOLIZE)
 // The prefix used for mangled symbols, per the Itanium C++ ABI:
@@ -86,7 +88,7 @@ void DemangleSymbols(std::string* text) {
   // Note: code in this function is NOT async-signal safe (std::string uses
   // malloc internally).
 
-#if !defined(__UCLIBC__) && !defined(_AIX) && !defined(OS_EMSCRIPTEN)
+#if !defined(__UCLIBC__) && !defined(_AIX)
   std::string::size_type search_from = 0;
   while (search_from < text->size()) {
     // Look for the start of a mangled symbol, from search_from.
@@ -133,7 +135,7 @@ class BacktraceOutputHandler {
   virtual ~BacktraceOutputHandler() = default;
 };
 
-#if !defined(__UCLIBC__) && !defined(_AIX) && !defined(OS_EMSCRIPTEN)
+#if !defined(__UCLIBC__) && !defined(_AIX)
 void OutputPointer(void* pointer, BacktraceOutputHandler* handler) {
   // This should be more than enough to store a 64-bit number in hex:
   // 16 hex digits + 1 for null-terminator.
@@ -228,6 +230,7 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
   // NOTE: This code MUST be async-signal safe.
   // NO malloc or stdio is allowed here.
 
+#if !defined(OS_NACL)
   // Give a registered callback a chance to recover from this signal
   //
   // V8 uses guard regions to guarantee memory safety in WebAssembly. This means
@@ -241,7 +244,6 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
     // installed. Thus, we reinstall ourselves before returning.
     struct sigaction action;
     memset(&action, 0, sizeof(action));
-    /// \todo IMPLICIT numeric conversion
     action.sa_flags = SA_RESETHAND | SA_SIGINFO;
     action.sa_sigaction = &StackDumpSignalHandler;
     sigemptyset(&action.sa_mask);
@@ -249,13 +251,14 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
     sigaction(signal, &action, nullptr);
     return;
   }
+#endif
 
 // Do not take the "in signal handler" code path on Mac in a DCHECK-enabled
 // build, as this prevents seeing a useful (symbolized) stack trace on a crash
 // or DCHECK() failure. While it may not be fully safe to run the stack symbol
 // printing code, in practice it's better to provide meaningful stack traces -
 // and the risk is low given we're likely crashing already.
-#if !defined(OS_MACOSX) || !DCHECK_IS_ON()
+#if !defined(OS_APPLE) || !DCHECK_IS_ON()
   // Record the fact that we are in the signal handler now, so that the rest
   // of StackTrace can behave in an async-signal-safe manner.
   in_signal_handler = 1;
@@ -341,7 +344,7 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
 
   debug::StackTrace().Print();
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 #if ARCH_CPU_X86_FAMILY
   ucontext_t* context = reinterpret_cast<ucontext_t*>(void_context);
   const struct {
@@ -412,11 +415,11 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
   }
   PrintToStderr("\n");
 #endif  // ARCH_CPU_X86_FAMILY
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 
   PrintToStderr("[end of stack trace]\n");
 
-#if defined(OS_MACOSX) && !defined(OS_IOS)
+#if defined(OS_MAC)
   if (::signal(signal, SIG_DFL) == SIG_ERR)
     _exit(1);
 #else
@@ -425,7 +428,7 @@ void StackDumpSignalHandler(int signal, siginfo_t* info, void* void_context) {
   // https://code.google.com/p/chromium/issues/detail?id=551681
   PrintToStderr("Calling _exit(1). Core file will not be generated.\n");
   _exit(1);
-#endif  // defined(OS_MACOSX) && !defined(OS_IOS)
+#endif  // defined(OS_MAC)
 }
 
 class PrintBacktraceOutputHandler : public BacktraceOutputHandler {
@@ -528,17 +531,16 @@ class SandboxSymbolizeHelper {
   int GetFileDescriptor(const char* file_path) {
     int fd = -1;
 
-#if !defined(OFFICIAL_BUILD)
+#if !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
     if (file_path) {
-      // The assumption here is that iterating over std::map<std::string, int>
-      // using a const_iterator does not allocate dynamic memory, hense it is
+      // The assumption here is that iterating over std::map<std::string,
+      // base::ScopedFD> does not allocate dynamic memory, hence it is
       // async-signal-safe.
-      std::map<std::string, int>::const_iterator it;
-      for (it = modules_.begin(); it != modules_.end(); ++it) {
-        if (strcmp((it->first).c_str(), file_path) == 0) {
+      for (const auto& filepath_fd : modules_) {
+        if (strcmp(filepath_fd.first.c_str(), file_path) == 0) {
           // POSIX.1-2004 requires an implementation to guarantee that dup()
           // is async-signal-safe.
-          fd = HANDLE_EINTR(dup(it->second));
+          fd = HANDLE_EINTR(dup(filepath_fd.second.get()));
           break;
         }
       }
@@ -549,7 +551,7 @@ class SandboxSymbolizeHelper {
         fd = -1;
       }
     }
-#endif  // !defined(OFFICIAL_BUILD)
+#endif  // !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
 
     return fd;
   }
@@ -678,7 +680,7 @@ class SandboxSymbolizeHelper {
     // Pre-opening and caching the file descriptors of all loaded modules is
     // not safe for production builds.  Hence it is only done in non-official
     // builds.  For more details, take a look at: http://crbug.com/341966.
-#if !defined(OFFICIAL_BUILD)
+#if !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
     // Open the object files for all read-only executable regions and cache
     // their file descriptors.
     std::vector<MappedMemoryRegion>::const_iterator it;
@@ -707,7 +709,7 @@ class SandboxSymbolizeHelper {
         if (modules_.find(region.path) == modules_.end()) {
           int fd = open(region.path.c_str(), O_RDONLY | O_CLOEXEC);
           if (fd >= 0) {
-            modules_.insert(std::make_pair(region.path, fd));
+            modules_.emplace(region.path, base::ScopedFD(fd));
           } else {
             LOG(WARNING) << "Failed to open file: " << region.path
                          << "\n  Error: " << strerror(errno);
@@ -715,7 +717,7 @@ class SandboxSymbolizeHelper {
         }
       }
     }
-#endif  // !defined(OFFICIAL_BUILD)
+#endif  // !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
   }
 
   // Initializes and installs the symbolization callback.
@@ -737,26 +739,20 @@ class SandboxSymbolizeHelper {
 
   // Closes all file descriptors owned by this instance.
   void CloseObjectFiles() {
-#if !defined(OFFICIAL_BUILD)
-    std::map<std::string, int>::iterator it;
-    for (it = modules_.begin(); it != modules_.end(); ++it) {
-      int ret = IGNORE_EINTR(close(it->second));
-      DCHECK(!ret);
-      it->second = -1;
-    }
+#if !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
     modules_.clear();
-#endif  // !defined(OFFICIAL_BUILD)
+#endif  // !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
   }
 
   // Set to true upon successful initialization.
   bool is_initialized_;
 
-#if !defined(OFFICIAL_BUILD)
+#if !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
   // Mapping from file name to file descriptor.  Includes file descriptors
   // for all successfully opened object files and the file descriptor for
   // /proc/self/maps.  This code is not safe for production builds.
-  std::map<std::string, int> modules_;
-#endif  // !defined(OFFICIAL_BUILD)
+  std::map<std::string, base::ScopedFD> modules_;
+#endif  // !defined(OFFICIAL_BUILD) || !defined(NO_UNWIND_TABLES)
 
   // Cache for the process memory regions.  Produced by parsing the contents
   // of /proc/self/maps cache.
@@ -787,7 +783,6 @@ bool EnableInProcessStackDumping() {
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
-  /// \todo IMPLICIT numeric conversion
   action.sa_flags = SA_RESETHAND | SA_SIGINFO;
   action.sa_sigaction = &StackDumpSignalHandler;
   sigemptyset(&action.sa_mask);
@@ -798,14 +793,15 @@ bool EnableInProcessStackDumping() {
   success &= (sigaction(SIGBUS, &action, nullptr) == 0);
   success &= (sigaction(SIGSEGV, &action, nullptr) == 0);
 // On Linux, SIGSYS is reserved by the kernel for seccomp-bpf sandboxing.
-#if !defined(OS_LINUX) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_LINUX) && !defined(OS_CHROMEOS)
   success &= (sigaction(SIGSYS, &action, nullptr) == 0);
-#endif  // !defined(OS_LINUX)
+#endif  // !defined(OS_LINUX) && !defined(OS_CHROMEOS)
 
   return success;
 }
 
-bool SetStackDumpFirstChanceCallback(bool (*handler)(int, void*, void*)) {
+#if !defined(OS_NACL)
+bool SetStackDumpFirstChanceCallback(bool (*handler)(int, siginfo_t*, void*)) {
   DCHECK(try_handle_signal == nullptr || handler == nullptr);
   try_handle_signal = handler;
 
@@ -825,12 +821,13 @@ bool SetStackDumpFirstChanceCallback(bool (*handler)(int, void*, void*)) {
 #endif
   return true;
 }
+#endif
 
 size_t CollectStackTrace(void** trace, size_t count) {
   // NOTE: This code MUST be async-signal safe (it's used by in-process
   // stack dumping signal handler). NO malloc or stdio is allowed here.
 
-#if !defined(__UCLIBC__) && !defined(_AIX) && !defined(OS_EMSCRIPTEN)
+#if !defined(__UCLIBC__) && !defined(_AIX)
   // Though the backtrace API man page does not list any possible negative
   // return values, we take no chance.
   return base::saturated_cast<size_t>(backtrace(trace, count));
@@ -843,13 +840,13 @@ void StackTrace::PrintWithPrefix(const char* prefix_string) const {
 // NOTE: This code MUST be async-signal safe (it's used by in-process
 // stack dumping signal handler). NO malloc or stdio is allowed here.
 
-#if !defined(__UCLIBC__) && !defined(_AIX) && !defined(OS_EMSCRIPTEN)
+#if !defined(__UCLIBC__) && !defined(_AIX)
   PrintBacktraceOutputHandler handler;
   ProcessBacktrace(trace_, count_, prefix_string, &handler);
 #endif
 }
 
-#if !defined(__UCLIBC__) && !defined(_AIX) && !defined(OS_EMSCRIPTEN)
+#if !defined(__UCLIBC__) && !defined(_AIX)
 void StackTrace::OutputToStreamWithPrefix(std::ostream* os,
                                           const char* prefix_string) const {
   StreamBacktraceOutputHandler handler(os);

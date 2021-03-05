@@ -5,29 +5,36 @@
 #ifndef BASE_PROFILER_STACK_SAMPLING_PROFILER_TEST_UTIL_H_
 #define BASE_PROFILER_STACK_SAMPLING_PROFILER_TEST_UTIL_H_
 
+#include <memory>
 #include <vector>
 
 #include "base/callback.h"
+#include "base/native_library.h"
 #include "base/profiler/frame.h"
+#include "base/profiler/sampling_profiler_thread_token.h"
+#include "base/profiler/stack_sampling_profiler.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/threading/platform_thread.h"
 
 namespace base {
 
+class Unwinder;
+class ModuleCache;
+
 // A thread to target for profiling that will run the supplied closure.
 class TargetThread : public PlatformThread::Delegate {
  public:
-  TargetThread(const Closure& to_run);
+  TargetThread(OnceClosure to_run);
   ~TargetThread() override;
 
   // PlatformThread::Delegate:
   void ThreadMain() override;
 
-  PlatformThreadId id() const { return id_; }
+  SamplingProfilerThreadToken thread_token() const { return thread_token_; }
 
  private:
-  PlatformThreadId id_ = 0;
-  Closure to_run_;
+  SamplingProfilerThreadToken thread_token_ = {0};
+  OnceClosure to_run_;
 
   DISALLOW_COPY_AND_ASSIGN(TargetThread);
 };
@@ -46,7 +53,7 @@ class UnwindScenario {
   // calls into the passed closure to wait for a sample to be taken. Returns the
   // address range of the function that sets up the unwind scenario. The passed
   // closure will be null when invoked solely to obtain the address range.
-  using SetupFunction = RepeatingCallback<FunctionAddressRange(const Closure&)>;
+  using SetupFunction = RepeatingCallback<FunctionAddressRange(OnceClosure)>;
 
   // Events to coordinate the sampling.
   struct SampleEvents {
@@ -85,10 +92,20 @@ class UnwindScenario {
 
 // UnwindScenario setup function that calls into |wait_for_sample| without doing
 // any special unwinding setup, to exercise the "normal" unwind scenario.
-FunctionAddressRange CallWithPlainFunction(const Closure& wait_for_sample);
+FunctionAddressRange CallWithPlainFunction(OnceClosure wait_for_sample);
+
+// Calls into |wait_for_sample| after using alloca(), to test unwinding with a
+// frame pointer.
+FunctionAddressRange CallWithAlloca(OnceClosure wait_for_sample);
+
+// Calls into |wait_for_sample| through a function within another library, to
+// test unwinding through multiple modules and scenarios involving unloaded
+// modules.
+FunctionAddressRange CallThroughOtherLibrary(NativeLibrary library,
+                                             OnceClosure wait_for_sample);
 
 // The callback to perform profiling on the provided thread.
-using ProfileCallback = OnceCallback<void(PlatformThreadId)>;
+using ProfileCallback = OnceCallback<void(SamplingProfilerThreadToken)>;
 
 // Executes |profile_callback| while running |scenario| on the target
 // thread. Performs all necessary target thread startup and shutdown work before
@@ -96,9 +113,13 @@ using ProfileCallback = OnceCallback<void(PlatformThreadId)>;
 void WithTargetThread(UnwindScenario* scenario,
                       ProfileCallback profile_callback);
 
+using UnwinderFactory = OnceCallback<std::unique_ptr<Unwinder>()>;
+
 // Returns the sample seen when taking one sample of |scenario|.
-std::vector<Frame> SampleScenario(UnwindScenario* scenario,
-                                  ModuleCache* module_cache);
+std::vector<Frame> SampleScenario(
+    UnwindScenario* scenario,
+    ModuleCache* module_cache,
+    UnwinderFactory aux_unwinder_factory = UnwinderFactory());
 
 // Formats a sample into a string that can be output for test diagnostics.
 std::string FormatSampleForDiagnosticOutput(const std::vector<Frame>& sample);
@@ -113,6 +134,18 @@ void ExpectStackContains(const std::vector<Frame>& stack,
 void ExpectStackDoesNotContain(
     const std::vector<Frame>& stack,
     const std::vector<FunctionAddressRange>& functions);
+
+// Loads the other library, which defines a function to be called in the
+// WITH_OTHER_LIBRARY configuration.
+NativeLibrary LoadOtherLibrary();
+
+uintptr_t GetAddressInOtherLibrary(NativeLibrary library);
+
+// Creates a list of core unwinders required for StackSamplingProfilerTest.
+// This is useful notably on Android, which requires ChromeUnwinderAndroid in
+// addition to the native one.
+StackSamplingProfiler::UnwindersFactory CreateCoreUnwindersFactoryForTesting(
+    ModuleCache* module_cache);
 
 }  // namespace base
 

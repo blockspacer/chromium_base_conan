@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <android/looper.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -10,7 +11,7 @@
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/memory/singleton.h"
-#include "base/message_loop/message_loop.h"
+#include "base/message_loop/message_pump.h"
 #include "base/message_loop/message_pump_android.h"
 #include "base/path_service.h"
 #include "base/synchronization/waitable_event.h"
@@ -77,8 +78,6 @@ class MessagePumpForUIStub : public base::MessagePumpForUI {
   MessagePumpForUIStub() : base::MessagePumpForUI() { Waitable::GetInstance(); }
   ~MessagePumpForUIStub() override {}
 
-  bool IsTestImplementation() const override { return true; }
-
   // In tests, there isn't a native thread, as such RunLoop::Run() should be
   // used to run the loop instead of attaching and delegating to the native
   // loop. As such, this override ignores the Attach() request.
@@ -92,12 +91,26 @@ class MessagePumpForUIStub : public base::MessagePumpForUI {
     RunState* previous_state = g_state;
     g_state = &state;
 
-    // When not nested we can use the real implementation, otherwise fall back
+    // When not nested we can use the looper, otherwise fall back
     // to the stub implementation.
     if (g_state->run_depth > 1) {
       RunNested(delegate);
     } else {
-      MessagePumpForUI::Run(delegate);
+      SetQuit(false);
+      SetDelegate(delegate);
+
+      // Pump the loop once in case we're starting off idle as ALooper_pollOnce
+      // will never return in that case.
+      ScheduleWork();
+      while (true) {
+        // Waits for either the delayed, or non-delayed fds to be signalled,
+        // calling either OnDelayedLooperCallback, or
+        // OnNonDelayedLooperCallback, respectively. This uses Android's Looper
+        // implementation, which is based off of epoll.
+        ALooper_pollOnce(-1, nullptr, nullptr, nullptr);
+        if (ShouldQuit())
+          break;
+      }
     }
 
     g_state = previous_state;
@@ -113,7 +126,7 @@ class MessagePumpForUIStub : public base::MessagePumpForUI {
           break;
       }
 
-      Delegate::NextWorkInfo next_work_info = g_state->delegate->DoSomeWork();
+      Delegate::NextWorkInfo next_work_info = g_state->delegate->DoWork();
       more_work_is_plausible = next_work_info.is_immediate();
       if (g_state->should_quit)
         break;
@@ -192,7 +205,8 @@ namespace base {
 
 void InitAndroidTestLogging() {
   logging::LoggingSettings settings;
-  settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  settings.logging_dest =
+      logging::LOG_TO_SYSTEM_DEBUG_LOG | logging::LOG_TO_STDERR;
   logging::InitLogging(settings);
   // To view log output with IDs and timestamps use "adb logcat -v threadtime".
   logging::SetLogItems(false,    // Process ID
@@ -213,8 +227,10 @@ void InitAndroidTestPaths(const FilePath& test_data_dir) {
 }
 
 void InitAndroidTestMessageLoop() {
-  if (!MessageLoop::InitMessagePumpForUIFactory(&CreateMessagePumpForUIStub))
-    LOG(INFO) << "MessagePumpForUIFactory already set, unable to override.";
+  // NOTE something else such as a JNI call may have already overridden the UI
+  // factory.
+  if (!MessagePump::IsMessagePumpForUIFactoryOveridden())
+    MessagePump::OverrideMessagePumpForUIFactory(&CreateMessagePumpForUIStub);
 }
 
 }  // namespace base

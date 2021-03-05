@@ -7,10 +7,6 @@
 
 #include "build/build_config.h"
 
-#if defined(OS_EMSCRIPTEN)
-#include <emscripten/emscripten.h>
-#endif
-
 // Crashes in the fastest possible way with no attempt at logging.
 // There are several constraints; see http://crbug.com/664209 for more context.
 //
@@ -43,31 +39,7 @@
 // be removed in followups, so splitting it up like this now makes it easy to
 // land the followups.
 
-// Crashes in the fastest possible way with no attempt at logging.
-// There are different constraints to satisfy here, see http://crbug.com/664209
-// for more context:
-// - The trap instructions, and hence the PC value at crash time, have to be
-//   distinct and not get folded into the same opcode by the compiler.
-//   On Linux/Android this is tricky because GCC still folds identical
-//   asm volatile blocks. The workaround is generating distinct opcodes for
-//   each CHECK using the __COUNTER__ macro.
-// - The debug info for the trap instruction has to be attributed to the source
-//   line that has the CHECK(), to make crash reports actionable. This rules
-//   out the ability of using a inline function, at least as long as clang
-//   doesn't support attribute(artificial).
-// - Failed CHECKs should produce a signal that is distinguishable from an
-//   invalid memory access, to improve the actionability of crash reports.
-// - The compiler should treat the CHECK as no-return instructions, so that the
-//   trap code can be efficiently packed in the prologue of the function and
-//   doesn't interfere with the main execution flow.
-// - When debugging, developers shouldn't be able to accidentally step over a
-//   CHECK. This is achieved by putting opcodes that will cause a non
-//   continuable exception after the actual trap instruction.
-// - Don't cause too much binary bloat.
-#if defined(__EMSCRIPTEN__)
-  // see emscripten/bits/signal.h
-  #define TRAP_SEQUENCE() raise(SIGTRAP)
-#elif defined(COMPILER_GCC)
+#if defined(COMPILER_GCC)
 
 #if defined(OS_NACL)
 

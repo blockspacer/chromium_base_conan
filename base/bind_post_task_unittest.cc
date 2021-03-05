@@ -8,10 +8,10 @@
 #include "base/callback.h"
 #include "base/sequence_checker_impl.h"
 #include "base/sequenced_task_runner.h"
-#include "base/test/scoped_task_environment.h"
+#include "base/test/task_environment.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 #include "base/threading/thread.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {
@@ -55,7 +55,7 @@ class SequenceRestrictionChecker {
 
 class BindPostTaskTest : public testing::Test {
  protected:
-  test::ScopedTaskEnvironment scoped_task_environment_;
+  test::SingleThreadTaskEnvironment task_environment_;
   scoped_refptr<SequencedTaskRunner> task_runner_ =
       SequencedTaskRunnerHandle::Get();
 };

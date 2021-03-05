@@ -356,6 +356,9 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-case_conversion_unittest
     "${BASE_SOURCES_PATH}i18n/case_conversion_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
+  tests_add_executable(${ROOT_PROJECT_NAME}-icu_util_unittest
+    "${BASE_SOURCES_PATH}i18n/icu_util_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
   tests_add_executable(${ROOT_PROJECT_NAME}-optional_unittest
     "${BASE_SOURCES_PATH}optional_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 

@@ -5,6 +5,7 @@
 #ifndef BASE_PROFILER_SAMPLE_METADATA_H_
 #define BASE_PROFILER_SAMPLE_METADATA_H_
 
+#include "base/optional.h"
 #include "base/profiler/metadata_recorder.h"
 #include "base/strings/string_piece.h"
 
@@ -24,12 +25,14 @@
 // For example:
 //
 //   void DidStartLoad() {
-//     base::SetSampleMetadata("Renderer.IsLoading", 1);
+//     is_loading_metadata_.Set(1);
 //   }
 //
 //   void DidFinishLoad() {
-//     base::RemoveSampleMetadata("Renderer.IsLoading");
+//     is_loading_metadata_.Remove();
 //   }
+//
+//   base::SampleMetadata is_loading_metadata_;
 //
 // Alternatively, ScopedSampleMetadata can be used to ensure that the metadata
 // is removed correctly.
@@ -50,9 +53,63 @@
 
 namespace base {
 
+class BASE_EXPORT SampleMetadata {
+ public:
+  // Set the metadata value associated with |name|.
+  explicit SampleMetadata(StringPiece name);
+
+  SampleMetadata(const SampleMetadata&) = default;
+  ~SampleMetadata() = default;
+
+  SampleMetadata& operator=(const SampleMetadata&) = delete;
+
+  // Set the metadata value associated with |name| in the process-global stack
+  // sampling profiler metadata, overwriting any previous value set for that
+  // |name|.
+  void Set(int64_t value);
+
+  // Set the metadata value associated with the pair (|name|, |key|) in the
+  // process-global stack sampling profiler metadata, overwriting any previous
+  // value set for that (|name|, |key|) pair. This constructor allows the
+  // metadata to be associated with an additional user-defined key. One might
+  // supply a key based on the frame id, for example, to distinguish execution
+  // in service of scrolling between different frames. Prefer the previous
+  // function if no user-defined metadata is required. Note: values specified
+  // for a name and key are stored separately from values specified with only a
+  // name.
+  void Set(int64_t key, int64_t value);
+
+  // Removes the metadata item with the specified name from the process-global
+  // stack sampling profiler metadata.
+  //
+  // If such an item doesn't exist, this has no effect.
+  void Remove();
+
+  // Removes the metadata item with the specified (|name|, |key|) pair from the
+  // process-global stack sampling profiler metadata. This function does not
+  // alter values set with the name |name| but no key.
+  //
+  // If such an item doesn't exist, this has no effect.
+  void Remove(int64_t key);
+
+ private:
+  const uint64_t name_hash_;
+};
+
 class BASE_EXPORT ScopedSampleMetadata {
  public:
-  ScopedSampleMetadata(base::StringPiece name, int64_t value);
+  // Set the metadata value associated with |name|.
+  ScopedSampleMetadata(StringPiece name, int64_t value);
+
+  // Set the metadata value associated with the pair (|name|, |key|). This
+  // constructor allows the metadata to be associated with an additional
+  // user-defined key. One might supply a key based on the frame id, for
+  // example, to distinguish execution in service of scrolling between different
+  // frames. Prefer the previous constructor if no user-defined metadata is
+  // required. Note: values specified for a name and key are stored separately
+  // from values specified with only a name.
+  ScopedSampleMetadata(StringPiece name, int64_t key, int64_t value);
+
   ScopedSampleMetadata(const ScopedSampleMetadata&) = delete;
   ~ScopedSampleMetadata();
 
@@ -60,23 +117,33 @@ class BASE_EXPORT ScopedSampleMetadata {
 
  private:
   const uint64_t name_hash_;
+  Optional<int64_t> key_;
 };
 
-// Sets a name hash/value pair in the process global stack sampling profiler
-// metadata, overwriting any previous value set for that name hash.
-BASE_EXPORT void SetSampleMetadata(base::StringPiece name, int64_t value);
-
-// Removes the metadata item with the specified name hash from the process
-// global stack sampling profiler metadata.
-//
-// If such an item doesn't exist, this has no effect.
-BASE_EXPORT void RemoveSampleMetadata(base::StringPiece name);
+// Applies the specified metadata to samples already recorded between
+// |period_start| and |period_end| in all thread's active profiles, subject to
+// the condition that the profile fully encompasses the period and the profile
+// has not already completed. The condition ensures that the metadata is applied
+// only if all execution during its scope was seen in the profile. This avoids
+// biasng the samples towards the 'middle' of the execution seen during the
+// metadata scope (i.e. because the start or end of execution was missed), at
+// the cost of missing execution that are longer than the profiling period, or
+// extend before or after it. |period_end| must be <= TimeTicks::Now().
+BASE_EXPORT void ApplyMetadataToPastSamples(TimeTicks period_start,
+                                            TimeTicks period_end,
+                                            StringPiece name,
+                                            int64_t value);
+BASE_EXPORT void ApplyMetadataToPastSamples(TimeTicks period_start,
+                                            TimeTicks period_end,
+                                            StringPiece name,
+                                            int64_t key,
+                                            int64_t value);
 
 // Returns the process-global metadata recorder instance used for tracking
 // sampling profiler metadata.
 //
 // This function should not be called by non-profiler related code.
-BASE_EXPORT base::MetadataRecorder* GetSampleMetadataRecorder();
+BASE_EXPORT MetadataRecorder* GetSampleMetadataRecorder();
 
 }  // namespace base
 

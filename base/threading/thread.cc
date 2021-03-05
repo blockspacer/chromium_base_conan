@@ -1,17 +1,25 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/threading/thread.h"
 
+#include <type_traits>
+
 #include "base/bind.h"
-#include "base/bind_helpers.h"
+#include "base/callback_helpers.h"
 #include "base/lazy_instance.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
+#include "base/memory/scoped_refptr.h"
+#include "base/message_loop/message_pump.h"
 #include "base/run_loop.h"
 #include "base/synchronization/waitable_event.h"
+#include "base/task/current_thread.h"
+#include "base/task/sequence_manager/sequence_manager_impl.h"
+#include "base/task/sequence_manager/task_queue.h"
+#include "base/task/simple_task_executor.h"
 #include "base/third_party/dynamic_annotations/dynamic_annotations.h"
 #include "base/threading/thread_id_name_manager.h"
 #include "base/threading/thread_local.h"
@@ -19,26 +27,12 @@
 #include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
 
-#if defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if defined(OS_POSIX) && !defined(OS_NACL)
 #include "base/files/file_descriptor_watcher_posix.h"
 #endif
 
 #if defined(OS_WIN)
 #include "base/win/scoped_com_initializer.h"
-#endif
-
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-/// \note only single thread = only one message loop
-static std::unique_ptr<base::MessageLoop> g_message_loop;
-#endif
-
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-/// \note only one main thread = only one run loop
-static base::RunLoop* run_loop;
-#endif
-
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-static bool hasPlatformThread = false;
 #endif
 
 namespace base {
@@ -52,12 +46,66 @@ namespace {
 base::LazyInstance<base::ThreadLocalBoolean>::Leaky lazy_tls_bool =
     LAZY_INSTANCE_INITIALIZER;
 
+class SequenceManagerThreadDelegate : public Thread::Delegate {
+ public:
+  explicit SequenceManagerThreadDelegate(
+      MessagePumpType message_pump_type,
+      OnceCallback<std::unique_ptr<MessagePump>()> message_pump_factory,
+      sequence_manager::TimeDomain* time_domain)
+      : sequence_manager_(
+            sequence_manager::internal::SequenceManagerImpl::CreateUnbound(
+                sequence_manager::SequenceManager::Settings::Builder()
+                    .SetMessagePumpType(message_pump_type)
+                    .Build())),
+        default_task_queue_(sequence_manager_->CreateTaskQueue(
+            sequence_manager::TaskQueue::Spec("default_tq")
+                .SetTimeDomain(time_domain))),
+        message_pump_factory_(std::move(message_pump_factory)) {
+    sequence_manager_->SetDefaultTaskRunner(default_task_queue_->task_runner());
+  }
+
+  ~SequenceManagerThreadDelegate() override = default;
+
+  scoped_refptr<SingleThreadTaskRunner> GetDefaultTaskRunner() override {
+    // Surprisingly this might not be default_task_queue_->task_runner() which
+    // we set in the constructor. The Thread::Init() method could create a
+    // SequenceManager on top of the current one and call
+    // SequenceManager::SetDefaultTaskRunner which would propagate the new
+    // TaskRunner down to our SequenceManager. Turns out, code actually relies
+    // on this and somehow relies on
+    // SequenceManagerThreadDelegate::GetDefaultTaskRunner returning this new
+    // TaskRunner. So instead of returning default_task_queue_->task_runner() we
+    // need to query the SequenceManager for it.
+    // The underlying problem here is that Subclasses of Thread can do crazy
+    // stuff in Init() but they are not really in control of what happens in the
+    // Thread::Delegate, as this is passed in on calling StartWithOptions which
+    // could happen far away from where the Thread is created. We should
+    // consider getting rid of StartWithOptions, and pass them as a constructor
+    // argument instead.
+    return sequence_manager_->GetTaskRunner();
+  }
+
+  void BindToCurrentThread(TimerSlack timer_slack) override {
+    sequence_manager_->BindToMessagePump(
+        std::move(message_pump_factory_).Run());
+    sequence_manager_->SetTimerSlack(timer_slack);
+    simple_task_executor_.emplace(GetDefaultTaskRunner());
+  }
+
+ private:
+  std::unique_ptr<sequence_manager::internal::SequenceManagerImpl>
+      sequence_manager_;
+  scoped_refptr<sequence_manager::TaskQueue> default_task_queue_;
+  OnceCallback<std::unique_ptr<MessagePump>()> message_pump_factory_;
+  base::Optional<SimpleTaskExecutor> simple_task_executor_;
+};
+
 }  // namespace
 
 Thread::Options::Options() = default;
 
-Thread::Options::Options(MessageLoop::Type type, size_t size)
-    : message_loop_type(type), stack_size(size) {}
+Thread::Options::Options(MessagePumpType type, size_t size)
+    : message_pump_type(type), stack_size(size) {}
 
 Thread::Options::Options(Options&& other) = default;
 
@@ -86,23 +134,20 @@ bool Thread::Start() {
   Options options;
 #if defined(OS_WIN)
   if (com_status_ == STA)
-    options.message_loop_type = MessageLoop::TYPE_UI;
-#elif defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-options.message_loop_type = MessageLoop::TYPE_DEFAULT;
-/// \note you can set options.joinable = false;
+    options.message_pump_type = MessagePumpType::UI;
 #endif
   return StartWithOptions(options);
 }
 
 bool Thread::StartWithOptions(const Options& options) {
   DCHECK(owning_sequence_checker_.CalledOnValidSequence());
-  DCHECK(!task_environment_);
+  DCHECK(!delegate_);
   DCHECK(!IsRunning());
   DCHECK(!stopping_) << "Starting a non-joinable thread a second time? That's "
                      << "not allowed!";
 #if defined(OS_WIN)
   DCHECK((com_status_ != STA) ||
-      (options.message_loop_type == MessageLoop::TYPE_UI));
+         (options.message_pump_type == MessagePumpType::UI));
 #endif
 
   // Reset |id_| here to support restarting the thread.
@@ -113,34 +158,24 @@ bool Thread::StartWithOptions(const Options& options) {
 
   timer_slack_ = options.timer_slack;
 
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  if (options.task_environment) {
+  if (options.delegate) {
     DCHECK(!options.message_pump_factory);
-    task_environment_ = WrapUnique(options.task_environment);
+    DCHECK(!options.task_queue_time_domain);
+    delegate_ = WrapUnique(options.delegate);
   } else if (options.message_pump_factory) {
-    task_environment_ = std::make_unique<internal::MessageLoopTaskEnvironment>(
-        MessageLoop::CreateUnbound(options.message_pump_factory.Run()));
+    delegate_ = std::make_unique<SequenceManagerThreadDelegate>(
+        MessagePumpType::CUSTOM, options.message_pump_factory,
+        options.task_queue_time_domain);
   } else {
-    task_environment_ = std::make_unique<internal::MessageLoopTaskEnvironment>(
-        MessageLoop::CreateUnbound(options.message_loop_type));
+    delegate_ = std::make_unique<SequenceManagerThreadDelegate>(
+        options.message_pump_type,
+        BindOnce([](MessagePumpType type) { return MessagePump::Create(type); },
+                 options.message_pump_type),
+        options.task_queue_time_domain);
   }
-#else
-  if(!g_message_loop) {
-      g_message_loop = MessageLoop::CreateUnbound(MessageLoop::TYPE_DEFAULT);
-  }
-  if(!task_environment_) {
-      task_environment_ = std::make_unique<internal::MessageLoopTaskEnvironment>(
-          //std::move(g_message_loop));
-          nullptr);
-  }
-#endif
 
-/*#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  return false;
-#else*/
   start_event_.Reset();
 
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   // Hold |thread_lock_| while starting the new thread to synchronize with
   // Stop() while it's not guaranteed to be sequenced (until crbug/629139 is
   // fixed).
@@ -159,35 +194,11 @@ bool Thread::StartWithOptions(const Options& options) {
   }
 
   joinable_ = options.joinable;
-#else
-  if(!hasPlatformThread) {
-    hasPlatformThread = true;
-    AutoLock lock(thread_lock_);
-    bool success =
-        options.joinable
-        ? PlatformThread::CreateWithPriority(options.stack_size, this,
-                                             &thread_, options.priority)
-        : PlatformThread::CreateNonJoinableWithPriority(
-              options.stack_size, this, options.priority);
-    if (!success) {
-        DLOG(ERROR) << "failed to create thread";
-        return false;
-    }
-  }
-
-  joinable_ = options.joinable;
-#endif
-
 
   return true;
-//#endif
 }
 
 bool Thread::StartAndWaitForTesting() {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-    P_LOG("TODO: Thread::FlushForTesting\n");
-    HTML5_STACKTRACE();
-#endif
   DCHECK(owning_sequence_checker_.CalledOnValidSequence());
   bool result = Start();
   if (!result)
@@ -198,7 +209,7 @@ bool Thread::StartAndWaitForTesting() {
 
 bool Thread::WaitUntilThreadStarted() const {
   DCHECK(owning_sequence_checker_.CalledOnValidSequence());
-  if (!task_environment_)
+  if (!delegate_)
     return false;
   // https://crbug.com/918039
   base::ScopedAllowBaseSyncPrimitivesOutsideBlockingScope allow_wait;
@@ -207,34 +218,19 @@ bool Thread::WaitUntilThreadStarted() const {
 }
 
 void Thread::FlushForTesting() {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-    P_LOG("TODO: Thread::FlushForTesting\n");
-    HTML5_STACKTRACE();
-#endif
-
   DCHECK(owning_sequence_checker_.CalledOnValidSequence());
-  if (!task_environment_)
+  if (!delegate_)
     return;
 
   WaitableEvent done(WaitableEvent::ResetPolicy::AUTOMATIC,
                      WaitableEvent::InitialState::NOT_SIGNALED);
-#if defined(OS_EMSCRIPTEN)
-  DCHECK(task_runner());
-  if (!task_runner()){
-      P_LOG("invalid task_runner\n");
-  }
-#endif
   task_runner()->PostTask(FROM_HERE,
                           BindOnce(&WaitableEvent::Signal, Unretained(&done)));
   done.Wait();
 }
 
 void Thread::Stop() {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-  // no check
-#else
   DCHECK(joinable_);
-#endif
 
   // TODO(gab): Fix improper usage of this API (http://crbug.com/629139) and
   // enable this check, until then synchronization with Start() via
@@ -250,14 +246,14 @@ void Thread::Stop() {
 
   // Wait for the thread to exit.
   //
-  // TODO(darin): Unfortunately, we need to keep |task_environment_| around
+  // TODO(darin): Unfortunately, we need to keep |delegate_| around
   // until the thread exits. Some consumers are abusing the API. Make them stop.
   PlatformThread::Join(thread_);
   thread_ = base::PlatformThreadHandle();
 
-  // The thread should release |task_environment_| on exit (note: Join() adds
+  // The thread should release |delegate_| on exit (note: Join() adds
   // an implicit memory barrier and no lock is thus required for this check).
-  DCHECK(!task_environment_);
+  DCHECK(!delegate_);
 
   stopping_ = false;
 }
@@ -267,23 +263,13 @@ void Thread::StopSoon() {
   // enable this check.
   // DCHECK(owning_sequence_checker_.CalledOnValidSequence());
 
-  if (stopping_ || !task_environment_)
+  if (stopping_ || !delegate_)
     return;
 
   stopping_ = true;
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  if (!task_runner()){
-      P_LOG("invalid task_runner\n");
-      return;
-  }
-  DCHECK(task_runner());
-#endif
-
-//#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   task_runner()->PostTask(
       FROM_HERE, base::BindOnce(&Thread::ThreadQuitHelper, Unretained(this)));
-//#endif
 }
 
 void Thread::DetachFromSequence() {
@@ -292,9 +278,11 @@ void Thread::DetachFromSequence() {
 }
 
 PlatformThreadId Thread::GetThreadId() const {
-  // If the thread is created but not started yet, wait for |id_| being ready.
-  base::ScopedAllowBaseSyncPrimitivesOutsideBlockingScope allow_wait;
-  id_event_.Wait();
+  if (!id_event_.IsSignaled()) {
+    // If the thread is created but not started yet, wait for |id_| being ready.
+    base::ScopedAllowBaseSyncPrimitivesOutsideBlockingScope allow_wait;
+    id_event_.Wait();
+  }
   return id_;
 }
 
@@ -303,11 +291,11 @@ bool Thread::IsRunning() const {
   // enable this check.
   // DCHECK(owning_sequence_checker_.CalledOnValidSequence());
 
-  // If the thread's already started (i.e. |task_environment_| is non-null) and
+  // If the thread's already started (i.e. |delegate_| is non-null) and
   // not yet requested to stop (i.e. |stopping_| is false) we can just return
   // true. (Note that |stopping_| is touched only on the same sequence that
   // starts / started the new thread so we need no locking here.)
-  if (task_environment_ && !stopping_)
+  if (delegate_ && !stopping_)
     return true;
   // Otherwise check the |running_| flag, which is set to true by the new thread
   // only while it is inside Run().
@@ -320,27 +308,18 @@ void Thread::Run(RunLoop* run_loop) {
   DCHECK(id_event_.IsSignaled());
   DCHECK_EQ(id_, PlatformThread::CurrentId());
 
-#if defined(OS_EMSCRIPTEN)
-  DCHECK(run_loop);
-#endif
   run_loop->Run();
 }
 
 // static
 void Thread::SetThreadWasQuitProperly(bool flag) {
-#if defined(OS_EMSCRIPTEN)
-    DCHECK(lazy_tls_bool.Pointer());
-#endif
   lazy_tls_bool.Pointer()->Set(flag);
 }
 
 // static
 bool Thread::GetThreadWasQuitProperly() {
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-    return true;
-#endif
   bool quit_properly = true;
-#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
+#if DCHECK_IS_ON()
   quit_properly = lazy_tls_bool.Pointer()->Get();
 #endif
   return quit_properly;
@@ -363,29 +342,28 @@ void Thread::ThreadMain() {
   ANNOTATE_THREAD_NAME(name_.c_str());  // Tell the name to race detector.
 
   // Lazily initialize the |message_loop| so that it can run on this thread.
-  DCHECK(task_environment_);
-  // This binds MessageLoopCurrent and ThreadTaskRunnerHandle.
-  task_environment_->BindToCurrentThread(timer_slack_);
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  DCHECK(MessageLoopCurrent::Get());
+  DCHECK(delegate_);
+  // This binds CurrentThread and ThreadTaskRunnerHandle.
+  delegate_->BindToCurrentThread(timer_slack_);
+  DCHECK(CurrentThread::Get());
   DCHECK(ThreadTaskRunnerHandle::IsSet());
-#endif
 
-#if defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if defined(OS_POSIX) && !defined(OS_NACL)
   // Allow threads running a MessageLoopForIO to use FileDescriptorWatcher API.
   std::unique_ptr<FileDescriptorWatcher> file_descriptor_watcher;
-  if (MessageLoopCurrentForIO::IsSet()) {
+  if (CurrentIOThread::IsSet()) {
     file_descriptor_watcher.reset(
-        new FileDescriptorWatcher(task_environment_->GetDefaultTaskRunner()));
+        new FileDescriptorWatcher(delegate_->GetDefaultTaskRunner()));
   }
 #endif
 
 #if defined(OS_WIN)
   std::unique_ptr<win::ScopedCOMInitializer> com_initializer;
   if (com_status_ != NONE) {
-    com_initializer.reset((com_status_ == STA) ?
-        new win::ScopedCOMInitializer() :
-        new win::ScopedCOMInitializer(win::ScopedCOMInitializer::kMTA));
+    com_initializer.reset(
+        (com_status_ == STA)
+            ? new win::ScopedCOMInitializer()
+            : new win::ScopedCOMInitializer(win::ScopedCOMInitializer::kMTA));
   }
 #endif
 
@@ -399,20 +377,10 @@ void Thread::ThreadMain() {
 
   start_event_.Signal();
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  if(!run_loop) {
-    run_loop = new RunLoop();
-  }
-  run_loop_ = run_loop;
-#else
   RunLoop run_loop;
   run_loop_ = &run_loop;
-#endif
-
   Run(run_loop_);
 
-
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   {
     AutoLock lock(running_lock_);
     running_ = false;
@@ -429,55 +397,14 @@ void Thread::ThreadMain() {
 
   // We can't receive messages anymore.
   // (The message loop is destructed at the end of this block)
-  task_environment_.reset();
+  delegate_.reset();
   run_loop_ = nullptr;
-#endif
 }
 
 void Thread::ThreadQuitHelper() {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   DCHECK(run_loop_);
   run_loop_->QuitWhenIdle();
-#endif
   SetThreadWasQuitProperly(true);
 }
-
-namespace internal {
-
-MessageLoopTaskEnvironment::MessageLoopTaskEnvironment(
-    std::unique_ptr<MessageLoop> message_loop)
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-    : message_loop_(std::move(message_loop))
-#endif
-  {}
-
-MessageLoopTaskEnvironment::~MessageLoopTaskEnvironment() {}
-
-scoped_refptr<SingleThreadTaskRunner>
-MessageLoopTaskEnvironment::GetDefaultTaskRunner() {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-    DCHECK(message_loop_);
-    return message_loop_->task_runner();
-#else
-    DCHECK(g_message_loop);
-    return g_message_loop->task_runner();
-#endif
-}
-
-void MessageLoopTaskEnvironment::BindToCurrentThread(TimerSlack timer_slack) {
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-    DCHECK(message_loop_);
-    message_loop_->BindToCurrentThread();
-    message_loop_->SetTimerSlack(timer_slack);
-#else
-    DCHECK(g_message_loop);
-    g_message_loop->BindToCurrentThread();
-    g_message_loop->SetTimerSlack(timer_slack);
-#endif
-}
-
-}  // namespace internal
-
-Thread::TaskEnvironment::~TaskEnvironment(){}
 
 }  // namespace base

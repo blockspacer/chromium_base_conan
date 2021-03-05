@@ -9,14 +9,18 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Application.ActivityLifecycleCallbacks;
 import android.os.Bundle;
-import android.support.annotation.AnyThread;
-import android.support.annotation.MainThread;
-import android.support.annotation.Nullable;
 import android.view.Window;
+
+import androidx.annotation.AnyThread;
+import androidx.annotation.MainThread;
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -24,6 +28,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -32,17 +37,13 @@ import javax.annotation.concurrent.GuardedBy;
 /**
  * Provides information about the current activity's status, and a way
  * to register / unregister listeners for state changes.
+ * TODO(https://crbug.com/470582): ApplicationStatus will not work on WebView/WebLayer, and
+ * should be moved out of base and into //chrome. It should not be relied upon for //components.
  */
 @JNINamespace("base::android")
 public class ApplicationStatus {
-    private static final String TOOLBAR_CALLBACK_INTERNAL_WRAPPER_CLASS =
-            "android.support.v7.internal.app.ToolbarActionBar$ToolbarCallbackWrapper";
-    // In builds using the --use_unpublished_apis flag, the ToolbarActionBar class name does not
-    // include the "internal" package.
     private static final String TOOLBAR_CALLBACK_WRAPPER_CLASS =
-            "android.support.v7.app.ToolbarActionBar$ToolbarCallbackWrapper";
-    private static final String WINDOW_PROFILER_CALLBACK =
-            "com.android.tools.profiler.support.event.WindowProfilerCallback";
+            "androidx.appcompat.app.ToolbarActionBar$ToolbarCallbackWrapper";
 
     private static class ActivityInfo {
         private int mStatus = ActivityState.DESTROYED;
@@ -174,7 +175,8 @@ public class ApplicationStatus {
      * This is used to relay window focus changes throughout the app and remedy a bug in the
      * appcompat library.
      */
-    private static class WindowCallbackProxy implements InvocationHandler {
+    @VisibleForTesting
+    static class WindowCallbackProxy implements InvocationHandler {
         private final Window.Callback mCallback;
         private final Activity mActivity;
 
@@ -254,9 +256,7 @@ public class ApplicationStatus {
             public void onActivityCreated(final Activity activity, Bundle savedInstanceState) {
                 onStateChange(activity, ActivityState.CREATED);
                 Window.Callback callback = activity.getWindow().getCallback();
-                activity.getWindow().setCallback((Window.Callback) Proxy.newProxyInstance(
-                        Window.Callback.class.getClassLoader(), new Class[] {Window.Callback.class},
-                        new ApplicationStatus.WindowCallbackProxy(activity, callback)));
+                activity.getWindow().setCallback(createWindowCallbackProxy(activity, callback));
             }
 
             @Override
@@ -296,15 +296,59 @@ public class ApplicationStatus {
 
             private void checkCallback(Activity activity) {
                 if (BuildConfig.DCHECK_IS_ON) {
-                    Class<? extends Window.Callback> callback =
-                            activity.getWindow().getCallback().getClass();
-                    assert(Proxy.isProxyClass(callback)
-                            || callback.getName().equals(TOOLBAR_CALLBACK_WRAPPER_CLASS)
-                            || callback.getName().equals(TOOLBAR_CALLBACK_INTERNAL_WRAPPER_CLASS)
-                            || callback.getName().equals(WINDOW_PROFILER_CALLBACK));
+                    assert reachesWindowCallback(activity.getWindow().getCallback());
                 }
             }
         });
+    }
+
+    @VisibleForTesting
+    static Window.Callback createWindowCallbackProxy(Activity activity, Window.Callback callback) {
+        return (Window.Callback) Proxy.newProxyInstance(Window.Callback.class.getClassLoader(),
+                new Class[] {Window.Callback.class},
+                new ApplicationStatus.WindowCallbackProxy(activity, callback));
+    }
+
+    /**
+     * Tries to trace down to our WindowCallbackProxy from the given callback.
+     * Since the callback can be overwritten by embedder code we try to ensure
+     * that there at least seem to be a reference back to our callback by
+     * checking the declared fields of the given callback using reflection.
+     */
+    @VisibleForTesting
+    static boolean reachesWindowCallback(@Nullable Window.Callback callback) {
+        if (callback == null) return false;
+        if (callback.getClass().getName().equals(TOOLBAR_CALLBACK_WRAPPER_CLASS)) {
+            // We're actually not going to get called, see AndroidX report here:
+            // https://issuetracker.google.com/issues/155165145.
+            // But this was accepted in the old code as well so mimic that until
+            // AndroidX is fixed and updated.
+            return true;
+        }
+        if (Proxy.isProxyClass(callback.getClass())) {
+            return Proxy.getInvocationHandler(callback)
+                           instanceof ApplicationStatus.WindowCallbackProxy;
+        }
+        for (Class<?> c = callback.getClass(); c != Object.class; c = c.getSuperclass()) {
+            for (Field f : c.getDeclaredFields()) {
+                if (f.getType().isAssignableFrom(Window.Callback.class)) {
+                    boolean isAccessible = f.isAccessible();
+                    f.setAccessible(true);
+                    Window.Callback fieldCb;
+                    try {
+                        fieldCb = (Window.Callback) f.get(callback);
+                    } catch (IllegalAccessException ex) {
+                        continue;
+                    } finally {
+                        f.setAccessible(isAccessible);
+                    }
+                    if (reachesWindowCallback(fieldCb)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -464,6 +508,7 @@ public class ApplicationStatus {
      * @return Whether any Activity under this Application is visible.
      */
     @AnyThread
+    @CalledByNative
     public static boolean hasVisibleActivities() {
         assert isInitialized();
         int state = getStateForApplication();
@@ -564,6 +609,24 @@ public class ApplicationStatus {
     }
 
     /**
+     * Mark all Activities as destroyed to avoid side-effects in future test.
+     */
+    @MainThread
+    public static void resetActivitiesForInstrumentationTests() {
+        assert ThreadUtils.runningOnUiThread();
+
+        synchronized (sActivityInfo) {
+            // Copy the set to avoid concurrent modifications to the underlying set.
+            for (Activity activity : new HashSet<>(sActivityInfo.keySet())) {
+                assert activity.getApplication()
+                        == null : "Real activities that are launched should be closed by test code "
+                                  + "and not rely on this cleanup of mocks.";
+                onStateChangeForTesting(activity, ActivityState.DESTROYED);
+            }
+        }
+    }
+
+    /**
      * Registers the single thread-safe native activity status listener.
      * This handles the case where the caller is not on the main thread.
      * Note that this is used by a leaky singleton object from the native
@@ -579,7 +642,7 @@ public class ApplicationStatus {
                 sNativeApplicationStateListener = new ApplicationStateListener() {
                     @Override
                     public void onApplicationStateChange(int newState) {
-                        nativeOnApplicationStateChange(newState);
+                        ApplicationStatusJni.get().onApplicationStateChange(newState);
                     }
                 };
                 registerApplicationStateListener(sNativeApplicationStateListener);
@@ -619,7 +682,10 @@ public class ApplicationStatus {
         return ApplicationState.HAS_DESTROYED_ACTIVITIES;
     }
 
-    // Called to notify the native side of state changes.
-    // IMPORTANT: This is always called on the main thread!
-    private static native void nativeOnApplicationStateChange(@ApplicationState int newState);
+    @NativeMethods
+    interface Natives {
+        // Called to notify the native side of state changes.
+        // IMPORTANT: This is always called on the main thread!
+        void onApplicationStateChange(@ApplicationState int newState);
+    }
 }

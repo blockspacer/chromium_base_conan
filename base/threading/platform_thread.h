@@ -15,59 +15,13 @@
 #include "base/macros.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-
-#if defined(STARBOARD)
-/// \todo STARBOARD: prevent recursion
-//#include "starboard/thread.h"
-
-// see https://github.com/blockspacer/skia-opengl-emscripten/blob/cdb838723fe53c53abf008e9f2e8fc93089ae3f6/src/cobalt/port/starboard/types.h#L196
-#define base_kSbInt32Min ((int32_t)0x80000000)
-
-typedef enum SbThreadPriorityTODO {
-  // The lowest thread priority available on the current platform.
-  base_kSbThreadPriorityLowest,
-
-  // A lower-than-normal thread priority, if available on the current platform.
-  base_kSbThreadPriorityLow,
-
-  // Really, what is normal? You should spend time pondering that question more
-  // than you consider less-important things, but less than you think about
-  // more-important things.
-  base_kSbThreadPriorityNormal,
-
-  // A higher-than-normal thread priority, if available on the current platform.
-  base_kSbThreadPriorityHigh,
-
-  // The highest thread priority available on the current platform that isn't
-  // considered "real-time" or "time-critical," if those terms have any meaning
-  // on the current platform.
-  base_kSbThreadPriorityHighest,
-
-  // If the platform provides any kind of real-time or time-critical scheduling,
-  // this priority will request that treatment. Real-time scheduling generally
-  // means that the thread will have more consistency in scheduling than
-  // non-real-time scheduled threads, often by being more deterministic in how
-  // threads run in relation to each other. But exactly how being real-time
-  // affects the thread scheduling is platform-specific.
-  //
-  // For platforms where that is not offered, or otherwise not meaningful, this
-  // will just be the highest priority available in the platform's scheme, which
-  // may be the same as kSbThreadPriorityHighest.
-  base_kSbThreadPriorityRealTime,
-
-  // Well-defined constant value to mean "no priority."  This means to use the
-  // default priority assignment method of that platform. This may mean to
-  // inherit the priority of the spawning thread, or it may mean a specific
-  // default priority, or it may mean something else, depending on the platform.
-  base_kSbThreadNoPriority = base_kSbInt32Min,
-} SbThreadPriorityTODO;
-#endif
+#include "build/chromeos_buildflags.h"
 
 #if defined(OS_WIN)
 #include "base/win/windows_types.h"
 #elif defined(OS_FUCHSIA)
 #include <zircon/types.h>
-#elif defined(OS_MACOSX)
+#elif defined(OS_APPLE)
 #include <mach/mach_types.h>
 #elif defined(OS_POSIX)
 #include <pthread.h>
@@ -81,7 +35,7 @@ namespace base {
 typedef DWORD PlatformThreadId;
 #elif defined(OS_FUCHSIA)
 typedef zx_handle_t PlatformThreadId;
-#elif defined(OS_MACOSX)
+#elif defined(OS_APPLE)
 typedef mach_port_t PlatformThreadId;
 #elif defined(OS_POSIX)
 typedef pid_t PlatformThreadId;
@@ -148,24 +102,11 @@ class PlatformThreadHandle {
   Handle handle_;
 };
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-const PlatformThreadId kInvalidThreadId(-999); // 0 = main thread
-#else
 const PlatformThreadId kInvalidThreadId(0);
-#endif
 
 // Valid values for priority of Thread::Options and SimpleThread::Options, and
 // SetCurrentThreadPriority(), listed in increasing order of importance.
 enum class ThreadPriority : int {
-#if defined(STARBOARD)
-  DEFAULT = base_kSbThreadNoPriority,
-  LOWEST = base_kSbThreadPriorityLowest,
-  BACKGROUND = base_kSbThreadPriorityLow,
-  NORMAL = base_kSbThreadPriorityNormal,
-  DISPLAY = base_kSbThreadPriorityHigh,
-  HIGHEST = base_kSbThreadPriorityHighest,
-  REALTIME_AUDIO = base_kSbThreadPriorityRealTime,  // Could be equal to HIGHEST.
-#else
   // Suitable for threads that shouldn't disrupt high priority work.
   BACKGROUND,
   // Default priority level.
@@ -174,7 +115,6 @@ enum class ThreadPriority : int {
   DISPLAY,
   // Suitable for low-latency, glitch-resistant audio.
   REALTIME_AUDIO,
-#endif
 };
 
 // A namespace for low-level thread functions.
@@ -184,6 +124,12 @@ class BASE_EXPORT PlatformThread {
   // ThreadMain method will be called on the newly created thread.
   class BASE_EXPORT Delegate {
    public:
+    // The interval at which the thread expects to have work to do. Zero if
+    // unknown. (Example: audio buffer duration for real-time audio.) Is used to
+    // optimize the thread real-time behavior. Is called on the newly created
+    // thread before ThreadMain().
+    virtual TimeDelta GetRealtimePeriod();
+
     virtual void ThreadMain() = 0;
 
    protected:
@@ -206,10 +152,11 @@ class BASE_EXPORT PlatformThread {
   // Yield the current thread so another thread can be scheduled.
   static void YieldCurrentThread();
 
-  // Sleeps for the specified duration. Note: The sleep duration may be in
-  // base::Time or base::TimeTicks, depending on platform. If you're looking to
-  // use this in unit tests testing delayed tasks, this will be unreliable -
-  // instead, use base::test::ScopedTaskEnvironment with MOCK_TIME mode.
+  // Sleeps for the specified duration (real-time; ignores time overrides).
+  // Note: The sleep duration may be in base::Time or base::TimeTicks, depending
+  // on platform. If you're looking to use this in unit tests testing delayed
+  // tasks, this will be unreliable - instead, use
+  // base::test::TaskEnvironment with MOCK_TIME mode.
   static void Sleep(base::TimeDelta duration);
 
   // Sets the thread name visible to debuggers/tools. This will try to
@@ -281,7 +228,10 @@ class BASE_EXPORT PlatformThread {
 
   static ThreadPriority GetCurrentThreadPriority();
 
-#if defined(OS_LINUX) && !defined(OS_EMSCRIPTEN)
+  // Returns a realtime period provided by |delegate|.
+  static TimeDelta GetRealtimePeriod(Delegate* delegate);
+
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
   // Toggles a specific thread's priority at runtime. This can be used to
   // change the priority of a thread in a different process and will fail
   // if the calling process does not have proper permissions. The
@@ -291,13 +241,31 @@ class BASE_EXPORT PlatformThread {
   // to change the priority of sandboxed threads for improved performance.
   // Warning: Don't use this for a main thread because that will change the
   // whole thread group's (i.e. process) priority.
-  static void SetThreadPriority(PlatformThreadId thread_id,
+  static void SetThreadPriority(PlatformThreadId process_id,
+                                PlatformThreadId thread_id,
                                 ThreadPriority priority);
+#endif
+
+#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  // Signals that the feature list has been initialized which allows to check
+  // the feature's value now and initialize state. This prevents race
+  // conditions where the feature is being checked while it is being
+  // initialized, which can cause a crash.
+  static void InitThreadPostFieldTrial();
 #endif
 
   // Returns the default thread stack size set by chrome. If we do not
   // explicitly set default size then returns 0.
   static size_t GetDefaultThreadStackSize();
+
+#if defined(OS_APPLE)
+  // Initializes realtime threading based on kOptimizedRealtimeThreadingMac
+  // feature status.
+  static void InitializeOptimizedRealtimeThreadingFeature();
+
+  // Stores the period value in TLS.
+  static void SetCurrentThreadRealtimePeriodValue(TimeDelta realtime_period);
+#endif
 
  private:
   static void SetCurrentThreadPriorityImpl(ThreadPriority priority);

@@ -7,18 +7,21 @@
 
 #include <stddef.h>
 
-#include <limits>
-#include <ostream>
-#include <type_traits>
 #include <cmath>
+#include <limits>
+#include <type_traits>
 
 #include "base/numerics/safe_conversions_impl.h"
 
-#if !defined(__native_client__) && (defined(__ARMEL__) || defined(__arch64__))
+#if defined(__ARMEL__) && !defined(__native_client__)
 #include "base/numerics/safe_conversions_arm_impl.h"
 #define BASE_HAS_OPTIMIZED_SAFE_CONVERSIONS (1)
 #else
 #define BASE_HAS_OPTIMIZED_SAFE_CONVERSIONS (0)
+#endif
+
+#if !BASE_NUMERICS_DISABLE_OSTREAM_OPERATORS
+#include <ostream>
 #endif
 
 namespace base {
@@ -27,7 +30,7 @@ namespace internal {
 #if !BASE_HAS_OPTIMIZED_SAFE_CONVERSIONS
 template <typename Dst, typename Src>
 struct SaturateFastAsmOp {
-  static const bool is_supported = false;
+  static constexpr bool is_supported = false;
   static constexpr Dst Do(Src) {
     // Force a compile failure if instantiated.
     return CheckOnFailure::template HandleFailure<Dst>();
@@ -40,8 +43,8 @@ struct SaturateFastAsmOp {
 // eke out better performance than range checking.
 template <typename Dst, typename Src, typename Enable = void>
 struct IsValueInRangeFastOp {
-  static const bool is_supported = false;
-  static constexpr bool Do(Src) {
+  static constexpr bool is_supported = false;
+  static constexpr bool Do(Src value) {
     // Force a compile failure if instantiated.
     return CheckOnFailure::template HandleFailure<bool>();
   }
@@ -56,7 +59,7 @@ struct IsValueInRangeFastOp<
         std::is_integral<Dst>::value && std::is_integral<Src>::value &&
         std::is_signed<Dst>::value && std::is_signed<Src>::value &&
         !IsTypeInRangeForNumericType<Dst, Src>::value>::type> {
-  static const bool is_supported = true;
+  static constexpr bool is_supported = true;
 
   static constexpr bool Do(Src value) {
     // Just downcast to the smaller type, sign extend it back to the original
@@ -74,7 +77,7 @@ struct IsValueInRangeFastOp<
         std::is_integral<Dst>::value && std::is_integral<Src>::value &&
         !std::is_signed<Dst>::value && std::is_signed<Src>::value &&
         !IsTypeInRangeForNumericType<Dst, Src>::value>::type> {
-  static const bool is_supported = true;
+  static constexpr bool is_supported = true;
 
   static constexpr bool Do(Src value) {
     // We cast a signed as unsigned to overflow negative values to the top,
@@ -153,8 +156,8 @@ constexpr Dst saturated_cast_impl(Src value, RangeCheck constraint) {
 // Arm, we can use the optimized saturation instructions.
 template <typename Dst, typename Src, typename Enable = void>
 struct SaturateFastOp {
-  static const bool is_supported = false;
-  static constexpr Dst Do(Src) {
+  static constexpr bool is_supported = false;
+  static constexpr Dst Do(Src value) {
     // Force a compile failure if instantiated.
     return CheckOnFailure::template HandleFailure<Dst>();
   }
@@ -167,8 +170,8 @@ struct SaturateFastOp<
     typename std::enable_if<std::is_integral<Src>::value &&
                             std::is_integral<Dst>::value &&
                             SaturateFastAsmOp<Dst, Src>::is_supported>::type> {
-  static const bool is_supported = true;
-  static Dst Do(Src value) { return SaturateFastAsmOp<Dst, Src>::Do(value); }
+  static constexpr bool is_supported = true;
+  static constexpr Dst Do(Src value) { return SaturateFastAsmOp<Dst, Src>::Do(value); }
 };
 
 template <typename Dst, typename Src>
@@ -178,12 +181,12 @@ struct SaturateFastOp<
     typename std::enable_if<std::is_integral<Src>::value &&
                             std::is_integral<Dst>::value &&
                             !SaturateFastAsmOp<Dst, Src>::is_supported>::type> {
-  static const bool is_supported = true;
-  static Dst Do(Src value) {
+  static constexpr bool is_supported = true;
+  static constexpr Dst Do(Src value) {
     // The exact order of the following is structured to hit the correct
     // optimization heuristics across compilers. Do not change without
     // checking the emitted code.
-    Dst saturated = CommonMaxOrMin<Dst, Src>(
+    const Dst saturated = CommonMaxOrMin<Dst, Src>(
         IsMaxInRangeForNumericType<Dst, Src>() ||
         (!IsMinInRangeForNumericType<Dst, Src>() && IsValueNegative(value)));
     return BASE_NUMERICS_LIKELY(IsValueInRangeForNumericType<Dst>(value))
@@ -238,7 +241,7 @@ constexpr Dst strict_cast(Src value) {
 // Some wrappers to statically check that a type is in range.
 template <typename Dst, typename Src, class Enable = void>
 struct IsNumericRangeContained {
-  static const bool value = false;
+  static constexpr bool value = false;
 };
 
 template <typename Dst, typename Src>
@@ -247,8 +250,9 @@ struct IsNumericRangeContained<
     Src,
     typename std::enable_if<ArithmeticOrUnderlyingEnum<Dst>::value &&
                             ArithmeticOrUnderlyingEnum<Src>::value>::type> {
-  static const bool value = StaticDstRangeRelationToSrcRange<Dst, Src>::value ==
-                            NUMERIC_RANGE_CONTAINED;
+  static constexpr bool value =
+      StaticDstRangeRelationToSrcRange<Dst, Src>::value ==
+      NUMERIC_RANGE_CONTAINED;
 };
 
 // StrictNumeric implements compile time range checking between numeric types by
@@ -309,12 +313,14 @@ constexpr StrictNumeric<typename UnderlyingType<T>::type> MakeStrictNum(
   return value;
 }
 
+#if !BASE_NUMERICS_DISABLE_OSTREAM_OPERATORS
 // Overload the ostream output operator to make logging work nicely.
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const StrictNumeric<T>& value) {
   os << static_cast<T>(value);
   return os;
 }
+#endif
 
 #define BASE_NUMERIC_COMPARISON_OPERATORS(CLASS, NAME, OP)              \
   template <typename L, typename R,                                     \

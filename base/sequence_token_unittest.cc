@@ -4,7 +4,7 @@
 
 #include "base/sequence_token.h"
 
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

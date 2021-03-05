@@ -6,12 +6,13 @@
 
 #include <dispatch/dispatch.h>
 
+#include <algorithm>
 #include <list>
 
 #include "base/bind.h"
+#include "base/check.h"
 #include "base/files/file_util.h"
 #include "base/lazy_instance.h"
-#include "base/logging.h"
 #include "base/mac/scoped_cftyperef.h"
 #include "base/stl_util.h"
 #include "base/strings/stringprintf.h"
@@ -72,9 +73,7 @@ FilePathWatcherFSEvents::FilePathWatcherFSEvents()
     : queue_(dispatch_queue_create(
           base::StringPrintf("org.chromium.base.FilePathWatcher.%p", this)
               .c_str(),
-          DISPATCH_QUEUE_SERIAL)),
-      fsevent_stream_(nullptr),
-      weak_factory_(this) {}
+          DISPATCH_QUEUE_SERIAL)) {}
 
 FilePathWatcherFSEvents::~FilePathWatcherFSEvents() {
   DCHECK(!task_runner() || task_runner()->RunsTasksInCurrentSequence());
@@ -83,14 +82,14 @@ FilePathWatcherFSEvents::~FilePathWatcherFSEvents() {
 }
 
 bool FilePathWatcherFSEvents::Watch(const FilePath& path,
-                                    bool recursive,
+                                    Type type,
                                     const FilePathWatcher::Callback& callback) {
   DCHECK(!callback.is_null());
   DCHECK(callback_.is_null());
 
   // This class could support non-recursive watches, but that is currently
   // left to FilePathWatcherKQueue.
-  if (!recursive)
+  if (type != Type::kRecursive)
     return false;
 
   set_task_runner(SequencedTaskRunnerHandle::Get());

@@ -3,18 +3,12 @@ This directory has the following layout:
 - base/task/thread_pool/: implementation of the ThreadPool.
 - base/task/sequence_manager/: implementation of the SequenceManager.
 
-Apart from embedders explicitly managing a ThreadPool and/or SequenceManager
-instance(s) for their process/threads, the vast majority of users should only
-need APIs in base/task/.
-
-See for details:
-
-* https://www.chromium.org/developers/threaded-task-tracking
-* https://chromium.googlesource.com/chromium/src.git/+/62.0.3178.1/docs/subtle_threading_bugs.md
-* https://chromium.googlesource.com/chromium/src.git/+/master/docs/callback.md
-* https://chromium.googlesource.com/chromium/src/+/master/docs/threading_and_tasks.md
+Apart from embedders explicitly managing a ThreadPoolInstance and/or
+SequenceManager instance(s) for their process/threads, the vast majority of
+users should only need APIs in base/task/.
 
 Documentation:
 
 * [Threading and tasks](/docs/threading_and_tasks.md)
 * [Callbacks](/docs/callback.md)
+* [Vision for future API changes](https://docs.google.com/document/d/1pySz2xeJ6kLlbzDnS2jqAC1F8T_6pLEV8pgaMfURXAw/edit)

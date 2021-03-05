@@ -2,19 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#pragma once
+#ifndef BASE_HASH_MD5_CONSTEXPR_H_
+#define BASE_HASH_MD5_CONSTEXPR_H_
 
 #include "base/hash/md5.h"
 #include "base/hash/md5_constexpr_internal.h"
-
-// EXAMPLE
-//
-// uint64_t GetTaskFlowId(uint32_t sequence_id, uint32_t order_num) {
-//   // Xor with a mask to ensure that the flow id does not collide with non-gpu
-//   // tasks.
-//   static constexpr uint64_t kMask = base::MD5Hash64Constexpr("gpu::Scheduler");
-//   return kMask ^ (sequence_id) ^ (static_cast<uint64_t>(order_num) << 32);
-// }
 
 namespace base {
 
@@ -48,3 +40,5 @@ constexpr uint32_t MD5Hash32Constexpr(const char* string);
 constexpr uint32_t MD5Hash32Constexpr(const char* data, uint32_t length);
 
 }  // namespace base
+
+#endif  // BASE_HASH_MD5_CONSTEXPR_H_

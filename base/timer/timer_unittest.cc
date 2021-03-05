@@ -9,19 +9,18 @@
 #include <memory>
 
 #include "base/bind.h"
-#include "base/bind_helpers.h"
 #include "base/callback.h"
+#include "base/callback_helpers.h"
 #include "base/macros.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
-#include "base/message_loop/message_loop.h"
 #include "base/run_loop.h"
 #include "base/sequenced_task_runner.h"
 #include "base/stl_util.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/post_task.h"
-#include "base/test/bind_test_util.h"
-#include "base/test/scoped_task_environment.h"
+#include "base/test/bind.h"
+#include "base/test/task_environment.h"
 #include "base/test/test_mock_time_task_runner.h"
 #include "base/test/test_simple_task_runner.h"
 #include "base/threading/platform_thread.h"
@@ -30,18 +29,18 @@
 #include "base/time/tick_clock.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
 namespace {
 
 // The main thread types on which each timer should be tested.
-const test::ScopedTaskEnvironment::MainThreadType testing_main_threads[] = {
-    test::ScopedTaskEnvironment::MainThreadType::DEFAULT,
-    test::ScopedTaskEnvironment::MainThreadType::IO,
+const test::TaskEnvironment::MainThreadType testing_main_threads[] = {
+    test::TaskEnvironment::MainThreadType::DEFAULT,
+    test::TaskEnvironment::MainThreadType::IO,
 #if !defined(OS_IOS)  // iOS does not allow direct running of the UI loop.
-    test::ScopedTaskEnvironment::MainThreadType::UI,
+    test::TaskEnvironment::MainThreadType::UI,
 #endif
 };
 
@@ -202,8 +201,8 @@ class RepeatingTimerTester {
 // that |did_run_a| would be signaled in that test if it wasn't for the
 // deletion.
 void RunTest_OneShotTimers(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+    test::TaskEnvironment::MainThreadType main_thread_type) {
+  test::TaskEnvironment task_environment(main_thread_type);
 
   WaitableEvent did_run_a(WaitableEvent::ResetPolicy::MANUAL,
                           WaitableEvent::InitialState::NOT_SIGNALED);
@@ -219,8 +218,8 @@ void RunTest_OneShotTimers(
 }
 
 void RunTest_OneShotTimers_Cancel(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+    test::TaskEnvironment::MainThreadType main_thread_type) {
+  test::TaskEnvironment task_environment(main_thread_type);
 
   WaitableEvent did_run_a(WaitableEvent::ResetPolicy::MANUAL,
                           WaitableEvent::InitialState::NOT_SIGNALED);
@@ -241,8 +240,8 @@ void RunTest_OneShotTimers_Cancel(
 }
 
 void RunTest_OneShotSelfDeletingTimer(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+    test::TaskEnvironment::MainThreadType main_thread_type) {
+  test::TaskEnvironment task_environment(main_thread_type);
 
   OneShotSelfDeletingTimerTester f;
   f.Start();
@@ -250,9 +249,9 @@ void RunTest_OneShotSelfDeletingTimer(
 }
 
 void RunTest_RepeatingTimer(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type,
+    test::TaskEnvironment::MainThreadType main_thread_type,
     const TimeDelta& delay) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+  test::TaskEnvironment task_environment(main_thread_type);
 
   RepeatingTimerTester f(nullptr, delay);
   f.Start();
@@ -260,9 +259,9 @@ void RunTest_RepeatingTimer(
 }
 
 void RunTest_RepeatingTimer_Cancel(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type,
+    test::TaskEnvironment::MainThreadType main_thread_type,
     const TimeDelta& delay) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+  test::TaskEnvironment task_environment(main_thread_type);
 
   WaitableEvent did_run_a(WaitableEvent::ResetPolicy::MANUAL,
                           WaitableEvent::InitialState::NOT_SIGNALED);
@@ -298,8 +297,8 @@ class DelayTimerTarget {
 };
 
 void RunTest_DelayTimer_NoCall(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+    test::TaskEnvironment::MainThreadType main_thread_type) {
+  test::TaskEnvironment task_environment(main_thread_type);
 
   // If Delay is never called, the timer shouldn't go off.
   DelayTimerTarget target;
@@ -314,8 +313,8 @@ void RunTest_DelayTimer_NoCall(
 }
 
 void RunTest_DelayTimer_OneCall(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+    test::TaskEnvironment::MainThreadType main_thread_type) {
+  test::TaskEnvironment task_environment(main_thread_type);
 
   DelayTimerTarget target;
   DelayTimer timer(FROM_HERE, TimeDelta::FromMilliseconds(1), &target,
@@ -344,8 +343,8 @@ struct ResetHelper {
 };
 
 void RunTest_DelayTimer_Reset(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+    test::TaskEnvironment::MainThreadType main_thread_type) {
+  test::TaskEnvironment task_environment(main_thread_type);
 
   // If Delay is never called, the timer shouldn't go off.
   DelayTimerTarget target;
@@ -376,8 +375,8 @@ class DelayTimerFatalTarget {
 };
 
 void RunTest_DelayTimer_Deleted(
-    test::ScopedTaskEnvironment::MainThreadType main_thread_type) {
-  test::ScopedTaskEnvironment scoped_task_environment(main_thread_type);
+    test::TaskEnvironment::MainThreadType main_thread_type) {
+  test::TaskEnvironment task_environment(main_thread_type);
 
   DelayTimerFatalTarget target;
 
@@ -399,8 +398,7 @@ void RunTest_DelayTimer_Deleted(
 // that timers work properly in all configurations.
 
 class TimerTestWithThreadType
-    : public testing::TestWithParam<
-          test::ScopedTaskEnvironment::MainThreadType> {};
+    : public testing::TestWithParam<test::TaskEnvironment::MainThreadType> {};
 
 TEST_P(TimerTestWithThreadType, OneShotTimers) {
   RunTest_OneShotTimers(GetParam());
@@ -437,13 +435,13 @@ TEST(TimerTest, OneShotTimer_CustomTaskRunner) {
 }
 
 TEST(TimerTest, OneShotTimerWithTickClock) {
-  test::ScopedTaskEnvironment scoped_task_environment(
-      test::ScopedTaskEnvironment::MainThreadType::MOCK_TIME);
+  test::TaskEnvironment task_environment(
+      test::TaskEnvironment::TimeSource::MOCK_TIME);
   Receiver receiver;
-  OneShotTimer timer(scoped_task_environment.GetMockTickClock());
+  OneShotTimer timer(task_environment.GetMockTickClock());
   timer.Start(FROM_HERE, TimeDelta::FromSeconds(1),
               BindOnce(&Receiver::OnCalled, Unretained(&receiver)));
-  scoped_task_environment.FastForwardBy(TimeDelta::FromSeconds(1));
+  task_environment.FastForwardBy(TimeDelta::FromSeconds(1));
   EXPECT_TRUE(receiver.WasCalled());
 }
 
@@ -464,15 +462,14 @@ TEST_P(TimerTestWithThreadType, RepeatingTimerZeroDelay_Cancel) {
 }
 
 TEST(TimerTest, RepeatingTimerWithTickClock) {
-  test::ScopedTaskEnvironment scoped_task_environment(
-      test::ScopedTaskEnvironment::MainThreadType::MOCK_TIME);
+  test::TaskEnvironment task_environment(
+      test::TaskEnvironment::TimeSource::MOCK_TIME);
   Receiver receiver;
   const int expected_times_called = 10;
-  RepeatingTimer timer(scoped_task_environment.GetMockTickClock());
+  RepeatingTimer timer(task_environment.GetMockTickClock());
   timer.Start(FROM_HERE, TimeDelta::FromSeconds(1),
               BindRepeating(&Receiver::OnCalled, Unretained(&receiver)));
-  scoped_task_environment.FastForwardBy(
-      TimeDelta::FromSeconds(expected_times_called));
+  task_environment.FastForwardBy(TimeDelta::FromSeconds(expected_times_called));
   timer.Stop();
   EXPECT_EQ(expected_times_called, receiver.TimesCalled());
 }
@@ -495,19 +492,18 @@ TEST_P(TimerTestWithThreadType, DelayTimer_Deleted) {
 }
 
 TEST(TimerTest, DelayTimerWithTickClock) {
-  test::ScopedTaskEnvironment scoped_task_environment(
-      test::ScopedTaskEnvironment::MainThreadType::MOCK_TIME);
+  test::TaskEnvironment task_environment(
+      test::TaskEnvironment::TimeSource::MOCK_TIME);
   Receiver receiver;
   DelayTimer timer(FROM_HERE, TimeDelta::FromSeconds(1), &receiver,
-                   &Receiver::OnCalled,
-                   scoped_task_environment.GetMockTickClock());
-  scoped_task_environment.FastForwardBy(TimeDelta::FromMilliseconds(999));
+                   &Receiver::OnCalled, task_environment.GetMockTickClock());
+  task_environment.FastForwardBy(TimeDelta::FromMilliseconds(999));
   EXPECT_FALSE(receiver.WasCalled());
   timer.Reset();
-  scoped_task_environment.FastForwardBy(TimeDelta::FromMilliseconds(999));
+  task_environment.FastForwardBy(TimeDelta::FromMilliseconds(999));
   EXPECT_FALSE(receiver.WasCalled());
   timer.Reset();
-  scoped_task_environment.FastForwardBy(TimeDelta::FromSeconds(1));
+  task_environment.FastForwardBy(TimeDelta::FromSeconds(1));
   EXPECT_TRUE(receiver.WasCalled());
 }
 
@@ -524,7 +520,7 @@ TEST(TimerTest, TaskEnvironmentShutdown) {
     OneShotTimerTesterBase c(&did_run);
     OneShotTimerTesterBase d(&did_run);
     {
-      test::ScopedTaskEnvironment scoped_task_environment;
+      test::TaskEnvironment task_environment;
       a.Start();
       b.Start();
     }  // Task environment destructs by falling out of scope.
@@ -567,7 +563,7 @@ TEST(TimerTest, TaskEnvironmentShutdownSelfOwningTimer) {
   // owns the timer. The test may only trigger exceptions if debug heap checking
   // is enabled.
 
-  test::ScopedTaskEnvironment scoped_task_environment;
+  test::TaskEnvironment task_environment;
   scoped_refptr<OneShotSelfOwningTimerTester> tester =
       new OneShotSelfOwningTimerTester();
 
@@ -582,7 +578,7 @@ void TimerTestCallback() {
 
 TEST(TimerTest, NonRepeatIsRunning) {
   {
-    test::ScopedTaskEnvironment scoped_task_environment;
+    test::TaskEnvironment task_environment;
     OneShotTimer timer;
     EXPECT_FALSE(timer.IsRunning());
     timer.Start(FROM_HERE, TimeDelta::FromDays(1),
@@ -594,7 +590,7 @@ TEST(TimerTest, NonRepeatIsRunning) {
 
   {
     RetainingOneShotTimer timer;
-    test::ScopedTaskEnvironment scoped_task_environment;
+    test::TaskEnvironment task_environment;
     EXPECT_FALSE(timer.IsRunning());
     timer.Start(FROM_HERE, TimeDelta::FromDays(1),
                 BindRepeating(&TimerTestCallback));
@@ -610,7 +606,7 @@ TEST(TimerTest, NonRepeatIsRunning) {
 TEST(TimerTest, NonRepeatTaskEnvironmentDeath) {
   OneShotTimer timer;
   {
-    test::ScopedTaskEnvironment scoped_task_environment;
+    test::TaskEnvironment task_environment;
     EXPECT_FALSE(timer.IsRunning());
     timer.Start(FROM_HERE, TimeDelta::FromDays(1),
                 BindOnce(&TimerTestCallback));
@@ -620,7 +616,7 @@ TEST(TimerTest, NonRepeatTaskEnvironmentDeath) {
 }
 
 TEST(TimerTest, RetainRepeatIsRunning) {
-  test::ScopedTaskEnvironment scoped_task_environment;
+  test::TaskEnvironment task_environment;
   RepeatingTimer timer(FROM_HERE, TimeDelta::FromDays(1),
                        BindRepeating(&TimerTestCallback));
   EXPECT_FALSE(timer.IsRunning());
@@ -633,7 +629,7 @@ TEST(TimerTest, RetainRepeatIsRunning) {
 }
 
 TEST(TimerTest, RetainNonRepeatIsRunning) {
-  test::ScopedTaskEnvironment scoped_task_environment;
+  test::TaskEnvironment task_environment;
   RetainingOneShotTimer timer(FROM_HERE, TimeDelta::FromDays(1),
                               BindRepeating(&TimerTestCallback));
   EXPECT_FALSE(timer.IsRunning());
@@ -672,7 +668,7 @@ void SetCallbackHappened2() {
 TEST(TimerTest, ContinuationStopStart) {
   {
     ClearAllCallbackHappened();
-    test::ScopedTaskEnvironment scoped_task_environment;
+    test::TaskEnvironment task_environment;
     OneShotTimer timer;
     timer.Start(FROM_HERE, TimeDelta::FromMilliseconds(10),
                 BindOnce(&SetCallbackHappened1));
@@ -688,7 +684,7 @@ TEST(TimerTest, ContinuationStopStart) {
 TEST(TimerTest, ContinuationReset) {
   {
     ClearAllCallbackHappened();
-    test::ScopedTaskEnvironment scoped_task_environment;
+    test::TaskEnvironment task_environment;
     OneShotTimer timer;
     timer.Start(FROM_HERE, TimeDelta::FromMilliseconds(10),
                 BindOnce(&SetCallbackHappened1));
@@ -700,7 +696,7 @@ TEST(TimerTest, ContinuationReset) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(,
+INSTANTIATE_TEST_SUITE_P(All,
                          TimerTestWithThreadType,
                          testing::ValuesIn(testing_main_threads));
 

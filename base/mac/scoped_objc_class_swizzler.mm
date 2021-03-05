@@ -6,7 +6,7 @@
 
 #include <string.h>
 
-#include "base/logging.h"
+#include "base/check_op.h"
 
 namespace base {
 namespace mac {
@@ -30,7 +30,7 @@ ScopedObjCClassSwizzler::~ScopedObjCClassSwizzler() {
     method_exchangeImplementations(old_selector_impl_, new_selector_impl_);
 }
 
-IMP ScopedObjCClassSwizzler::GetOriginalImplementation() {
+IMP ScopedObjCClassSwizzler::GetOriginalImplementation() const {
   // Note that while the swizzle is in effect the "new" method is actually
   // pointing to the original implementation, since they have been swapped.
   return method_getImplementation(new_selector_impl_);

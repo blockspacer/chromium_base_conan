@@ -5,7 +5,7 @@
 #include "base/scoped_native_library.h"
 
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 #if defined(OS_WIN)
 #include "base/files/file_path.h"

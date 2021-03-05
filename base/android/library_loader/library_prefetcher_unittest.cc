@@ -10,7 +10,7 @@
 #include "base/android/library_loader/anchor_functions_buildflags.h"
 #include "base/memory/writable_shared_memory_region.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(SUPPORTS_CODE_ORDERING)
 namespace base {
@@ -22,7 +22,8 @@ namespace {
 const size_t kPageSize = 4096;
 }  // namespace
 
-TEST(NativeLibraryPrefetcherTest, TestPercentageOfResidentCode) {
+// https://crbug.com/1056021 - flaky on Nexus 5.
+TEST(NativeLibraryPrefetcherTest, DISABLED_TestPercentageOfResidentCode) {
   size_t length = 4 * kPageSize;
   auto shared_region = base::WritableSharedMemoryRegion::Create(length);
   ASSERT_TRUE(shared_region.IsValid());

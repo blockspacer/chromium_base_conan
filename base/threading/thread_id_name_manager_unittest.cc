@@ -6,8 +6,8 @@
 
 #include "base/threading/platform_thread.h"
 #include "base/threading/thread.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/platform_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 typedef PlatformTest ThreadIdNameManagerTest;
 

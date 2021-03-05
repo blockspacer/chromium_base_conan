@@ -9,7 +9,7 @@
 
 #include "base/test/gtest_util.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace subtle {
@@ -652,6 +652,15 @@ TEST(RefCountedUnitTest, TestResetAlreadyNull) {
   scoped_refptr<ScopedRefPtrCountBase> obj;
   obj.reset();
   // |obj| should still be null after calling reset().
+  EXPECT_EQ(obj.get(), nullptr);
+}
+
+TEST(RefCountedUnitTest, TestResetByNullptrAssignment) {
+  // Check that assigning nullptr resets the object.
+  auto obj = base::MakeRefCounted<ScopedRefPtrCountBase>();
+  EXPECT_NE(obj.get(), nullptr);
+
+  obj = nullptr;
   EXPECT_EQ(obj.get(), nullptr);
 }
 

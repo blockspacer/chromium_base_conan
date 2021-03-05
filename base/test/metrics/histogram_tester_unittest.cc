@@ -9,8 +9,8 @@
 
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/histogram_samples.h"
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
@@ -72,6 +72,8 @@ TEST_F(HistogramTesterTest, TestUniqueSample) {
   UMA_HISTOGRAM_COUNTS_100(kHistogram2, 2);
 
   tester.ExpectUniqueSample(kHistogram2, 2, 3);
+  tester.ExpectUniqueTimeSample(kHistogram2,
+                                base::TimeDelta::FromMilliseconds(2), 3);
 }
 
 TEST_F(HistogramTesterTest, TestBucketsSample) {
@@ -153,6 +155,20 @@ TEST_F(HistogramTesterTest, TestGetAllChangedHistograms) {
   EXPECT_NE(
       std::string::npos,
       results.find("Histogram: Test1.Test2.Test3 recorded 1 new samples"));
+}
+
+TEST_F(HistogramTesterTest, MissingHistogramMeansEmptyBuckets) {
+  // When a histogram hasn't been instantiated, expecting counts of zero should
+  // still succeed.
+  static const char kHistogram[] = "MissingHistogramMeansEmptyBucketsHistogram";
+  HistogramTester tester;
+
+  tester.ExpectBucketCount(kHistogram, 42, 0);
+  tester.ExpectTotalCount(kHistogram, 0);
+  EXPECT_TRUE(tester.GetAllSamples(kHistogram).empty());
+  EXPECT_EQ(0, tester.GetBucketCount(kHistogram, 42));
+  EXPECT_EQ(0,
+            tester.GetHistogramSamplesSinceCreation(kHistogram)->TotalCount());
 }
 
 }  // namespace base

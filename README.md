@@ -2,12 +2,46 @@
 
 Modified `base` library from chromium https://github.com/chromium/chromium/tree/master/base
 
+## How to update
+
+Clone latest base:
+
+```bash
+cd ~
+git clone https://chromium.googlesource.com/chromium/src/base
+
+OR
+
+function git_sparse_clone() (
+  rurl="$1" localdir="$2" && shift 2
+
+  mkdir -p "$localdir"
+  cd "$localdir"
+
+  git init
+  git remote add -f origin "$rurl"
+
+  git config core.sparseCheckout true
+
+  # Loops over remaining args
+  for i; do
+    echo "$i" >> .git/info/sparse-checkout
+  done
+
+  git pull origin master
+)
+cd ~
+git_sparse_clone "https://github.com/chromium/chromium" "chromium_base" "/base"
+
+```
+
+Copy sources and apply patches.
+
 ## EXTRA FEATURES
 
 - ported to CMake
 - supports Conan
 - added CMake options to disable some features
-- supports starboard from cobalt.foo
 - ported to WASM (emscripten) with threading support
 - ported to WASM (emscripten) without threading support
 
@@ -106,7 +140,6 @@ See https://github.com/chromium/chromium/blob/master/base/DEPS
 - PTHREADS (on UNIX)
 - xdg_mime (on UNIX)
 - xdg_user_dirs (on UNIX)
-- (optional) starboard from cobalt.foo
 
 ## Used chromium version
 

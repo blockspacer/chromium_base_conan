@@ -6,8 +6,8 @@
 
 #include <utility>
 
+#include "base/check_op.h"
 #include "base/lazy_instance.h"
-#include "base/logging.h"
 #include "base/threading/thread_local.h"
 
 namespace base {
@@ -23,8 +23,10 @@ LazyInstance<ThreadLocalPointer<SequencedTaskRunnerHandle>>::Leaky
 const scoped_refptr<SequencedTaskRunner>& SequencedTaskRunnerHandle::Get() {
   const SequencedTaskRunnerHandle* current =
       sequenced_task_runner_tls.Pointer()->Get();
-  CHECK(current) << "Error: This caller requires a sequenced context (i.e. the "
-                    "current task needs to run from a SequencedTaskRunner).";
+  CHECK(current)
+      << "Error: This caller requires a sequenced context (i.e. the current "
+         "task needs to run from a SequencedTaskRunner). If you're in a test "
+         "refer to //docs/threading_and_tasks_testing.md.";
   return current->task_runner_;
 }
 
@@ -36,20 +38,14 @@ bool SequencedTaskRunnerHandle::IsSet() {
 SequencedTaskRunnerHandle::SequencedTaskRunnerHandle(
     scoped_refptr<SequencedTaskRunner> task_runner)
     : task_runner_(std::move(task_runner)) {
-  DCHECK(task_runner_);
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   DCHECK(!SequencedTaskRunnerHandle::IsSet());
-#endif
   sequenced_task_runner_tls.Pointer()->Set(this);
 }
 
 SequencedTaskRunnerHandle::~SequencedTaskRunnerHandle() {
-  DCHECK(task_runner_);
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   DCHECK_EQ(sequenced_task_runner_tls.Pointer()->Get(), this);
-#endif
   sequenced_task_runner_tls.Pointer()->Set(nullptr);
 }
 

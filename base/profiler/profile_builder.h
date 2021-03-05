@@ -8,8 +8,11 @@
 #include <memory>
 
 #include "base/base_export.h"
+#include "base/macros.h"
+#include "base/optional.h"
 #include "base/profiler/frame.h"
-#include "base/sampling_heap_profiler/module_cache.h"
+#include "base/profiler/metadata_recorder.h"
+#include "base/profiler/module_cache.h"
 #include "base/time/time.h"
 
 namespace base {
@@ -32,10 +35,23 @@ class BASE_EXPORT ProfileBuilder {
   // heap allocation or use of CHECK/DCHECK/LOG statements. Generally
   // implementations should simply atomically copy metadata state to be
   // associated with the sample.
-  virtual void RecordMetadata() {}
+  virtual void RecordMetadata(
+      const MetadataRecorder::MetadataProvider& metadata_provider) {}
+
+  // Applies the specified metadata |item| to samples collected in the range
+  // [period_start, period_end), iff the profile already captured execution that
+  // covers that range entirely. This restriction avoids bias in the results
+  // towards samples in the middle of the period, at the expense of excluding
+  // periods overlapping the start or end of the profile. |period_end| must be
+  // <= TimeTicks::Now().
+  virtual void ApplyMetadataRetrospectively(
+      TimeTicks period_start,
+      TimeTicks period_end,
+      const MetadataRecorder::Item& item) {}
 
   // Records a new set of frames. Invoked when sampling a sample completes.
-  virtual void OnSampleCompleted(std::vector<Frame> frames) = 0;
+  virtual void OnSampleCompleted(std::vector<Frame> frames,
+                                 TimeTicks sample_timestamp) = 0;
 
   // Finishes the profile construction with |profile_duration| and
   // |sampling_period|. Invoked when sampling a profile completes.

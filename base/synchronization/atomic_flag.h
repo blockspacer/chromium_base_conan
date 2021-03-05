@@ -30,7 +30,7 @@ class BASE_EXPORT AtomicFlag {
   // is guaranteed to be synchronized with all memory operations on the sequence
   // which invoked Set() up until at least the first call to Set() on it.
   bool IsSet() const {
-    // Inline here: this has a measurable performance impact.
+    // Inline here: this has a measurable performance impact on base::WeakPtr.
     return flag_.load(std::memory_order_acquire) != 0;
   }
 

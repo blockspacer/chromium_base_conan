@@ -10,12 +10,13 @@
 #include "base/format_macros.h"
 #include "base/stl_util.h"
 #include "base/strings/stringprintf.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
 // Make sure our ID hashes are the same as what we see on the server side.
 TEST(MetricsUtilTest, HashMetricName) {
+  // The cases must match those in //tools/metrics/ukm/codegen_test.py.
   static const struct {
     std::string input;
     std::string output;

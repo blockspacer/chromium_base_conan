@@ -612,6 +612,7 @@ if(NOT ALLOCATOR_TCMALLOC)
 endif(NOT ALLOCATOR_TCMALLOC)
 
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "")
+add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "extensions")
 
 if(ENABLE_COBALT)
   add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "${COBALT_DIR}")

@@ -5,13 +5,21 @@
 #include "base/task/task_traits.h"
 
 #include "base/task/test_task_traits_extension.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
 TEST(TaskTraitsExtensionTest, NoExtension) {
   constexpr TaskTraits traits = {};
 
+  EXPECT_EQ(traits.extension_id(),
+            TaskTraitsExtensionStorage::kInvalidExtensionId);
+}
+
+TEST(TaskTraitsExtensionTest, ThreadPoolIsntAnExtension) {
+  constexpr TaskTraits traits = {base::ThreadPool()};
+
+  EXPECT_TRUE(traits.use_thread_pool());
   EXPECT_EQ(traits.extension_id(),
             TaskTraitsExtensionStorage::kInvalidExtensionId);
 }

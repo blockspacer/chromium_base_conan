@@ -6,6 +6,10 @@
 
 #include <stddef.h>
 
+#if defined(OS_POSIX) || defined(OS_FUCHSIA)
+#include <string.h>
+#endif
+
 #include <vector>
 
 namespace base {
@@ -94,7 +98,7 @@ NativeEnvironmentString AlterEnvironment(const wchar_t* env,
   // First build up all of the unchanged environment strings.
   const wchar_t* ptr = env;
   while (*ptr) {
-    string16 key;
+    std::wstring key;
     size_t line_length = ParseEnvLine(ptr, &key);
 
     // Keep only values not specified in the change vector.
@@ -107,8 +111,8 @@ NativeEnvironmentString AlterEnvironment(const wchar_t* env,
   // Now append all modified and new values.
   for (const auto& i : changes) {
     // Windows environment blocks cannot handle keys or values with NULs.
-    CHECK_EQ(string16::npos, i.first.find(static_cast<wchar_t>(0)));
-    CHECK_EQ(string16::npos, i.second.find(static_cast<wchar_t>(0)));
+    CHECK_EQ(std::wstring::npos, i.first.find(L'\0'));
+    CHECK_EQ(std::wstring::npos, i.second.find(L'\0'));
     if (!i.second.empty()) {
       result += i.first;
       result.push_back('=');

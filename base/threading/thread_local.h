@@ -51,7 +51,7 @@
 
 #include <memory>
 
-#include "base/logging.h"
+#include "base/check_op.h"
 #include "base/macros.h"
 #include "base/threading/thread_local_internal.h"
 #include "base/threading/thread_local_storage.h"
@@ -64,16 +64,6 @@ class ThreadLocalPointer {
   ThreadLocalPointer() = default;
   ~ThreadLocalPointer() = default;
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  T* Get() const { return slot_; }
-
-  void Set(T* ptr) {
-    slot_ = ptr;
-  }
-
- private:
-  T* slot_;
-#else
   T* Get() const { return static_cast<T*>(slot_.Get()); }
 
   void Set(T* ptr) {
@@ -82,7 +72,7 @@ class ThreadLocalPointer {
 
  private:
   ThreadLocalStorage::Slot slot_;
-#endif
+
   DISALLOW_COPY_AND_ASSIGN(ThreadLocalPointer<T>);
 };
 
@@ -95,7 +85,10 @@ class ThreadLocalPointer {
 // it. Typically this means that ThreadLocalOwnedPointer instances are held in
 // static storage or at the very least only recycled in the single-threaded
 // phase between tests in the same process.
-#if !DCHECK_IS_ON() || (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
+#if DCHECK_IS_ON()
+template <typename T>
+using ThreadLocalOwnedPointer = internal::CheckedThreadLocalOwnedPointer<T>;
+#else   // DCHECK_IS_ON()
 template <typename T>
 class ThreadLocalOwnedPointer {
  public:
@@ -121,9 +114,6 @@ class ThreadLocalOwnedPointer {
 
   DISALLOW_COPY_AND_ASSIGN(ThreadLocalOwnedPointer<T>);
 };
-#else   // DCHECK_IS_ON()
-template <typename T>
-using ThreadLocalOwnedPointer = internal::CheckedThreadLocalOwnedPointer<T>;
 #endif  // DCHECK_IS_ON()
 
 class ThreadLocalBoolean {

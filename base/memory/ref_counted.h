@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,21 +11,19 @@
 
 #include "base/atomic_ref_count.h"
 #include "base/base_export.h"
+#include "base/check_op.h"
 #include "base/compiler_specific.h"
 #include "base/gtest_prod_util.h"
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/sequence_checker.h"
+#include "base/template_util.h"
 #include "base/threading/thread_collision_warner.h"
 #include "build/build_config.h"
 
 namespace base {
 namespace subtle {
 
-/// \note You can use `WrapRefCounted(this)` to imitate `std::shared_from_this`
-/// You can also use `base::RetainedRef(this)` if callback recieves pointer.
-//
 class BASE_EXPORT RefCountedBase {
  public:
   bool HasOneRef() const { return ref_count_ == 1; }
@@ -52,10 +50,6 @@ class BASE_EXPORT RefCountedBase {
   }
 
   void AddRef() const {
-    // TODO(maruel): Add back once it doesn't assert 500 times/sec.
-    // Current thread books the critical section "AddRelease"
-    // without release it.
-    // DFAKE_SCOPED_LOCK_THREAD_LOCKED(add_release_);
 #if DCHECK_IS_ON()
     DCHECK(!in_dtor_);
     DCHECK(!needs_adopt_ref_)
@@ -72,12 +66,7 @@ class BASE_EXPORT RefCountedBase {
 
   // Returns true if the object should self-delete.
   bool Release() const {
-    --ref_count_;
-
-    // TODO(maruel): Add back once it doesn't assert 500 times/sec.
-    // Current thread books the critical section "AddRelease"
-    // without release it.
-    // DFAKE_SCOPED_LOCK_THREAD_LOCKED(add_release_);
+    ReleaseImpl();
 
 #if DCHECK_IS_ON()
     DCHECK(!in_dtor_);
@@ -129,8 +118,10 @@ class BASE_EXPORT RefCountedBase {
 
 #if defined(ARCH_CPU_64_BITS)
   void AddRefImpl() const;
+  void ReleaseImpl() const;
 #else
   void AddRefImpl() const { ++ref_count_; }
+  void ReleaseImpl() const { --ref_count_; }
 #endif
 
 #if DCHECK_IS_ON()
@@ -138,6 +129,8 @@ class BASE_EXPORT RefCountedBase {
 #endif
 
   mutable uint32_t ref_count_ = 0;
+  static_assert(std::is_unsigned<decltype(ref_count_)>::value,
+                "ref_count_ must be an unsigned type.");
 
 #if DCHECK_IS_ON()
   mutable bool needs_adopt_ref_ = false;
@@ -199,7 +192,6 @@ class BASE_EXPORT RefCountedThreadSafeBase {
   ALWAYS_INLINE void AddRefImpl() const {
 #if DCHECK_IS_ON()
     DCHECK(!in_dtor_);
-    // TODO
     DCHECK(!needs_adopt_ref_)
         << "This RefCounted object is created with non-zero reference count."
         << " The first reference to such a object has to be made by AdoptRef or"
@@ -277,9 +269,11 @@ class BASE_EXPORT ScopedAllowCrossThreadRefCountAccess final {
 //     ~MyFoo();
 //   };
 //
-// You should always make your destructor non-public, to avoid any code deleting
-// the object accidently while there are references to it.
-//
+// Usage Notes:
+// 1. You should always make your destructor non-public, to avoid any code
+// deleting the object accidentally while there are references to it.
+// 2. You should always make the ref-counted base class a friend of your class,
+// so that it can access the destructor.
 //
 // The ref count manipulation to RefCounted is NOT thread safe and has DCHECKs
 // to trap unsafe cross thread usage. A subclass instance of RefCounted can be
@@ -440,6 +434,9 @@ class RefCountedData
   RefCountedData() : data() {}
   RefCountedData(const T& in_value) : data(in_value) {}
   RefCountedData(T&& in_value) : data(std::move(in_value)) {}
+  template <typename... Args>
+  explicit RefCountedData(in_place_t, Args&&... args)
+      : data(std::forward<Args>(args)...) {}
 
   T data;
 

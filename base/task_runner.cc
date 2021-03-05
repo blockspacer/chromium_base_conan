@@ -6,8 +6,9 @@
 
 #include <utility>
 
+#include "base/bind.h"
+#include "base/check.h"
 #include "base/compiler_specific.h"
-#include "base/logging.h"
 #include "base/threading/post_task_and_reply_impl.h"
 
 namespace base {

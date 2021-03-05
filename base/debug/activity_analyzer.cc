@@ -4,24 +4,29 @@
 
 #include "base/debug/activity_analyzer.h"
 
-#include <algorithm>
 #include <utility>
 
+#include "base/check_op.h"
+#include "base/containers/contains.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/memory_mapped_file.h"
-#include "base/lazy_instance.h"
-#include "base/logging.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
-#include "base/stl_util.h"
+#include "base/no_destructor.h"
+#include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 
 namespace base {
 namespace debug {
 
 namespace {
-// An empty snapshot that can be returned when there otherwise is none.
-LazyInstance<ActivityUserData::Snapshot>::Leaky g_empty_user_data_snapshot;
+
+const ActivityUserData::Snapshot& GetEmptyUserDataSnapshot() {
+  // An empty snapshot that can be returned when there otherwise is none.
+  static const NoDestructor<ActivityUserData::Snapshot> empty_snapshot;
+  return *empty_snapshot;
+}
 
 // DO NOT CHANGE VALUES. This is logged persistently in a histogram.
 enum AnalyzerCreationError {
@@ -34,8 +39,8 @@ enum AnalyzerCreationError {
 };
 
 void LogAnalyzerCreationError(AnalyzerCreationError error) {
-  UMA_HISTOGRAM_ENUMERATION("ActivityTracker.Collect.AnalyzerCreationError",
-                            error, kAnalyzerCreationErrorMax);
+  UmaHistogramEnumeration("ActivityTracker.Collect.AnalyzerCreationError",
+                          error, kAnalyzerCreationErrorMax);
 }
 
 }  // namespace
@@ -110,7 +115,7 @@ GlobalActivityAnalyzer::CreateWithAllocator(
   return std::make_unique<GlobalActivityAnalyzer>(std::move(allocator));
 }
 
-#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if !defined(OS_NACL)
 // static
 std::unique_ptr<GlobalActivityAnalyzer> GlobalActivityAnalyzer::CreateWithFile(
     const FilePath& file_path) {
@@ -224,9 +229,9 @@ const ActivityUserData::Snapshot&
 GlobalActivityAnalyzer::GetProcessDataSnapshot(int64_t pid) {
   auto iter = process_data_.find(pid);
   if (iter == process_data_.end())
-    return g_empty_user_data_snapshot.Get();
+    return GetEmptyUserDataSnapshot();
   if (iter->second.create_stamp > analysis_stamp_)
-    return g_empty_user_data_snapshot.Get();
+    return GetEmptyUserDataSnapshot();
   DCHECK_EQ(pid, iter->second.process_id);
   return iter->second.data;
 }
@@ -354,7 +359,7 @@ void GlobalActivityAnalyzer::PrepareAllAnalyzers() {
         // Add this analyzer to the map of known ones, indexed by a unique
         // thread
         // identifier.
-        DCHECK(!base::ContainsKey(analyzers_, analyzer->GetThreadKey()));
+        DCHECK(!base::Contains(analyzers_, analyzer->GetThreadKey()));
         analyzer->allocator_reference_ = ref;
         analyzers_[analyzer->GetThreadKey()] = std::move(analyzer);
       } break;
@@ -364,7 +369,7 @@ void GlobalActivityAnalyzer::PrepareAllAnalyzers() {
         int64_t process_id;
         int64_t create_stamp;
         ActivityUserData::GetOwningProcessId(base, &process_id, &create_stamp);
-        DCHECK(!base::ContainsKey(process_data_, process_id));
+        DCHECK(!base::Contains(process_data_, process_id));
 
         // Create a snapshot of the data. This can fail if the data is somehow
         // corrupted or the process shutdown and the memory being released.
@@ -393,7 +398,7 @@ void GlobalActivityAnalyzer::PrepareAllAnalyzers() {
   }
 
   // Reverse the list of PIDs so that they get popped in the order found.
-  std::reverse(process_ids_.begin(), process_ids_.end());
+  ranges::reverse(process_ids_);
 }
 
 }  // namespace debug

@@ -22,12 +22,8 @@ FileTracing::Provider* GetProvider() {
 
 // static
 bool FileTracing::IsCategoryEnabled() {
-#if !defined(OS_EMSCRIPTEN)
-  return false;
-#else
   FileTracing::Provider* provider = GetProvider();
   return provider && provider->FileTracingCategoryIsEnabled();
-#endif
 }
 
 // static
@@ -48,30 +44,20 @@ FileTracing::ScopedEnabler::~ScopedEnabler() {
     provider->FileTracingDisable(this);
 }
 
-FileTracing::ScopedTrace::ScopedTrace() : id_(nullptr) {}
-
 FileTracing::ScopedTrace::~ScopedTrace() {
-
-#if !defined(OS_EMSCRIPTEN)
   if (id_) {
     FileTracing::Provider* provider = GetProvider();
     if (provider)
       provider->FileTracingEventEnd(name_, id_);
   }
-#endif
-
 }
 
 void FileTracing::ScopedTrace::Initialize(const char* name,
                                           const File* file,
                                           int64_t size) {
-
-#if !defined(OS_EMSCRIPTEN)
   id_ = &file->trace_enabler_;
   name_ = name;
   GetProvider()->FileTracingEventBegin(name_, id_, file->tracing_path_, size);
-#endif
-
 }
 
 }  // namespace base

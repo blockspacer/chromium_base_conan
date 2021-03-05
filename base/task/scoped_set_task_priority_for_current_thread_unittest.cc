@@ -5,21 +5,20 @@
 #include "base/task/scoped_set_task_priority_for_current_thread.h"
 
 #include "base/task/task_traits.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace internal {
 
 TEST(ScopedSetTaskPriorityForCurrentThreadTest,
      ScopedSetTaskPriorityForCurrentThread) {
-  EXPECT_EQ(TaskPriority::USER_VISIBLE, GetTaskPriorityForCurrentThread());
+  EXPECT_EQ(TaskPriority::USER_BLOCKING, GetTaskPriorityForCurrentThread());
   {
     ScopedSetTaskPriorityForCurrentThread
-        scoped_set_task_priority_for_current_thread(
-            TaskPriority::USER_BLOCKING);
-    EXPECT_EQ(TaskPriority::USER_BLOCKING, GetTaskPriorityForCurrentThread());
+        scoped_set_task_priority_for_current_thread(TaskPriority::BEST_EFFORT);
+    EXPECT_EQ(TaskPriority::BEST_EFFORT, GetTaskPriorityForCurrentThread());
   }
-  EXPECT_EQ(TaskPriority::USER_VISIBLE, GetTaskPriorityForCurrentThread());
+  EXPECT_EQ(TaskPriority::USER_BLOCKING, GetTaskPriorityForCurrentThread());
 }
 
 }  // namespace internal

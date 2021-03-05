@@ -39,19 +39,8 @@
 #include "base/base_export.h"
 #include "build/build_config.h"
 
-#if defined(OS_WIN) && defined(ARCH_CPU_64_BITS)
-// windows.h #defines this (only on x64). This causes problems because the
-// public API also uses MemoryBarrier at the public name for this fence. So, on
-// X64, undef it, and call its documented
-// (http://msdn.microsoft.com/en-us/library/windows/desktop/ms684208.aspx)
-// implementation directly.
-#undef MemoryBarrier
-#endif
-
 namespace base {
 namespace subtle {
-
-typedef bool AtomicBool;
 
 typedef int32_t Atomic32;
 #ifdef ARCH_CPU_64_BITS
@@ -102,8 +91,7 @@ Atomic32 Barrier_AtomicIncrement(volatile Atomic32* ptr,
 // ensure that no later memory access can be reordered ahead of the operation.
 // "Release" operations ensure that no previous memory access can be reordered
 // after the operation.  "Barrier" operations have both "Acquire" and "Release"
-// semantics.   A MemoryBarrier() has "Barrier" semantics, but does no memory
-// access.
+// semantics.
 Atomic32 Acquire_CompareAndSwap(volatile Atomic32* ptr,
                                 Atomic32 old_value,
                                 Atomic32 new_value);
@@ -111,14 +99,11 @@ Atomic32 Release_CompareAndSwap(volatile Atomic32* ptr,
                                 Atomic32 old_value,
                                 Atomic32 new_value);
 
-void MemoryBarrier();
 void NoBarrier_Store(volatile Atomic32* ptr, Atomic32 value);
-void Acquire_Store(volatile Atomic32* ptr, Atomic32 value);
 void Release_Store(volatile Atomic32* ptr, Atomic32 value);
 
 Atomic32 NoBarrier_Load(volatile const Atomic32* ptr);
 Atomic32 Acquire_Load(volatile const Atomic32* ptr);
-Atomic32 Release_Load(volatile const Atomic32* ptr);
 
 // 64-bit atomic operations (only available on 64-bit processors).
 #ifdef ARCH_CPU_64_BITS
@@ -136,11 +121,9 @@ Atomic64 Release_CompareAndSwap(volatile Atomic64* ptr,
                                 Atomic64 old_value,
                                 Atomic64 new_value);
 void NoBarrier_Store(volatile Atomic64* ptr, Atomic64 value);
-void Acquire_Store(volatile Atomic64* ptr, Atomic64 value);
 void Release_Store(volatile Atomic64* ptr, Atomic64 value);
 Atomic64 NoBarrier_Load(volatile const Atomic64* ptr);
 Atomic64 Acquire_Load(volatile const Atomic64* ptr);
-Atomic64 Release_Load(volatile const Atomic64* ptr);
 #endif  // ARCH_CPU_64_BITS
 
 }  // namespace subtle
@@ -156,7 +139,7 @@ Atomic64 Release_Load(volatile const Atomic64* ptr);
 
 // On some platforms we need additional declarations to make
 // AtomicWord compatible with our other Atomic* types.
-#if defined(OS_MACOSX) || defined(OS_OPENBSD)
+#if defined(OS_APPLE) || defined(OS_OPENBSD)
 #include "base/atomicops_internals_atomicword_compat.h"
 #endif
 

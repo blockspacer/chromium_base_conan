@@ -17,21 +17,22 @@ enum class TaskRunnerType { BASE, SEQUENCED, SINGLE_THREAD };
 // a C++ TaskRunner.
 class TaskRunnerAndroid {
  public:
-  explicit TaskRunnerAndroid(scoped_refptr<TaskRunner> task_runner);
+  explicit TaskRunnerAndroid(scoped_refptr<TaskRunner> task_runner,
+                             TaskRunnerType type);
   ~TaskRunnerAndroid();
 
-  void Destroy(JNIEnv* env, const base::android::JavaRef<jobject>& caller);
+  void Destroy(JNIEnv* env);
 
   void PostDelayedTask(JNIEnv* env,
-                       const base::android::JavaRef<jobject>& caller,
                        const base::android::JavaRef<jobject>& task,
-                       jlong delay);
+                       jlong delay,
+                       jstring runnable_class_name);
 
-  bool BelongsToCurrentThread(JNIEnv* env,
-                              const base::android::JavaRef<jobject>& caller);
+  bool BelongsToCurrentThread(JNIEnv* env);
 
  private:
   const scoped_refptr<TaskRunner> task_runner_;
+  const TaskRunnerType type_;
 
   DISALLOW_COPY_AND_ASSIGN(TaskRunnerAndroid);
 };

@@ -14,7 +14,7 @@
 #include "base/stl_util.h"
 #include "base/strings/string16.h"
 #include "base/strings/utf_string_conversions.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -568,6 +568,32 @@ TEST(PickleTest, ClaimBytes) {
   int out_value;
   EXPECT_TRUE(iter.ReadInt(&out_value));
   EXPECT_EQ(42, out_value);
+}
+
+TEST(PickleTest, ReachedEnd) {
+  Pickle pickle;
+  pickle.WriteInt(1);
+  pickle.WriteInt(2);
+  pickle.WriteInt(3);
+
+  PickleIterator iter(pickle);
+  int out;
+
+  EXPECT_FALSE(iter.ReachedEnd());
+  EXPECT_TRUE(iter.ReadInt(&out));
+  EXPECT_EQ(1, out);
+
+  EXPECT_FALSE(iter.ReachedEnd());
+  EXPECT_TRUE(iter.ReadInt(&out));
+  EXPECT_EQ(2, out);
+
+  EXPECT_FALSE(iter.ReachedEnd());
+  EXPECT_TRUE(iter.ReadInt(&out));
+  EXPECT_EQ(3, out);
+
+  EXPECT_TRUE(iter.ReachedEnd());
+  EXPECT_FALSE(iter.ReadInt(&out));
+  EXPECT_TRUE(iter.ReachedEnd());
 }
 
 }  // namespace base

@@ -8,12 +8,11 @@
 
 #include "base/bind.h"
 #include "base/callback_forward.h"
-#include "base/logging.h"
 #include "base/run_loop.h"
 #include "base/synchronization/waitable_event.h"
-#include "base/test/scoped_task_environment.h"
+#include "base/test/task_environment.h"
 #include "base/threading/thread.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace android {
@@ -92,21 +91,21 @@ class MultiThreadedTest {
   ApplicationState state_;
   base::WaitableEvent event_;
   base::Thread thread_;
-  test::ScopedTaskEnvironment scoped_task_environment_;
+  test::TaskEnvironment task_environment_;
   std::unique_ptr<ApplicationStatusListener> listener_;
 };
 
 }  // namespace
 
 TEST(ApplicationStatusListenerTest, SingleThread) {
-  test::ScopedTaskEnvironment scoped_task_environment;
+  test::TaskEnvironment task_environment;
 
   ApplicationState result = kInvalidApplicationState;
 
   // Create a new listener that stores the new state into |result| on every
   // state change.
   auto listener = ApplicationStatusListener::New(
-      base::Bind(&StoreStateTo, base::Unretained(&result)));
+      base::BindRepeating(&StoreStateTo, base::Unretained(&result)));
 
   EXPECT_EQ(kInvalidApplicationState, result);
 

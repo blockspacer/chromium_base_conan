@@ -21,7 +21,7 @@ constexpr int kInvalidFd = -1;
 // |fd| when going out of scope. Instead, a consumer of a base::FileDescriptor
 // must invoke close() on |fd| if |auto_close| is true.
 //
-// In the case of IPC, the the IPC subsystem knows to close() |fd| after sending
+// In the case of IPC, the IPC subsystem knows to close() |fd| after sending
 // a message that contains a base::FileDescriptor if auto_close == true. On the
 // other end, the receiver must make sure to close() |fd| after it has finished
 // processing the IPC message. See the IPC::ParamTraits<> specialization in
@@ -34,7 +34,7 @@ struct FileDescriptor {
   }
 
   FileDescriptor(File file) : fd(file.TakePlatformFile()), auto_close(true) {}
-  explicit FileDescriptor(ScopedFD fd_in) : fd(fd_in.release()), auto_close(true) {}
+  explicit FileDescriptor(ScopedFD fd) : fd(fd.release()), auto_close(true) {}
 
   bool operator==(const FileDescriptor& other) const {
     return (fd == other.fd && auto_close == other.auto_close);

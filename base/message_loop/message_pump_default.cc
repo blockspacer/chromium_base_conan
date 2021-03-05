@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2006-2008 The Chromium Authors. All rights reserved.
+// Copyright (c) 2006-2008 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,7 +9,7 @@
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 #include <mach/thread_policy.h>
 
 #include "base/mac/mach_logging.h"
@@ -30,37 +30,20 @@ MessagePumpDefault::~MessagePumpDefault() = default;
 
 void MessagePumpDefault::Run(Delegate* delegate) {
   AutoReset<bool> auto_reset_keep_running(&keep_running_, true);
-//P_LOG("MessagePumpDefault::Run 1\n");
-#if defined(OS_EMSCRIPTEN)
-  DCHECK(delegate);
-#endif
 
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS) && defined(HAVE_ASYNC)
   for (;;) {
-#elif defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS) && !defined(HAVE_ASYNC)
-  #warning "TODO: port MessagePumpDefault"
-  /// \TODO endless loop may hang browser!
-  for (int i = 0; i < 2; i++) {
-#elif defined(DISABLE_PTHREADS)
-  #error "TODO: port MessagePumpDefault"
-#else
-  for (;;) {
-#endif
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
     mac::ScopedNSAutoreleasePool autorelease_pool;
 #endif
 
-//P_LOG("MessagePumpDefault::Run 1.1\n");
-    Delegate::NextWorkInfo next_work_info = delegate->DoSomeWork();
+    Delegate::NextWorkInfo next_work_info = delegate->DoWork();
     bool has_more_immediate_work = next_work_info.is_immediate();
     if (!keep_running_)
       break;
 
-//P_LOG("MessagePumpDefault::Run 1.2\n");
     if (has_more_immediate_work)
       continue;
 
-//P_LOG("MessagePumpDefault::Run 1.3\n");
     has_more_immediate_work = delegate->DoIdleWork();
     if (!keep_running_)
       break;
@@ -68,21 +51,14 @@ void MessagePumpDefault::Run(Delegate* delegate) {
     if (has_more_immediate_work)
       continue;
 
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-//P_LOG("MessagePumpDefault::Run 1.4\n");
     if (next_work_info.delayed_run_time.is_max()) {
-//P_LOG("MessagePumpDefault::Run 1.4.1\n");
       event_.Wait();
     } else {
-//P_LOG("MessagePumpDefault::Run 1.4.2\n");
       event_.TimedWait(next_work_info.remaining_delay());
     }
-#endif
-//P_LOG("MessagePumpDefault::Run 1.5\n");
     // Since event_ is auto-reset, we don't need to do anything special here
     // other than service each delegate method.
   }
-//P_LOG("MessagePumpDefault::Run 2\n");
 }
 
 void MessagePumpDefault::Quit() {
@@ -104,7 +80,7 @@ void MessagePumpDefault::ScheduleDelayedWork(
   // this way (bit.ly/merge-message-pump-do-work).
 }
 
-#if defined(OS_MACOSX)
+#if defined(OS_APPLE)
 void MessagePumpDefault::SetTimerSlack(TimerSlack timer_slack) {
   thread_latency_qos_policy_data_t policy{};
   policy.thread_latency_qos_tier = timer_slack == TIMER_SLACK_MAXIMUM

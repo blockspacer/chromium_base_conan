@@ -2,36 +2,38 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/task/thread_pool/thread_pool.h"
-#include "jni/ThreadPoolTestHelpers_jni.h"
+#include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/test/test_support_jni_headers/ThreadPoolTestHelpers_jni.h"
 
 namespace base {
 
-// ThreadPoolTestHelpers is a friend of ThreadPool which grants access to
-// SetExecutionFenceEnabled.
+// ThreadPoolTestHelpers is a friend of ThreadPoolInstance which grants access
+// to SetCanRun().
 class ThreadPoolTestHelpers {
  public:
   // Enables/disables an execution fence that prevents tasks from running.
-  static void SetThreadPoolExecutionFenceEnabledForTesting(
-      bool execution_fence_enabled);
+  static void BeginFenceForTesting();
+  static void EndFenceForTesting();
 };
 
 // static
-void ThreadPoolTestHelpers::SetThreadPoolExecutionFenceEnabledForTesting(
-    bool execution_fence_enabled) {
-  ThreadPool::GetInstance()->SetCanRun(!execution_fence_enabled);
+void ThreadPoolTestHelpers::BeginFenceForTesting() {
+  ThreadPoolInstance::Get()->BeginFence();
+}
+
+// static
+void ThreadPoolTestHelpers::EndFenceForTesting() {
+  ThreadPoolInstance::Get()->EndFence();
 }
 
 }  // namespace base
 
 void JNI_ThreadPoolTestHelpers_EnableThreadPoolExecutionForTesting(
     JNIEnv* env) {
-  base::ThreadPoolTestHelpers::SetThreadPoolExecutionFenceEnabledForTesting(
-      false);
+  base::ThreadPoolTestHelpers::EndFenceForTesting();
 }
 
 void JNI_ThreadPoolTestHelpers_DisableThreadPoolExecutionForTesting(
     JNIEnv* env) {
-  base::ThreadPoolTestHelpers::SetThreadPoolExecutionFenceEnabledForTesting(
-      true);
+  base::ThreadPoolTestHelpers::BeginFenceForTesting();
 }

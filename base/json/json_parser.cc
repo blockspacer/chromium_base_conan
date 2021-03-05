@@ -8,9 +8,12 @@
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
+#include "base/check_op.h"
+#include "base/json/json_reader.h"
 #include "base/macros.h"
+#include "base/notreached.h"
 #include "base/numerics/safe_conversions.h"
+#include "base/ranges/algorithm.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
@@ -18,54 +21,93 @@
 #include "base/strings/utf_string_conversion_utils.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/third_party/icu/icu_utf.h"
-#include "base/values.h"
 
 namespace base {
 namespace internal {
 
 namespace {
 
+// Values 1000 and above are used by JSONFileValueSerializer::JsonFileError.
+static_assert(JSONParser::JSON_PARSE_ERROR_COUNT < 1000,
+              "JSONParser error out of bounds");
+
+std::string ErrorCodeToString(JSONParser::JsonParseError error_code) {
+  switch (error_code) {
+    case JSONParser::JSON_NO_ERROR:
+      return std::string();
+    case JSONParser::JSON_SYNTAX_ERROR:
+      return JSONParser::kSyntaxError;
+    case JSONParser::JSON_INVALID_ESCAPE:
+      return JSONParser::kInvalidEscape;
+    case JSONParser::JSON_UNEXPECTED_TOKEN:
+      return JSONParser::kUnexpectedToken;
+    case JSONParser::JSON_TRAILING_COMMA:
+      return JSONParser::kTrailingComma;
+    case JSONParser::JSON_TOO_MUCH_NESTING:
+      return JSONParser::kTooMuchNesting;
+    case JSONParser::JSON_UNEXPECTED_DATA_AFTER_ROOT:
+      return JSONParser::kUnexpectedDataAfterRoot;
+    case JSONParser::JSON_UNSUPPORTED_ENCODING:
+      return JSONParser::kUnsupportedEncoding;
+    case JSONParser::JSON_UNQUOTED_DICTIONARY_KEY:
+      return JSONParser::kUnquotedDictionaryKey;
+    case JSONParser::JSON_TOO_LARGE:
+      return JSONParser::kInputTooLarge;
+    case JSONParser::JSON_UNREPRESENTABLE_NUMBER:
+      return JSONParser::kUnrepresentableNumber;
+    case JSONParser::JSON_PARSE_ERROR_COUNT:
+      break;
+  }
+  NOTREACHED();
+  return std::string();
+}
+
 const int32_t kExtendedASCIIStart = 0x80;
-
-// Simple class that checks for maximum recursion/"stack overflow."
-class StackMarker {
- public:
-  StackMarker(int max_depth, int* depth)
-      : max_depth_(max_depth), depth_(depth) {
-    ++(*depth_);
-    DCHECK_LE(*depth_, max_depth_);
-  }
-  ~StackMarker() {
-    --(*depth_);
-  }
-
-  bool IsTooDeep() const { return *depth_ >= max_depth_; }
-
- private:
-  const int max_depth_;
-  int* const depth_;
-
-  DISALLOW_COPY_AND_ASSIGN(StackMarker);
-};
-
 constexpr uint32_t kUnicodeReplacementPoint = 0xFFFD;
+
+// UnprefixedHexStringToInt acts like |HexStringToInt|, but enforces that the
+// input consists purely of hex digits. I.e. no "0x" nor "OX" prefix is
+// permitted.
+bool UnprefixedHexStringToInt(StringPiece input, int* output) {
+  for (size_t i = 0; i < input.size(); i++) {
+    if (!IsHexDigit(input[i])) {
+      return false;
+    }
+  }
+  return HexStringToInt(input, output);
+}
 
 }  // namespace
 
 // This is U+FFFD.
 const char kUnicodeReplacementString[] = "\xEF\xBF\xBD";
 
-JSONParser::JSONParser(int options, int max_depth)
+const char JSONParser::kSyntaxError[] = "Syntax error.";
+const char JSONParser::kInvalidEscape[] = "Invalid escape sequence.";
+const char JSONParser::kUnexpectedToken[] = "Unexpected token.";
+const char JSONParser::kTrailingComma[] = "Trailing comma not allowed.";
+const char JSONParser::kTooMuchNesting[] = "Too much nesting.";
+const char JSONParser::kUnexpectedDataAfterRoot[] =
+    "Unexpected data after root element.";
+const char JSONParser::kUnsupportedEncoding[] =
+    "Unsupported encoding. JSON must be UTF-8.";
+const char JSONParser::kUnquotedDictionaryKey[] =
+    "Dictionary keys must be quoted.";
+const char JSONParser::kInputTooLarge[] = "Input string is too large (>2GB).";
+const char JSONParser::kUnrepresentableNumber[] =
+    "Number cannot be represented.";
+
+JSONParser::JSONParser(int options, size_t max_depth)
     : options_(options),
       max_depth_(max_depth),
       index_(0),
       stack_depth_(0),
       line_number_(0),
       index_last_line_(0),
-      error_code_(JSONReader::JSON_NO_ERROR),
+      error_code_(JSON_NO_ERROR),
       error_line_(0),
       error_column_(0) {
-  CHECK_LE(max_depth, JSONReader::kStackMaxDepth);
+  CHECK_LE(max_depth, kAbsoluteMaxDepth);
 }
 
 JSONParser::~JSONParser() = default;
@@ -73,17 +115,28 @@ JSONParser::~JSONParser() = default;
 Optional<Value> JSONParser::Parse(StringPiece input) {
   input_ = input;
   index_ = 0;
+  // Line and column counting is 1-based, but |index_| is 0-based. For example,
+  // if input is "Aaa\nB" then 'A' and 'B' are both in column 1 (at lines 1 and
+  // 2) and have indexes of 0 and 4. We track the line number explicitly (the
+  // |line_number_| field) and the column number implicitly (the difference
+  // between |index_| and |index_last_line_|). In calculating that difference,
+  // |index_last_line_| is the index of the '\r' or '\n', not the index of the
+  // first byte after the '\n'. For the 'B' in "Aaa\nB", its |index_| and
+  // |index_last_line_| would be 4 and 3: 'B' is in column (4 - 3) = 1. We
+  // initialize |index_last_line_| to -1, not 0, since -1 is the (out of range)
+  // index of the imaginary '\n' immediately before the start of the string:
+  // 'A' is in column (0 - -1) = 1.
   line_number_ = 1;
-  index_last_line_ = 0;
+  index_last_line_ = -1;
 
-  error_code_ = JSONReader::JSON_NO_ERROR;
+  error_code_ = JSON_NO_ERROR;
   error_line_ = 0;
   error_column_ = 0;
 
   // ICU and ReadUnicodeCharacter() use int32_t for lengths, so ensure
   // that the index_ will not overflow when parsing.
   if (!base::IsValueInRangeForNumericType<int32_t>(input.length())) {
-    ReportError(JSONReader::JSON_TOO_LARGE, 0);
+    ReportError(JSON_TOO_LARGE, -1);
     return nullopt;
   }
 
@@ -99,20 +152,20 @@ Optional<Value> JSONParser::Parse(StringPiece input) {
 
   // Make sure the input stream is at an end.
   if (GetNextToken() != T_END_OF_INPUT) {
-    ReportError(JSONReader::JSON_UNEXPECTED_DATA_AFTER_ROOT, 1);
+    ReportError(JSON_UNEXPECTED_DATA_AFTER_ROOT, 0);
     return nullopt;
   }
 
   return root;
 }
 
-JSONReader::JsonParseError JSONParser::error_code() const {
+JSONParser::JsonParseError JSONParser::error_code() const {
   return error_code_;
 }
 
 std::string JSONParser::GetErrorMessage() const {
   return FormatErrorMessage(error_line_, error_column_,
-      JSONReader::ErrorCodeToString(error_code_));
+                            ErrorCodeToString(error_code_));
 }
 
 int JSONParser::error_line() const {
@@ -136,7 +189,7 @@ JSONParser::StringBuilder& JSONParser::StringBuilder::operator=(
     StringBuilder&& other) = default;
 
 void JSONParser::StringBuilder::Append(uint32_t point) {
-  DCHECK(IsValidCharacter(point));
+  DCHECK(IsValidCodepoint(point));
 
   if (point < kExtendedASCIIStart && !string_) {
     DCHECK_EQ(static_cast<char>(point), pos_[length_]);
@@ -270,11 +323,12 @@ void JSONParser::EatWhitespaceAndComments() {
 }
 
 bool JSONParser::EatComment() {
-  Optional<StringPiece> comment_start = ConsumeChars(2);
+  Optional<StringPiece> comment_start = PeekChars(2);
   if (!comment_start)
     return false;
 
   if (comment_start == "//") {
+    ConsumeChars(2);
     // Single line comment, read to newline.
     while (Optional<char> c = PeekChar()) {
       if (c == '\n' || c == '\r')
@@ -282,6 +336,7 @@ bool JSONParser::EatComment() {
       ConsumeChar();
     }
   } else if (comment_start == "/*") {
+    ConsumeChars(2);
     char previous_char = '\0';
     // Block comment, read until end marker.
     while (Optional<char> c = PeekChar()) {
@@ -320,20 +375,20 @@ Optional<Value> JSONParser::ParseToken(Token token) {
     case T_NULL:
       return ConsumeLiteral();
     default:
-      ReportError(JSONReader::JSON_UNEXPECTED_TOKEN, 1);
+      ReportError(JSON_UNEXPECTED_TOKEN, 0);
       return nullopt;
   }
 }
 
 Optional<Value> JSONParser::ConsumeDictionary() {
   if (ConsumeChar() != '{') {
-    ReportError(JSONReader::JSON_UNEXPECTED_TOKEN, 1);
+    ReportError(JSON_UNEXPECTED_TOKEN, 0);
     return nullopt;
   }
 
   StackMarker depth_check(max_depth_, &stack_depth_);
   if (depth_check.IsTooDeep()) {
-    ReportError(JSONReader::JSON_TOO_MUCH_NESTING, 0);
+    ReportError(JSON_TOO_MUCH_NESTING, -1);
     return nullopt;
   }
 
@@ -342,7 +397,7 @@ Optional<Value> JSONParser::ConsumeDictionary() {
   Token token = GetNextToken();
   while (token != T_OBJECT_END) {
     if (token != T_STRING) {
-      ReportError(JSONReader::JSON_UNQUOTED_DICTIONARY_KEY, 1);
+      ReportError(JSON_UNQUOTED_DICTIONARY_KEY, 0);
       return nullopt;
     }
 
@@ -355,7 +410,7 @@ Optional<Value> JSONParser::ConsumeDictionary() {
     // Read the separator.
     token = GetNextToken();
     if (token != T_OBJECT_PAIR_SEPARATOR) {
-      ReportError(JSONReader::JSON_SYNTAX_ERROR, 1);
+      ReportError(JSON_SYNTAX_ERROR, 0);
       return nullopt;
     }
 
@@ -367,37 +422,38 @@ Optional<Value> JSONParser::ConsumeDictionary() {
       return nullopt;
     }
 
-    dict_storage.emplace_back(key.DestructiveAsString(),
-                              std::make_unique<Value>(std::move(*value)));
+    dict_storage.emplace_back(key.DestructiveAsString(), std::move(*value));
 
     token = GetNextToken();
     if (token == T_LIST_SEPARATOR) {
       ConsumeChar();
       token = GetNextToken();
       if (token == T_OBJECT_END && !(options_ & JSON_ALLOW_TRAILING_COMMAS)) {
-        ReportError(JSONReader::JSON_TRAILING_COMMA, 1);
+        ReportError(JSON_TRAILING_COMMA, 0);
         return nullopt;
       }
     } else if (token != T_OBJECT_END) {
-      ReportError(JSONReader::JSON_SYNTAX_ERROR, 0);
+      ReportError(JSON_SYNTAX_ERROR, 0);
       return nullopt;
     }
   }
 
   ConsumeChar();  // Closing '}'.
-
-  return Value(Value::DictStorage(std::move(dict_storage), KEEP_LAST_OF_DUPES));
+  // Reverse |dict_storage| to keep the last of elements with the same key in
+  // the input.
+  ranges::reverse(dict_storage);
+  return Value(Value::DictStorage(std::move(dict_storage)));
 }
 
 Optional<Value> JSONParser::ConsumeList() {
   if (ConsumeChar() != '[') {
-    ReportError(JSONReader::JSON_UNEXPECTED_TOKEN, 1);
+    ReportError(JSON_UNEXPECTED_TOKEN, 0);
     return nullopt;
   }
 
   StackMarker depth_check(max_depth_, &stack_depth_);
   if (depth_check.IsTooDeep()) {
-    ReportError(JSONReader::JSON_TOO_MUCH_NESTING, 0);
+    ReportError(JSON_TOO_MUCH_NESTING, -1);
     return nullopt;
   }
 
@@ -418,11 +474,11 @@ Optional<Value> JSONParser::ConsumeList() {
       ConsumeChar();
       token = GetNextToken();
       if (token == T_ARRAY_END && !(options_ & JSON_ALLOW_TRAILING_COMMAS)) {
-        ReportError(JSONReader::JSON_TRAILING_COMMA, 1);
+        ReportError(JSON_TRAILING_COMMA, 0);
         return nullopt;
       }
     } else if (token != T_ARRAY_END) {
-      ReportError(JSONReader::JSON_SYNTAX_ERROR, 1);
+      ReportError(JSON_SYNTAX_ERROR, 0);
       return nullopt;
     }
   }
@@ -436,13 +492,12 @@ Optional<Value> JSONParser::ConsumeString() {
   StringBuilder string;
   if (!ConsumeStringRaw(&string))
     return nullopt;
-
   return Value(string.DestructiveAsString());
 }
 
 bool JSONParser::ConsumeStringRaw(StringBuilder* out) {
   if (ConsumeChar() != '"') {
-    ReportError(JSONReader::JSON_UNEXPECTED_TOKEN, 1);
+    ReportError(JSON_UNEXPECTED_TOKEN, 0);
     return false;
   }
 
@@ -454,12 +509,11 @@ bool JSONParser::ConsumeStringRaw(StringBuilder* out) {
   while (PeekChar()) {
     uint32_t next_char = 0;
     if (!ReadUnicodeCharacter(input_.data(),
-                              static_cast<int32_t>(input_.length()),
-                              &index_,
+                              static_cast<int32_t>(input_.length()), &index_,
                               &next_char) ||
-        !IsValidCharacter(next_char)) {
+        !IsValidCodepoint(next_char)) {
       if ((options_ & JSON_REPLACE_INVALID_CHARACTERS) == 0) {
-        ReportError(JSONReader::JSON_UNSUPPORTED_ENCODING, 1);
+        ReportError(JSON_UNSUPPORTED_ENCODING, 0);
         return false;
       }
       ConsumeChar();
@@ -473,7 +527,19 @@ bool JSONParser::ConsumeStringRaw(StringBuilder* out) {
       return true;
     }
     if (next_char != '\\') {
-      // If this character is not an escape sequence...
+      // If this character is not an escape sequence, track any line breaks and
+      // copy next_char to the StringBuilder. The JSON spec forbids unescaped
+      // ASCII control characters within a string, including '\r' and '\n', but
+      // this implementation is more lenient.
+      if ((next_char == '\r') || (next_char == '\n')) {
+        index_last_line_ = index_;
+        // Don't increment line_number_ twice for "\r\n". We are guaranteed
+        // that (index_ > 0) because we are consuming a string, so we must have
+        // seen an opening '"' quote character.
+        if ((next_char == '\r') || (input_[index_ - 1] != '\r')) {
+          ++line_number_;
+        }
+      }
       ConsumeChar();
       string.Append(next_char);
     } else {
@@ -486,7 +552,7 @@ bool JSONParser::ConsumeStringRaw(StringBuilder* out) {
       // Read past the escape '\' and ensure there's a character following.
       Optional<StringPiece> escape_sequence = ConsumeChars(2);
       if (!escape_sequence) {
-        ReportError(JSONReader::JSON_INVALID_ESCAPE, 0);
+        ReportError(JSON_INVALID_ESCAPE, -1);
         return false;
       }
 
@@ -497,14 +563,14 @@ bool JSONParser::ConsumeStringRaw(StringBuilder* out) {
           // are supported here for backwards-compatiblity with the old parser.
           escape_sequence = ConsumeChars(2);
           if (!escape_sequence) {
-            ReportError(JSONReader::JSON_INVALID_ESCAPE, -2);
+            ReportError(JSON_INVALID_ESCAPE, -3);
             return false;
           }
 
           int hex_digit = 0;
-          if (!HexStringToInt(*escape_sequence, &hex_digit) ||
+          if (!UnprefixedHexStringToInt(*escape_sequence, &hex_digit) ||
               !IsValidCharacter(hex_digit)) {
-            ReportError(JSONReader::JSON_INVALID_ESCAPE, -2);
+            ReportError(JSON_INVALID_ESCAPE, -3);
             return false;
           }
 
@@ -515,7 +581,7 @@ bool JSONParser::ConsumeStringRaw(StringBuilder* out) {
           // UTF units are of the form \uXXXX.
           uint32_t code_point;
           if (!DecodeUTF16(&code_point)) {
-            ReportError(JSONReader::JSON_INVALID_ESCAPE, 0);
+            ReportError(JSON_INVALID_ESCAPE, -1);
             return false;
           }
           string.Append(code_point);
@@ -550,13 +616,13 @@ bool JSONParser::ConsumeStringRaw(StringBuilder* out) {
           break;
         // All other escape squences are illegal.
         default:
-          ReportError(JSONReader::JSON_INVALID_ESCAPE, 0);
+          ReportError(JSON_INVALID_ESCAPE, -1);
           return false;
       }
     }
   }
 
-  ReportError(JSONReader::JSON_SYNTAX_ERROR, 0);
+  ReportError(JSON_SYNTAX_ERROR, -1);
   return false;
 }
 
@@ -568,49 +634,51 @@ bool JSONParser::DecodeUTF16(uint32_t* out_code_point) {
 
   // Consume the UTF-16 code unit, which may be a high surrogate.
   int code_unit16_high = 0;
-  if (!HexStringToInt(*escape_sequence, &code_unit16_high))
+  if (!UnprefixedHexStringToInt(*escape_sequence, &code_unit16_high))
     return false;
 
   // If this is a high surrogate, consume the next code unit to get the
   // low surrogate.
   if (CBU16_IS_SURROGATE(code_unit16_high)) {
-    // Make sure this is the high surrogate. If not, it's an encoding
-    // error.
-    if (!CBU16_IS_SURROGATE_LEAD(code_unit16_high))
-      return false;
+    // Make sure this is the high surrogate.
+    if (!CBU16_IS_SURROGATE_LEAD(code_unit16_high)) {
+      if ((options_ & JSON_REPLACE_INVALID_CHARACTERS) == 0)
+        return false;
+      *out_code_point = kUnicodeReplacementPoint;
+      return true;
+    }
 
     // Make sure that the token has more characters to consume the
     // lower surrogate.
-    if (!ConsumeIfMatch("\\u"))
-      return false;
+    if (!ConsumeIfMatch("\\u")) {
+      if ((options_ & JSON_REPLACE_INVALID_CHARACTERS) == 0)
+        return false;
+      *out_code_point = kUnicodeReplacementPoint;
+      return true;
+    }
 
     escape_sequence = ConsumeChars(4);
     if (!escape_sequence)
       return false;
 
     int code_unit16_low = 0;
-    if (!HexStringToInt(*escape_sequence, &code_unit16_low))
+    if (!UnprefixedHexStringToInt(*escape_sequence, &code_unit16_low))
       return false;
 
-    if (!CBU16_IS_TRAIL(code_unit16_low))
-      return false;
+    if (!CBU16_IS_TRAIL(code_unit16_low)) {
+      if ((options_ & JSON_REPLACE_INVALID_CHARACTERS) == 0)
+        return false;
+      *out_code_point = kUnicodeReplacementPoint;
+      return true;
+    }
 
     uint32_t code_point =
         CBU16_GET_SUPPLEMENTARY(code_unit16_high, code_unit16_low);
-    if (!IsValidCharacter(code_point))
-      return false;
 
     *out_code_point = code_point;
   } else {
     // Not a surrogate.
     DCHECK(CBU16_IS_SINGLE(code_unit16_high));
-    if (!IsValidCharacter(code_unit16_high)) {
-      if ((options_ & JSON_REPLACE_INVALID_CHARACTERS) == 0) {
-        return false;
-      }
-      *out_code_point = kUnicodeReplacementPoint;
-      return true;
-    }
 
     *out_code_point = code_unit16_high;
   }
@@ -627,7 +695,7 @@ Optional<Value> JSONParser::ConsumeNumber() {
     ConsumeChar();
 
   if (!ReadInt(false)) {
-    ReportError(JSONReader::JSON_SYNTAX_ERROR, 1);
+    ReportError(JSON_SYNTAX_ERROR, 0);
     return nullopt;
   }
   end_index = index_;
@@ -636,7 +704,7 @@ Optional<Value> JSONParser::ConsumeNumber() {
   if (PeekChar() == '.') {
     ConsumeChar();
     if (!ReadInt(true)) {
-      ReportError(JSONReader::JSON_SYNTAX_ERROR, 1);
+      ReportError(JSON_SYNTAX_ERROR, 0);
       return nullopt;
     }
     end_index = index_;
@@ -650,7 +718,7 @@ Optional<Value> JSONParser::ConsumeNumber() {
       ConsumeChar();
     }
     if (!ReadInt(true)) {
-      ReportError(JSONReader::JSON_SYNTAX_ERROR, 1);
+      ReportError(JSON_SYNTAX_ERROR, 0);
       return nullopt;
     }
     end_index = index_;
@@ -669,7 +737,7 @@ Optional<Value> JSONParser::ConsumeNumber() {
     case T_END_OF_INPUT:
       break;
     default:
-      ReportError(JSONReader::JSON_SYNTAX_ERROR, 1);
+      ReportError(JSON_SYNTAX_ERROR, 0);
       return nullopt;
   }
 
@@ -682,11 +750,11 @@ Optional<Value> JSONParser::ConsumeNumber() {
     return Value(num_int);
 
   double num_double;
-  if (StringToDouble(num_string.as_string(), &num_double) &&
-      std::isfinite(num_double)) {
+  if (StringToDouble(num_string, &num_double) && std::isfinite(num_double)) {
     return Value(num_double);
   }
 
+  ReportError(JSON_UNREPRESENTABLE_NUMBER, 0);
   return nullopt;
 }
 
@@ -721,7 +789,7 @@ Optional<Value> JSONParser::ConsumeLiteral() {
     return Value(false);
   if (ConsumeIfMatch("null"))
     return Value(Value::Type::NONE);
-  ReportError(JSONReader::JSON_SYNTAX_ERROR, 1);
+  ReportError(JSON_SYNTAX_ERROR, 0);
   return nullopt;
 }
 
@@ -733,11 +801,16 @@ bool JSONParser::ConsumeIfMatch(StringPiece match) {
   return false;
 }
 
-void JSONParser::ReportError(JSONReader::JsonParseError code,
-                             int column_adjust) {
+void JSONParser::ReportError(JsonParseError code, int column_adjust) {
   error_code_ = code;
   error_line_ = line_number_;
   error_column_ = index_ - index_last_line_ + column_adjust;
+
+  // For a final blank line ('\n' and then EOF), a negative column_adjust may
+  // put us below 1, which doesn't really make sense for 1-based columns.
+  if (error_column_ < 1) {
+    error_column_ = 1;
+  }
 }
 
 // static

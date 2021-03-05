@@ -14,10 +14,11 @@
 #include "base/base_export.h"
 #include "base/compiler_specific.h"
 #include "base/gtest_prod_util.h"
-#include "base/json/json_reader.h"
+#include "base/json/json_common.h"
 #include "base/macros.h"
 #include "base/optional.h"
 #include "base/strings/string_piece.h"
+#include "base/values.h"
 
 namespace base {
 
@@ -43,7 +44,35 @@ class JSONParserTest;
 // of the next token.
 class BASE_EXPORT JSONParser {
  public:
-  JSONParser(int options, int max_depth = JSONReader::kStackMaxDepth);
+  // Error codes during parsing.
+  enum JsonParseError {
+    JSON_NO_ERROR = base::ValueDeserializer::kErrorCodeNoError,
+    JSON_SYNTAX_ERROR = base::ValueDeserializer::kErrorCodeInvalidFormat,
+    JSON_INVALID_ESCAPE,
+    JSON_UNEXPECTED_TOKEN,
+    JSON_TRAILING_COMMA,
+    JSON_TOO_MUCH_NESTING,
+    JSON_UNEXPECTED_DATA_AFTER_ROOT,
+    JSON_UNSUPPORTED_ENCODING,
+    JSON_UNQUOTED_DICTIONARY_KEY,
+    JSON_TOO_LARGE,
+    JSON_UNREPRESENTABLE_NUMBER,
+    JSON_PARSE_ERROR_COUNT
+  };
+
+  // String versions of parse error codes.
+  static const char kSyntaxError[];
+  static const char kInvalidEscape[];
+  static const char kUnexpectedToken[];
+  static const char kTrailingComma[];
+  static const char kTooMuchNesting[];
+  static const char kUnexpectedDataAfterRoot[];
+  static const char kUnsupportedEncoding[];
+  static const char kUnquotedDictionaryKey[];
+  static const char kInputTooLarge[];
+  static const char kUnrepresentableNumber[];
+
+  explicit JSONParser(int options, size_t max_depth = kAbsoluteMaxDepth);
   ~JSONParser();
 
   // Parses the input string according to the set options and returns the
@@ -53,7 +82,7 @@ class BASE_EXPORT JSONParser {
   Optional<Value> Parse(StringPiece input);
 
   // Returns the error code.
-  JSONReader::JsonParseError error_code() const;
+  JsonParseError error_code() const;
 
   // Returns the human-friendly error message.
   std::string GetErrorMessage() const;
@@ -204,7 +233,7 @@ class BASE_EXPORT JSONParser {
   // Sets the error information to |code| at the current column, based on
   // |index_| and |index_last_line_|, with an optional positive/negative
   // adjustment by |column_adjust|.
-  void ReportError(JSONReader::JsonParseError code, int column_adjust);
+  void ReportError(JsonParseError code, int column_adjust);
 
   // Given the line and column number of an error, formats one of the error
   // message contants from json_reader.h for human display.
@@ -215,7 +244,7 @@ class BASE_EXPORT JSONParser {
   const int options_;
 
   // Maximum depth to parse.
-  const int max_depth_;
+  const size_t max_depth_;
 
   // The input stream being parsed. Note: Not guaranteed to NUL-terminated.
   StringPiece input_;
@@ -224,7 +253,7 @@ class BASE_EXPORT JSONParser {
   int index_;
 
   // The number of times the parser has recursed (current stack depth).
-  int stack_depth_;
+  size_t stack_depth_;
 
   // The line number that the parser is at currently.
   int line_number_;
@@ -233,7 +262,7 @@ class BASE_EXPORT JSONParser {
   int index_last_line_;
 
   // Error information.
-  JSONReader::JsonParseError error_code_;
+  JsonParseError error_code_;
   int error_line_;
   int error_column_;
 
@@ -245,8 +274,6 @@ class BASE_EXPORT JSONParser {
   FRIEND_TEST_ALL_PREFIXES(JSONParserTest, ConsumeLiterals);
   FRIEND_TEST_ALL_PREFIXES(JSONParserTest, ConsumeNumbers);
   FRIEND_TEST_ALL_PREFIXES(JSONParserTest, ErrorMessages);
-  FRIEND_TEST_ALL_PREFIXES(JSONParserTest, ReplaceInvalidCharacters);
-  FRIEND_TEST_ALL_PREFIXES(JSONParserTest, ReplaceInvalidUTF16EscapeSequence);
 
   DISALLOW_COPY_AND_ASSIGN(JSONParser);
 };

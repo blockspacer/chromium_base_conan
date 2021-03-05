@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tests_common.hpp"
-
 #include "base/containers/contiguous_iterator.h"
 
 #include <array>
@@ -19,6 +17,7 @@
 
 #include "base/containers/span.h"
 #include "base/strings/string_piece.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -112,7 +111,7 @@ TEST(ContiguousIterator, Pointer) {
                 "contiguous iterator.");
 }
 
-TEST(ContiguousIterator, Vector) {
+TEST(ContiguousIterator, VectorInt) {
   static_assert(IsContiguousIterator<std::vector<int>::iterator>::value,
                 "Error: std::vector<int>::iterator should be considered a "
                 "contiguous iterator.");
@@ -130,6 +129,27 @@ TEST(ContiguousIterator, Vector) {
       !IsContiguousIterator<std::vector<int>::const_reverse_iterator>::value,
       "Error: std::vector<int>::const_reverse_iterator should not be "
       "considered a contiguous iterator.");
+}
+
+TEST(ContiguousIterator, VectorString) {
+  static_assert(IsContiguousIterator<std::vector<std::string>::iterator>::value,
+                "Error: std::vector<std::string>::iterator should be "
+                "considered a contiguous iterator.");
+
+  static_assert(
+      IsContiguousIterator<std::vector<std::string>::const_iterator>::value,
+      "Error: std::vector<std::string>::const_iterator should be considered a "
+      "contiguous iterator.");
+
+  static_assert(
+      !IsContiguousIterator<std::vector<std::string>::reverse_iterator>::value,
+      "Error: std::vector<std::string>::reverse_iterator should not be "
+      "considered a contiguous iterator.");
+
+  static_assert(!IsContiguousIterator<
+                    std::vector<std::string>::const_reverse_iterator>::value,
+                "Error: std::vector<std::string>::const_reverse_iterator "
+                "should not be considered a contiguous iterator.");
 }
 
 TEST(ContiguousIterator, VectorBool) {
@@ -152,7 +172,7 @@ TEST(ContiguousIterator, VectorBool) {
       "considered a contiguous iterator.");
 }
 
-TEST(ContiguousIterator, Array) {
+TEST(ContiguousIterator, ArrayInt) {
   static_assert(IsContiguousIterator<std::array<int, 1>::iterator>::value,
                 "Error: std::array<int, 1>::iterator should be considered a "
                 "contiguous iterator.");
@@ -170,6 +190,28 @@ TEST(ContiguousIterator, Array) {
       !IsContiguousIterator<std::array<int, 1>::const_reverse_iterator>::value,
       "Error: std::array<int, 1>::const_reverse_iterator should not be "
       "considered a contiguous iterator.");
+}
+
+TEST(ContiguousIterator, ArrayString) {
+  static_assert(
+      IsContiguousIterator<std::array<std::string, 1>::iterator>::value,
+      "Error: std::array<std::string, 1>::iterator should be considered a "
+      "contiguous iterator.");
+
+  static_assert(
+      IsContiguousIterator<std::array<std::string, 1>::const_iterator>::value,
+      "Error: std::array<std::string, 1>::const_iterator should be considered "
+      "a contiguous iterator.");
+
+  static_assert(!IsContiguousIterator<
+                    std::array<std::string, 1>::reverse_iterator>::value,
+                "Error: std::array<std::string, 1>::reverse_iterator should "
+                "not be considered a contiguous iterator.");
+
+  static_assert(!IsContiguousIterator<
+                    std::array<std::string, 1>::const_reverse_iterator>::value,
+                "Error: std::array<std::string, 1>::const_reverse_iterator "
+                "should not be considered a contiguous iterator.");
 }
 
 TEST(ContiguousIterator, String) {
@@ -210,7 +252,7 @@ TEST(ContiguousIterator, String16) {
       "contiguous iterator.");
 }
 
-TEST(ContiguousIterator, Valarray) {
+TEST(ContiguousIterator, ValarrayInt) {
   static_assert(IsContiguousIterator<decltype(
                     std::begin(std::declval<std::valarray<int>&>()))>::value,
                 "Error: std::valarray<int>::iterator should be considered a "
@@ -221,6 +263,18 @@ TEST(ContiguousIterator, Valarray) {
           std::begin(std::declval<const std::valarray<int>&>()))>::value,
       "Error: std::valarray<int>::const_iterator should be considered a "
       "contiguous iterator.");
+}
+
+TEST(ContiguousIterator, ValarrayString) {
+  static_assert(IsContiguousIterator<decltype(std::begin(
+                    std::declval<std::valarray<std::string>&>()))>::value,
+                "Error: std::valarray<std::string>::iterator should be "
+                "considered a contiguous iterator.");
+
+  static_assert(IsContiguousIterator<decltype(std::begin(
+                    std::declval<const std::valarray<std::string>&>()))>::value,
+                "Error: std::valarray<std::string>::const_iterator should be "
+                "considered a contiguous iterator.");
 }
 
 TEST(ContiguousIterator, StringPiece) {
@@ -235,7 +289,7 @@ TEST(ContiguousIterator, StringPiece) {
       "considered a contiguous iterator.");
 }
 
-TEST(ContiguousIterator, Span) {
+TEST(ContiguousIterator, SpanInt) {
   static_assert(IsContiguousIterator<base::span<int>::iterator>::value,
                 "Error: base::span<int>::iterator should be considered a "
                 "contiguous iterator.");
@@ -243,6 +297,17 @@ TEST(ContiguousIterator, Span) {
   static_assert(!IsContiguousIterator<base::span<int>::reverse_iterator>::value,
                 "Error: base::span<int>::reverse_iterator should not be "
                 "considered a contiguous iterator.");
+}
+
+TEST(ContiguousIterator, SpanString) {
+  static_assert(IsContiguousIterator<base::span<std::string>::iterator>::value,
+                "Error: base::span<std::string>::iterator should be considered "
+                "a contiguous iterator.");
+
+  static_assert(
+      !IsContiguousIterator<base::span<std::string>::reverse_iterator>::value,
+      "Error: base::span<std::string>::reverse_iterator should not be "
+      "considered a contiguous iterator.");
 }
 
 }  // namespace base

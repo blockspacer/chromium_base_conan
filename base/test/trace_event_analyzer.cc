@@ -11,8 +11,10 @@
 
 #include "base/bind.h"
 #include "base/json/json_reader.h"
+#include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted_memory.h"
+#include "base/ranges/algorithm.h"
 #include "base/run_loop.h"
 #include "base/strings/pattern.h"
 #include "base/trace_event/trace_buffer.h"
@@ -112,8 +114,10 @@ bool TraceEvent::SetFromJSON(const base::Value* event_value) {
       return false;
     }
   }
-  if (require_id && !dictionary->GetString("id", &id)) {
-    LOG(ERROR) << "id is missing from ASYNC_BEGIN/ASYNC_END TraceEvent JSON";
+  if (require_id && !dictionary->GetString("id", &id) &&
+      !dictionary->FindKey("id2")) {
+    LOG(ERROR)
+        << "id/id2 is missing from ASYNC_BEGIN/ASYNC_END TraceEvent JSON";
     return false;
   }
 
@@ -725,10 +729,23 @@ bool ParseEventsFromJson(const std::string& json,
                          std::vector<TraceEvent>* output) {
   base::Optional<base::Value> root = base::JSONReader::Read(json);
 
-  if (!root || !root->is_list())
+  if (!root)
     return false;
 
-  for (const auto& item : root->GetList()) {
+  base::Value::ListView list;
+  if (root->is_list()) {
+    list = root->GetList();
+  } else if (root->is_dict()) {
+    base::Value* trace_events = root->FindListKey("traceEvents");
+    if (!trace_events)
+      return false;
+
+    list = trace_events->GetList();
+  } else {
+    return false;
+  }
+
+  for (const auto& item : list) {
     TraceEvent event;
     if (!event.SetFromJSON(&item))
       return false;
@@ -759,7 +776,7 @@ bool TraceAnalyzer::SetEvents(const std::string& json_events) {
   raw_events_.clear();
   if (!ParseEventsFromJson(json_events, &raw_events_))
     return false;
-  std::stable_sort(raw_events_.begin(), raw_events_.end());
+  base::ranges::stable_sort(raw_events_);
   ParseMetadata();
   return true;
 }
@@ -948,7 +965,7 @@ bool GetRateStats(const TraceEventVector& events,
     deltas.push_back(delta);
   }
 
-  std::sort(deltas.begin(), deltas.end());
+  base::ranges::sort(deltas);
 
   if (options) {
     if (options->trim_min + options->trim_max > events.size() - kMinEvents) {
@@ -964,8 +981,8 @@ bool GetRateStats(const TraceEventVector& events,
   for (size_t i = 0; i < num_deltas; ++i)
     delta_sum += deltas[i];
 
-  stats->min_us = *std::min_element(deltas.begin(), deltas.end());
-  stats->max_us = *std::max_element(deltas.begin(), deltas.end());
+  stats->min_us = *base::ranges::min_element(deltas);
+  stats->max_us = *base::ranges::max_element(deltas);
   stats->mean_us = delta_sum / static_cast<double>(num_deltas);
 
   double sum_mean_offsets_squared = 0.0;

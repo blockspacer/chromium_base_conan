@@ -8,6 +8,7 @@
 #include "base/optional.h"
 #include "base/pending_task.h"
 #include "base/task/sequence_manager/lazy_now.h"
+#include "base/task/sequence_manager/tasks.h"
 
 namespace base {
 namespace sequence_manager {
@@ -16,20 +17,27 @@ namespace internal {
 // Interface to pass tasks to ThreadController.
 class SequencedTaskSource {
  public:
+  enum class SelectTaskOption { kDefault, kSkipDelayedTask };
+
   virtual ~SequencedTaskSource() = default;
 
-  // Returns the next task to run from this source or nullopt if
+  // Returns the next task to run from this source or nullptr if
   // there're no more tasks ready to run. If a task is returned,
-  // DidRunTask() must be invoked before the next call to TakeTask().
-  virtual Optional<PendingTask> TakeTask() = 0;
+  // DidRunTask() must be invoked before the next call to SelectNextTask().
+  // |option| allows control on which kind of tasks can be selected.
+  virtual Task* SelectNextTask(
+      SelectTaskOption option = SelectTaskOption::kDefault) = 0;
 
   // Notifies this source that the task previously obtained
-  // from TakeTask() has been completed.
+  // from SelectNextTask() has been completed.
   virtual void DidRunTask() = 0;
 
   // Returns the delay till the next task or TimeDelta::Max()
-  // if there are no tasks left.
-  virtual TimeDelta DelayTillNextTask(LazyNow* lazy_now) const = 0;
+  // if there are no tasks left. |option| allows control on which kind of tasks
+  // can be selected.
+  virtual TimeDelta DelayTillNextTask(
+      LazyNow* lazy_now,
+      SelectTaskOption option = SelectTaskOption::kDefault) const = 0;
 
   // Return true if there are any pending tasks in the task source which require
   // high resolution timing.

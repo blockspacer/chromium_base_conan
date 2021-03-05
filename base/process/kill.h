@@ -13,6 +13,7 @@
 #include "base/process/process_handle.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 
 namespace base {
 
@@ -29,6 +30,7 @@ const DWORD kNormalTerminationExitCode = 0;
 const DWORD kDebuggerInactiveExitCode = 0xC0000354;
 const DWORD kKeyboardInterruptExitCode = 0xC000013A;
 const DWORD kDebuggerTerminatedExitCode = 0x40010004;
+const DWORD kStatusInvalidImageHashExitCode = 0xC0000428;
 
 // This exit code is used by the Windows task manager when it kills a
 // process.  It's value is obviously not that unique, and it's
@@ -46,12 +48,13 @@ const DWORD kProcessKilledExitCode = 1;
 // exit code arguments to KillProcess*(), use platform/application
 // specific values instead.
 enum TerminationStatus {
+  // clang-format off
   TERMINATION_STATUS_NORMAL_TERMINATION,   // zero exit status
   TERMINATION_STATUS_ABNORMAL_TERMINATION, // non-zero exit status
   TERMINATION_STATUS_PROCESS_WAS_KILLED,   // e.g. SIGKILL or task manager kill
   TERMINATION_STATUS_PROCESS_CRASHED,      // e.g. Segmentation fault
   TERMINATION_STATUS_STILL_RUNNING,        // child hasn't exited yet
-#if defined(OS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
   // Used for the case when oom-killer kills a process on ChromeOS.
   TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM,
 #endif
@@ -64,7 +67,12 @@ enum TerminationStatus {
 #endif
   TERMINATION_STATUS_LAUNCH_FAILED,        // child process never launched
   TERMINATION_STATUS_OOM,                  // Process died due to oom
+#if defined(OS_WIN)
+  // On Windows, the OS terminated process due to code integrity failure.
+  TERMINATION_STATUS_INTEGRITY_FAILURE,
+#endif
   TERMINATION_STATUS_MAX_ENUM
+  // clang-format on
 };
 
 // Attempts to kill all the processes on the current machine that were launched
@@ -75,12 +83,6 @@ enum TerminationStatus {
 BASE_EXPORT bool KillProcesses(const FilePath::StringType& executable_name,
                                int exit_code,
                                const ProcessFilter* filter);
-
-#if defined(OS_POSIX)
-// Attempts to kill the process group identified by |process_group_id|. Returns
-// true on success.
-BASE_EXPORT bool KillProcessGroup(ProcessHandle process_group_id);
-#endif  // defined(OS_POSIX)
 
 // Get the termination status of the process by interpreting the
 // circumstances of the child process' death. |exit_code| is set to
@@ -111,11 +113,11 @@ BASE_EXPORT TerminationStatus GetTerminationStatus(ProcessHandle handle,
 BASE_EXPORT TerminationStatus GetKnownDeadTerminationStatus(
     ProcessHandle handle, int* exit_code);
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
 // Spawns a thread to wait asynchronously for the child |process| to exit
 // and then reaps it.
 BASE_EXPORT void EnsureProcessGetsReaped(Process process);
-#endif  // defined(OS_LINUX)
+#endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
 #endif  // defined(OS_POSIX)
 
 // Registers |process| to be asynchronously monitored for termination, forcibly

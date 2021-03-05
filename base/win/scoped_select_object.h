@@ -7,7 +7,7 @@
 
 #include <windows.h>
 
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/macros.h"
 
 namespace base {
@@ -17,8 +17,7 @@ namespace win {
 class ScopedSelectObject {
  public:
   ScopedSelectObject(HDC hdc, HGDIOBJ object)
-      : hdc_(hdc),
-        oldobj_(SelectObject(hdc, object)) {
+      : hdc_(hdc), oldobj_(SelectObject(hdc, object)) {
     DCHECK(hdc_);
     DCHECK(object);
     DCHECK(oldobj_ != NULL && oldobj_ != HGDI_ERROR);

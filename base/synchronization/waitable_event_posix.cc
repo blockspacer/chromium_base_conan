@@ -1,26 +1,24 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <stddef.h>
 
-#include <algorithm>
 #include <limits>
 #include <vector>
 
+#include "base/check_op.h"
 #include "base/debug/activity_tracker.h"
-#include "base/logging.h"
 #include "base/optional.h"
+#include "base/ranges/algorithm.h"
 #include "base/synchronization/condition_variable.h"
 #include "base/synchronization/lock.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/time/time.h"
+#include "base/time/time_override.h"
 
-#if defined(OS_EMSCRIPTEN)
-#include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
-#endif
 // -----------------------------------------------------------------------------
 // A WaitableEvent on POSIX is implemented as a wait-list. Currently we don't
 // support cross-process events (where one process can signal an event which
@@ -156,29 +154,14 @@ class SyncWaiter : public WaitableEvent::Waiter {
 };
 
 void WaitableEvent::Wait() {
-  bool result = TimedWaitUntil(TimeTicks::Max());
+  bool result = TimedWait(TimeDelta::Max());
   DCHECK(result) << "TimedWait() should never fail with infinite timeout";
 }
 
 bool WaitableEvent::TimedWait(const TimeDelta& wait_delta) {
- /// \note Reactor your code so that the waiting happens on another thread instead of the main thread
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-    P_LOG("TODO: WaitableEvent::TimedWait\n");
-    HTML5_STACKTRACE();
-#endif
-  // TimeTicks takes care of overflow including the cases when wait_delta
-  // is a maximum value.
-  return TimedWaitUntil(TimeTicks::Now() + wait_delta);
-}
+  if (wait_delta <= TimeDelta())
+    return IsSignaled();
 
-bool WaitableEvent::TimedWaitUntil(const TimeTicks& end_time) {
- /// \note Reactor your code so that the waiting happens on another thread instead of the main thread
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-    P_LOG("TODO: WaitableEvent::TimedWaitUntil\n");
-    HTML5_STACKTRACE();
-#warning "TODO: WaitableEvent::TimedWaitUntil"
-    return true; // Return true if the event was signaled.
-#endif
   // Record the event that this thread is blocking upon (for hang diagnosis) and
   // consider it blocked for scheduling purposes. Ignore this for non-blocking
   // WaitableEvents.
@@ -187,10 +170,8 @@ bool WaitableEvent::TimedWaitUntil(const TimeTicks& end_time) {
       scoped_blocking_call;
   if (waiting_is_blocking_) {
     event_activity.emplace(this);
-    scoped_blocking_call.emplace(BlockingType::MAY_BLOCK);
+    scoped_blocking_call.emplace(FROM_HERE, BlockingType::MAY_BLOCK);
   }
-
-  const bool finite_time = !end_time.is_max();
 
   kernel_->lock_.Acquire();
   if (kernel_->signaled_) {
@@ -212,60 +193,47 @@ bool WaitableEvent::TimedWaitUntil(const TimeTicks& end_time) {
   Enqueue(&sw);
   kernel_->lock_.Release();
   // We are violating locking order here by holding the SyncWaiter lock but not
-  // the WaitableEvent lock. However, this is safe because we don't lock @lock_
+  // the WaitableEvent lock. However, this is safe because we don't lock |lock_|
   // again before unlocking it.
 
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-  #warning "TODO: port WaitableEvent"
-  /// \TODO endless loop may hang browser!
-  for (int i = 0; i < 2; i++) {
-#else
-  for (;;) {
-#endif
-    // Only sample Now() if waiting for a |finite_time|.
-    Optional<TimeTicks> current_time;
-    if (finite_time)
-      current_time = TimeTicks::Now();
-
-    if (sw.fired() || (finite_time && *current_time >= end_time)) {
-
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-      #warning "TODO: port WaitableEvent"
-      const bool return_value = true;
-#else
-      const bool return_value = sw.fired();
-#endif
-
-      // We can't acquire @lock_ before releasing the SyncWaiter lock (because
-      // of locking order), however, in between the two a signal could be fired
-      // and @sw would accept it, however we will still return false, so the
-      // signal would be lost on an auto-reset WaitableEvent. Thus we call
-      // Disable which makes sw::Fire return false.
-      sw.Disable();
-      sw.lock()->Release();
-
-      // This is a bug that has been enshrined in the interface of
-      // WaitableEvent now: |Dequeue| is called even when |sw.fired()| is true,
-      // even though it'll always return false in that case. However, taking
-      // the lock ensures that |Signal| has completed before we return and
-      // means that a WaitableEvent can synchronise its own destruction.
-      kernel_->lock_.Acquire();
-      kernel_->Dequeue(&sw, &sw);
-      kernel_->lock_.Release();
-
-      return return_value;
-    }
-
-    if (finite_time) {
-      const TimeDelta max_wait(end_time - *current_time);
-      sw.cv()->TimedWait(max_wait);
-    } else {
+  // TimeTicks takes care of overflow but we special case is_max() nonetheless
+  // to avoid invoking TimeTicksNowIgnoringOverride() unnecessarily (same for
+  // the increment step of the for loop if the condition variable returns
+  // early). Ref: https://crbug.com/910524#c7
+  const TimeTicks end_time =
+      wait_delta.is_max() ? TimeTicks::Max()
+                          : subtle::TimeTicksNowIgnoringOverride() + wait_delta;
+  for (TimeDelta remaining = wait_delta; remaining > TimeDelta() && !sw.fired();
+       remaining = end_time.is_max()
+                       ? TimeDelta::Max()
+                       : end_time - subtle::TimeTicksNowIgnoringOverride()) {
+    if (end_time.is_max())
       sw.cv()->Wait();
-    }
+    else
+      sw.cv()->TimedWait(remaining);
   }
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-  return true;
-#endif
+
+  // Get the SyncWaiter signaled state before releasing the lock.
+  const bool return_value = sw.fired();
+
+  // We can't acquire |lock_| before releasing the SyncWaiter lock (because of
+  // locking order), however, in between the two a signal could be fired and
+  // |sw| would accept it, however we will still return false, so the signal
+  // would be lost on an auto-reset WaitableEvent. Thus we call Disable which
+  // makes sw::Fire return false.
+  sw.Disable();
+  sw.lock()->Release();
+
+  // This is a bug that has been enshrined in the interface of WaitableEvent
+  // now: |Dequeue| is called even when |sw.fired()| is true, even though it'll
+  // always return false in that case. However, taking the lock ensures that
+  // |Signal| has completed before we return and means that a WaitableEvent can
+  // synchronise its own destruction.
+  kernel_->lock_.Acquire();
+  kernel_->Dequeue(&sw, &sw);
+  kernel_->lock_.Release();
+
+  return return_value;
 }
 
 // -----------------------------------------------------------------------------
@@ -278,18 +246,12 @@ cmp_fst_addr(const std::pair<WaitableEvent*, unsigned> &a,
 }
 
 // static
+// NO_THREAD_SAFETY_ANALYSIS: Complex control flow.
 size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
-                               size_t count) {
- /// \note Reactor your code so that the waiting happens on another thread instead of the main thread
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-    P_LOG("TODO: WaitableEvent::WaitMany\n");
-    #warning "TODO: WaitableEvent::WaitMany"
-    HTML5_STACKTRACE();
-#endif
-
+                               size_t count) NO_THREAD_SAFETY_ANALYSIS {
   DCHECK(count) << "Cannot wait on no events";
   internal::ScopedBlockingCallWithBaseSyncPrimitives scoped_blocking_call(
-      BlockingType::MAY_BLOCK);
+      FROM_HERE, BlockingType::MAY_BLOCK);
   // Record an event (the first) that this thread is blocking upon.
   debug::ScopedEventWaitActivity event_activity(raw_waitables[0]);
 
@@ -303,7 +265,7 @@ size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
 
   DCHECK_EQ(count, waitables.size());
 
-  sort(waitables.begin(), waitables.end(), cmp_fst_addr);
+  ranges::sort(waitables, cmp_fst_addr);
 
   // The set of waitables must be distinct. Since we have just sorted by
   // address, we can check this cheaply by comparing pairs of consecutive
@@ -329,18 +291,11 @@ size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
       waitables[count - (1 + i)].first->kernel_->lock_.Release();
     }
 
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-  #warning "TODO: port WaitableEvent::WaitMany"
-  /// \TODO endless loop may hang browser!
-  for (int i = 0; i < 2; i++) {
-#else
-  for (;;) {
-#endif
+    for (;;) {
       if (sw.fired())
         break;
 
       sw.cv()->Wait();
-
     }
   sw.lock()->Release();
 
@@ -383,14 +338,10 @@ size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
 //   was signaled with the lowest input index from the original WaitMany call.
 // -----------------------------------------------------------------------------
 // static
+// NO_THREAD_SAFETY_ANALYSIS: Complex control flow.
 size_t WaitableEvent::EnqueueMany(std::pair<WaitableEvent*, size_t>* waitables,
                                   size_t count,
-                                  Waiter* waiter) {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-    P_LOG("TODO: WaitableEvent::EnqueueMany\n");
-    #warning "TODO: WaitableEvent::EnqueueMany"
-    HTML5_STACKTRACE();
-#endif
+                                  Waiter* waiter) NO_THREAD_SAFETY_ANALYSIS {
   size_t winner = count;
   size_t winner_index = count;
   for (size_t i = 0; i < count; ++i) {
@@ -458,13 +409,7 @@ bool WaitableEvent::SignalAll() {
 // held.
 // ---------------------------------------------------------------------------
 bool WaitableEvent::SignalOne() {
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-  #warning "TODO: port WaitableEvent::SignalOne"
-  /// \TODO endless loop may hang browser!
-  for (int i = 0; i < 1; i++) {
-#else
   for (;;) {
-#endif
     if (kernel_->waiters_.empty())
       return false;
 
@@ -473,10 +418,6 @@ bool WaitableEvent::SignalOne() {
     if (r)
       return true;
   }
-
-#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
-      return true;
-#endif
 }
 
 // -----------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 
 package org.chromium.base.metrics;
 
-import android.support.test.filters.SmallTest;
+import androidx.test.filters.SmallTest;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -12,7 +12,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.library_loader.LibraryLoader;
-import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.base.test.BaseJUnit4ClassRunner;
 import org.chromium.base.test.util.MetricsUtils.HistogramDelta;
 
@@ -22,8 +21,8 @@ import org.chromium.base.test.util.MetricsUtils.HistogramDelta;
 @RunWith(BaseJUnit4ClassRunner.class)
 public class RecordHistogramTest {
     @Before
-    public void setUp() throws Exception {
-        LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
+    public void setUp() {
+        LibraryLoader.getInstance().ensureInitialized();
     }
 
     /**

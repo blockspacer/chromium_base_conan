@@ -9,10 +9,6 @@
 #include "base/no_destructor.h"
 #include "base/threading/platform_thread.h"
 
-#if defined(OS_EMSCRIPTEN)
-#include <emscripten/emscripten.h>
-#endif
-
 namespace base {
 
 namespace {
@@ -119,10 +115,6 @@ void Watchdog::Alarm() {
 // Internal private methods that the watchdog thread uses.
 
 void Watchdog::ThreadDelegate::ThreadMain() {
-#if defined(OS_EMSCRIPTEN)
-  printf("can`t use Watchdog::ThreadDelegate on wasm platform!");
-  HTML5_STACKTRACE();
-#endif
   SetThreadName();
   TimeDelta remaining_duration;
   StaticData* static_data = GetStaticData();

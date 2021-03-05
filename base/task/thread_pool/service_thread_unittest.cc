@@ -8,13 +8,8 @@
 
 #include "base/bind.h"
 #include "base/debug/stack_trace.h"
-#include "base/task/thread_pool/thread_pool.h"
-#include "base/task/thread_pool/thread_pool_impl.h"
-#include "base/test/metrics/histogram_tester.h"
-#include "base/threading/platform_thread.h"
-#include "base/time/time.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace internal {
@@ -43,59 +38,13 @@ void VerifyHasStringOnStack(const std::string& query) {
 #endif
 
 TEST(ThreadPoolServiceThreadTest, MAYBE_StackHasIdentifyingFrame) {
-  ServiceThread service_thread(nullptr, DoNothing());
+  ServiceThread service_thread;
   service_thread.Start();
 
   service_thread.task_runner()->PostTask(
       FROM_HERE, BindOnce(&VerifyHasStringOnStack, "ServiceThread"));
 
   service_thread.FlushForTesting();
-}
-
-// Integration test verifying that a service thread running in a fully
-// integrated ThreadPool environment results in reporting
-// HeartbeatLatencyMicroseconds metrics.
-TEST(ThreadPoolServiceThreadIntegrationTest, HeartbeatLatencyReport) {
-  ServiceThread::SetHeartbeatIntervalForTesting(TimeDelta::FromMilliseconds(1));
-
-  ThreadPool::SetInstance(std::make_unique<internal::ThreadPoolImpl>("Test"));
-  ThreadPool::GetInstance()->StartWithDefaultParams();
-
-  static constexpr const char* kExpectedMetrics[] = {
-      "ThreadPool.HeartbeatLatencyMicroseconds.Test."
-      "UserBlockingTaskPriority",
-      "ThreadPool.HeartbeatLatencyMicroseconds.Test."
-      "UserBlockingTaskPriority_MayBlock",
-      "ThreadPool.HeartbeatLatencyMicroseconds.Test."
-      "UserVisibleTaskPriority",
-      "ThreadPool.HeartbeatLatencyMicroseconds.Test."
-      "UserVisibleTaskPriority_MayBlock",
-      "ThreadPool.HeartbeatLatencyMicroseconds.Test."
-      "BackgroundTaskPriority",
-      "ThreadPool.HeartbeatLatencyMicroseconds.Test."
-      "BackgroundTaskPriority_MayBlock"};
-
-  // Each report hits a single histogram above (randomly selected). But 1000
-  // reports should touch all histograms at least once the vast majority of the
-  // time.
-  constexpr TimeDelta kReasonableTimeout = TimeDelta::FromSeconds(1);
-  constexpr TimeDelta kBusyWaitTime = TimeDelta::FromMilliseconds(100);
-
-  const TimeTicks start_time = TimeTicks::Now();
-
-  HistogramTester tester;
-  for (const char* expected_metric : kExpectedMetrics) {
-    while (tester.GetAllSamples(expected_metric).empty()) {
-      if (TimeTicks::Now() - start_time > kReasonableTimeout)
-        LOG(WARNING) << "Waiting a while for " << expected_metric;
-      PlatformThread::Sleep(kBusyWaitTime);
-    }
-  }
-
-  ThreadPool::GetInstance()->JoinForTesting();
-  ThreadPool::SetInstance(nullptr);
-
-  ServiceThread::SetHeartbeatIntervalForTesting(TimeDelta());
 }
 
 }  // namespace internal

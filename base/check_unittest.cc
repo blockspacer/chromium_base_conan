@@ -8,8 +8,8 @@
 #include "base/strings/string_piece.h"
 #include "base/test/gtest_util.h"
 #include "base/test/scoped_feature_list.h"
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace {
 

@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/base_export.h"
-#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/task/common/checked_lock.h"
 #include "base/task/single_thread_task_runner_thread_mode.h"
@@ -53,6 +52,10 @@ class BASE_EXPORT PooledSingleThreadTaskRunnerManager final {
  public:
   PooledSingleThreadTaskRunnerManager(TrackedRef<TaskTracker> task_tracker,
                                       DelayedTaskManager* delayed_task_manager);
+  PooledSingleThreadTaskRunnerManager(
+      const PooledSingleThreadTaskRunnerManager&) = delete;
+  PooledSingleThreadTaskRunnerManager& operator=(
+      const PooledSingleThreadTaskRunnerManager&) = delete;
   ~PooledSingleThreadTaskRunnerManager();
 
   // Starts threads for existing SingleThreadTaskRunners and allows threads to
@@ -70,7 +73,7 @@ class BASE_EXPORT PooledSingleThreadTaskRunnerManager final {
   // named "ThreadPoolSingleThread[Shared]" +
   // kEnvironmentParams[GetEnvironmentIndexForTraits(traits)].name_suffix +
   // index.
-  scoped_refptr<SingleThreadTaskRunner> CreateSingleThreadTaskRunnerWithTraits(
+  scoped_refptr<SingleThreadTaskRunner> CreateSingleThreadTaskRunner(
       const TaskTraits& traits,
       SingleThreadTaskRunnerThreadMode thread_mode);
 
@@ -79,7 +82,7 @@ class BASE_EXPORT PooledSingleThreadTaskRunnerManager final {
   // STA thread named "ThreadPoolSingleThreadCOMSTA[Shared]" +
   // kEnvironmentParams[GetEnvironmentIndexForTraits(traits)].name_suffix +
   // index.
-  scoped_refptr<SingleThreadTaskRunner> CreateCOMSTATaskRunnerWithTraits(
+  scoped_refptr<SingleThreadTaskRunner> CreateCOMSTATaskRunner(
       const TaskTraits& traits,
       SingleThreadTaskRunnerThreadMode thread_mode);
 #endif  // defined(OS_WIN)
@@ -99,7 +102,7 @@ class BASE_EXPORT PooledSingleThreadTaskRunnerManager final {
       const TaskTraits& traits);
 
   template <typename DelegateType>
-  scoped_refptr<PooledSingleThreadTaskRunner> CreateTaskRunnerWithTraitsImpl(
+  scoped_refptr<PooledSingleThreadTaskRunner> CreateTaskRunnerImpl(
       const TaskTraits& traits,
       SingleThreadTaskRunnerThreadMode thread_mode);
 
@@ -148,8 +151,6 @@ class BASE_EXPORT PooledSingleThreadTaskRunnerManager final {
 
   // Set to true when Start() is called.
   bool started_ GUARDED_BY(lock_) = false;
-
-  DISALLOW_COPY_AND_ASSIGN(PooledSingleThreadTaskRunnerManager);
 };
 
 }  // namespace internal

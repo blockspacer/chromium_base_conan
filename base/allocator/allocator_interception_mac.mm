@@ -21,7 +21,6 @@
 #import <Foundation/Foundation.h>
 #include <errno.h>
 #include <mach/mach.h>
-#include <mach/mach_vm.h>
 #import <objc/runtime.h>
 #include <stddef.h>
 
@@ -32,12 +31,17 @@
 #include "base/bind.h"
 #include "base/bits.h"
 #include "base/logging.h"
-#include "base/mac/mac_util.h"
 #include "base/mac/mach_logging.h"
 #include "base/process/memory.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 #include "build/build_config.h"
 #include "third_party/apple_apsl/CFBase.h"
+
+#if defined(OS_IOS)
+#include "base/ios/ios_util.h"
+#else
+#include "base/mac/mac_util.h"
+#endif
 
 namespace base {
 namespace allocator {
@@ -59,32 +63,31 @@ bool g_oom_killer_enabled;
 // re-protected when modifications are complete. This approach assumes that
 // there is no contention for the protection of this memory.
 void DeprotectMallocZone(ChromeMallocZone* default_zone,
-                         mach_vm_address_t* reprotection_start,
-                         mach_vm_size_t* reprotection_length,
+                         vm_address_t* reprotection_start,
+                         vm_size_t* reprotection_length,
                          vm_prot_t* reprotection_value) {
   mach_port_t unused;
-  *reprotection_start = reinterpret_cast<mach_vm_address_t>(default_zone);
+  *reprotection_start = reinterpret_cast<vm_address_t>(default_zone);
   struct vm_region_basic_info_64 info;
   mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
-  kern_return_t result = mach_vm_region(
-      mach_task_self(), reprotection_start, reprotection_length,
-      VM_REGION_BASIC_INFO_64, reinterpret_cast<vm_region_info_t>(&info),
-      &count, &unused);
-  MACH_CHECK(result == KERN_SUCCESS, result) << "mach_vm_region";
+  kern_return_t result =
+      vm_region_64(mach_task_self(), reprotection_start, reprotection_length,
+                   VM_REGION_BASIC_INFO_64,
+                   reinterpret_cast<vm_region_info_t>(&info), &count, &unused);
+  MACH_CHECK(result == KERN_SUCCESS, result) << "vm_region_64";
 
   // The kernel always returns a null object for VM_REGION_BASIC_INFO_64, but
-  // balance it with a deallocate in case this ever changes. See 10.9.2
-  // xnu-2422.90.20/osfmk/vm/vm_map.c vm_map_region.
+  // balance it with a deallocate in case this ever changes. See
+  // the VM_REGION_BASIC_INFO_64 case in vm_map_region() in 10.15's
+  // https://opensource.apple.com/source/xnu/xnu-6153.11.26/osfmk/vm/vm_map.c .
   mach_port_deallocate(mach_task_self(), unused);
 
   // Does the region fully enclose the zone pointers? Possibly unwarranted
-  // simplification used: using the size of a full version 8 malloc zone rather
-  // than the actual smaller size if the passed-in zone is not version 8.
-  CHECK(*reprotection_start <=
-        reinterpret_cast<mach_vm_address_t>(default_zone));
-  mach_vm_size_t zone_offset =
-      reinterpret_cast<mach_vm_size_t>(default_zone) -
-      reinterpret_cast<mach_vm_size_t>(*reprotection_start);
+  // simplification used: using the size of a full version 10 malloc zone rather
+  // than the actual smaller size if the passed-in zone is not version 10.
+  CHECK(*reprotection_start <= reinterpret_cast<vm_address_t>(default_zone));
+  vm_size_t zone_offset = reinterpret_cast<vm_address_t>(default_zone) -
+                          reinterpret_cast<vm_address_t>(*reprotection_start);
   CHECK(zone_offset + sizeof(ChromeMallocZone) <= *reprotection_length);
 
   if (info.protection & VM_PROT_WRITE) {
@@ -94,10 +97,10 @@ void DeprotectMallocZone(ChromeMallocZone* default_zone,
     *reprotection_value = VM_PROT_NONE;
   } else {
     *reprotection_value = info.protection;
-    result = mach_vm_protect(mach_task_self(), *reprotection_start,
-                             *reprotection_length, false,
-                             info.protection | VM_PROT_WRITE);
-    MACH_CHECK(result == KERN_SUCCESS, result) << "mach_vm_protect";
+    result =
+        vm_protect(mach_task_self(), *reprotection_start, *reprotection_length,
+                   false, info.protection | VM_PROT_WRITE);
+    MACH_CHECK(result == KERN_SUCCESS, result) << "vm_protect";
   }
 }
 
@@ -145,8 +148,8 @@ void* oom_killer_memalign(struct _malloc_zone_t* zone,
                           size_t size) {
   void* result = g_old_zone.memalign(zone, alignment, size);
   // Only die if posix_memalign would have returned ENOMEM, since there are
-  // other reasons why NULL might be returned (see
-  // http://opensource.apple.com/source/Libc/Libc-583/gen/malloc.c ).
+  // other reasons why null might be returned. See posix_memalign() in 10.15's
+  // https://opensource.apple.com/source/libmalloc/libmalloc-283/src/malloc.c .
   if (!result && size && alignment >= sizeof(void*) &&
       base::bits::IsPowerOfTwo(alignment)) {
     TerminateBecauseOutOfMemory(size);
@@ -195,8 +198,8 @@ void* oom_killer_memalign_purgeable(struct _malloc_zone_t* zone,
                                     size_t size) {
   void* result = g_old_purgeable_zone.memalign(zone, alignment, size);
   // Only die if posix_memalign would have returned ENOMEM, since there are
-  // other reasons why NULL might be returned (see
-  // http://opensource.apple.com/source/Libc/Libc-583/gen/malloc.c ).
+  // other reasons why null might be returned. See posix_memalign() in 10.15's
+  // https://opensource.apple.com/source/libmalloc/libmalloc-283/src/malloc.c .
   if (!result && size && alignment >= sizeof(void*) &&
       base::bits::IsPowerOfTwo(alignment)) {
     TerminateBecauseOutOfMemory(size);
@@ -211,7 +214,11 @@ void* oom_killer_memalign_purgeable(struct _malloc_zone_t* zone,
 // === Core Foundation CFAllocators ===
 
 bool CanGetContextForCFAllocator() {
-  return !base::mac::IsOSLaterThan10_14_DontCallThis();
+#if defined(OS_IOS)
+  return !base::ios::IsRunningOnOrLater(14, 0, 0);
+#else
+  return !base::mac::IsOSLaterThan11_DontCallThis();
+#endif
 }
 
 CFAllocatorContext* ContextForCFAllocator(CFAllocatorRef allocator) {
@@ -303,6 +310,10 @@ bool UncheckedCallocMac(size_t num_items, size_t size, void** result) {
   return *result != NULL;
 }
 
+void InitializeDefaultDispatchToMacAllocator() {
+  StoreFunctionsForAllZones();
+}
+
 void StoreFunctionsForDefaultZone() {
   ChromeMallocZone* default_zone = reinterpret_cast<ChromeMallocZone*>(
       malloc_default_zone());
@@ -357,11 +368,11 @@ void InterceptAllocationsMac() {
 // === C malloc/calloc/valloc/realloc/posix_memalign ===
 
 // This approach is not perfect, as requests for amounts of memory larger than
-// MALLOC_ABSOLUTE_MAX_SIZE (currently SIZE_T_MAX - (2 * PAGE_SIZE)) will
-// still fail with a NULL rather than dying (see
-// http://opensource.apple.com/source/Libc/Libc-583/gen/malloc.c for details).
-// Unfortunately, it's the best we can do. Also note that this does not affect
-// allocations from non-default zones.
+// MALLOC_ABSOLUTE_MAX_SIZE (currently SIZE_T_MAX - (2 * PAGE_SIZE)) will still
+// fail with a NULL rather than dying (see malloc_zone_malloc() in
+// https://opensource.apple.com/source/libmalloc/libmalloc-283/src/malloc.c for
+// details). Unfortunately, it's the best we can do. Also note that this does
+// not affect allocations from non-default zones.
 
 #if !defined(ADDRESS_SANITIZER)
   // Don't do anything special on OOM for the malloc zones replaced by
@@ -529,8 +540,8 @@ void ShimNewMallocZones() {
 void ReplaceZoneFunctions(ChromeMallocZone* zone,
                           const MallocZoneFunctions* functions) {
   // Remove protection.
-  mach_vm_address_t reprotection_start = 0;
-  mach_vm_size_t reprotection_length = 0;
+  vm_address_t reprotection_start = 0;
+  vm_size_t reprotection_length = 0;
   vm_prot_t reprotection_value = VM_PROT_NONE;
   DeprotectMallocZone(zone, &reprotection_start, &reprotection_length,
                       &reprotection_value);
@@ -558,9 +569,9 @@ void ReplaceZoneFunctions(ChromeMallocZone* zone,
   // Restore protection if it was active.
   if (reprotection_start) {
     kern_return_t result =
-        mach_vm_protect(mach_task_self(), reprotection_start,
-                        reprotection_length, false, reprotection_value);
-    MACH_CHECK(result == KERN_SUCCESS, result) << "mach_vm_protect";
+        vm_protect(mach_task_self(), reprotection_start, reprotection_length,
+                   false, reprotection_value);
+    MACH_CHECK(result == KERN_SUCCESS, result) << "vm_protect";
   }
 }
 

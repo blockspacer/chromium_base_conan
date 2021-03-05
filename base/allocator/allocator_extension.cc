@@ -4,59 +4,56 @@
 
 #include "base/allocator/allocator_extension.h"
 #include "base/allocator/buildflags.h"
-#include "base/logging.h"
+#include "base/check.h"
 
-#if defined(USE_TCMALLOC)
-#if BUILDFLAG(USE_NEW_TCMALLOC)
+#if BUILDFLAG(USE_TCMALLOC)
 #include "third_party/tcmalloc/chromium/src/gperftools/heap-profiler.h"
 #include "third_party/tcmalloc/chromium/src/gperftools/malloc_extension.h"
 #include "third_party/tcmalloc/chromium/src/gperftools/malloc_hook.h"
-#else
-#include "third_party/tcmalloc/gperftools-2.0/chromium/src/gperftools/heap-profiler.h"
-#include "third_party/tcmalloc/gperftools-2.0/chromium/src/gperftools/malloc_extension.h"
-#include "third_party/tcmalloc/gperftools-2.0/chromium/src/gperftools/malloc_hook.h"
-#endif
 #endif
 
 namespace base {
 namespace allocator {
 
 void ReleaseFreeMemory() {
-#if defined(USE_TCMALLOC)
+#if BUILDFLAG(USE_TCMALLOC)
   ::MallocExtension::instance()->ReleaseFreeMemory();
 #endif
 }
 
 bool GetNumericProperty(const char* name, size_t* value) {
-#if defined(USE_TCMALLOC)
+#if BUILDFLAG(USE_TCMALLOC)
   return ::MallocExtension::instance()->GetNumericProperty(name, value);
-#endif
+#else
   return false;
+#endif
 }
 
 bool SetNumericProperty(const char* name, size_t value) {
-#if defined(USE_TCMALLOC)
+#if BUILDFLAG(USE_TCMALLOC)
   return ::MallocExtension::instance()->SetNumericProperty(name, value);
-#endif
+#else
   return false;
+#endif
 }
 
 void GetHeapSample(std::string* writer) {
-#if defined(USE_TCMALLOC)
+#if BUILDFLAG(USE_TCMALLOC)
   ::MallocExtension::instance()->GetHeapSample(writer);
 #endif
 }
 
 bool IsHeapProfilerRunning() {
-#if defined(USE_TCMALLOC) && defined(ENABLE_PROFILING)
+#if BUILDFLAG(USE_TCMALLOC) && defined(ENABLE_PROFILING)
   return ::IsHeapProfilerRunning();
-#endif
+#else
   return false;
+#endif
 }
 
 void SetHooks(AllocHookFunc alloc_hook, FreeHookFunc free_hook) {
 // TODO(sque): Use allocator shim layer instead.
-#if defined(USE_TCMALLOC)
+#if BUILDFLAG(USE_TCMALLOC)
   // Make sure no hooks get overwritten.
   auto prev_alloc_hook = MallocHook::SetNewHook(alloc_hook);
   if (alloc_hook)
@@ -69,10 +66,11 @@ void SetHooks(AllocHookFunc alloc_hook, FreeHookFunc free_hook) {
 }
 
 int GetCallStack(void** stack, int max_stack_size) {
-#if defined(USE_TCMALLOC)
+#if BUILDFLAG(USE_TCMALLOC)
   return MallocHook::GetCallerStackTrace(stack, max_stack_size, 0);
-#endif
+#else
   return 0;
+#endif
 }
 
 }  // namespace allocator

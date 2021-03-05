@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "base/i18n/string_search.h"
-#include "base/logging.h"
+#include "base/i18n/uchar.h"
 
 #include "third_party/icu/source/i18n/unicode/usearch.h"
 
@@ -15,16 +15,16 @@ namespace i18n {
 FixedPatternStringSearch::FixedPatternStringSearch(const string16& find_this,
                                                    bool case_sensitive)
     : find_this_(find_this) {
-#if !UCONFIG_NO_COLLATION
   // usearch_open requires a valid string argument to be searched, even if we
   // want to set it by usearch_setText afterwards. So, supplying a dummy text.
   const string16& dummy = find_this_;
 
   UErrorCode status = U_ZERO_ERROR;
-  search_ = usearch_open(find_this_.data(), find_this_.size(), dummy.data(),
-                         dummy.size(), uloc_getDefault(),
-                         nullptr,  // breakiter
-                         &status);
+  search_ =
+      usearch_open(ToUCharPtr(find_this_.data()), find_this_.size(),
+                   ToUCharPtr(dummy.data()), dummy.size(), uloc_getDefault(),
+                   nullptr,  // breakiter
+                   &status);
   if (U_SUCCESS(status)) {
     // http://icu-project.org/apiref/icu4c40/ucol_8h.html#6a967f36248b0a1bc7654f538ee8ba96
     // Set comparison level to UCOL_PRIMARY to ignore secondary and tertiary
@@ -38,28 +38,19 @@ FixedPatternStringSearch::FixedPatternStringSearch(const string16& find_this,
     ucol_setStrength(collator, case_sensitive ? UCOL_TERTIARY : UCOL_PRIMARY);
     usearch_reset(search_);
   }
-#else
-    NOTIMPLEMENTED();
-#endif // !UCONFIG_NO_COLLATION
 }
 
 FixedPatternStringSearch::~FixedPatternStringSearch() {
-#if !UCONFIG_NO_COLLATION
   if (search_)
     usearch_close(search_);
-#else
-    // see https://github.com/blockspacer/skia-opengl-emscripten/blob/8390245e4aadd160d99e297968594bb6ad86caaa/thirdparty/icu-git/icu4c/source/i18n/usearch.cpp#L2754
-    NOTIMPLEMENTED();
-#endif // !UCONFIG_NO_COLLATION
 }
 
 bool FixedPatternStringSearch::Search(const string16& in_this,
                                       size_t* match_index,
                                       size_t* match_length,
                                       bool forward_search) {
-#if !UCONFIG_NO_COLLATION
   UErrorCode status = U_ZERO_ERROR;
-  usearch_setText(search_, in_this.data(), in_this.size(), &status);
+  usearch_setText(search_, ToUCharPtr(in_this.data()), in_this.size(), &status);
 
   // Default to basic substring search if usearch fails. According to
   // http://icu-project.org/apiref/icu4c/usearch_8h.html, usearch_open will fail
@@ -85,10 +76,6 @@ bool FixedPatternStringSearch::Search(const string16& in_this,
   if (match_length)
     *match_length = static_cast<size_t>(usearch_getMatchedLength(search_));
   return true;
-#else
-    NOTIMPLEMENTED();
-  return false;
-#endif // !UCONFIG_NO_COLLATION
 }
 
 FixedPatternStringSearchIgnoringCaseAndAccents::

@@ -4,7 +4,7 @@
 
 #include "base/task/thread_pool/worker_thread_stack.h"
 
-#include "base/logging.h"
+#include "base/check_op.h"
 #include "base/memory/ref_counted.h"
 #include "base/task/thread_pool/task_source.h"
 #include "base/task/thread_pool/task_tracker.h"
@@ -12,7 +12,7 @@
 #include "base/test/gtest_util.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace internal {
@@ -25,10 +25,10 @@ class MockWorkerThreadDelegate : public WorkerThread::Delegate {
     return WorkerThread::ThreadLabel::DEDICATED;
   }
   void OnMainEntry(const WorkerThread* worker) override {}
-  scoped_refptr<TaskSource> GetWork(WorkerThread* worker) override {
+  RegisteredTaskSource GetWork(WorkerThread* worker) override {
     return nullptr;
   }
-  void DidRunTask(scoped_refptr<TaskSource> task_source) override {
+  void DidProcessTask(RegisteredTaskSource task_source) override {
     ADD_FAILURE() << "Unexpected call to DidRunTask()";
   }
   TimeDelta GetSleepTimeout() override { return TimeDelta::Max(); }
@@ -52,7 +52,7 @@ class ThreadPoolWorkerStackTest : public testing::Test {
   }
 
  private:
-  TaskTracker task_tracker_ = {"Test"};
+  TaskTracker task_tracker_;
 
  protected:
   scoped_refptr<WorkerThread> worker_a_;

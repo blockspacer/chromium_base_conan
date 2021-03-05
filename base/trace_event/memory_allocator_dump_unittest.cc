@@ -14,14 +14,13 @@
 #include "base/trace_event/traced_value.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 using testing::ElementsAre;
 using testing::Eq;
 using testing::ByRef;
 using testing::IsEmpty;
-using testing::Contains;
 
 namespace base {
 namespace trace_event {
@@ -62,7 +61,7 @@ void CheckString(const MemoryAllocatorDump* dump,
                  const char* expected_units,
                  const std::string& expected_value) {
   MemoryAllocatorDump::Entry expected(name, expected_units, expected_value);
-  EXPECT_THAT(dump->entries(), Contains(Eq(ByRef(expected))));
+  EXPECT_THAT(dump->entries(), testing::Contains(Eq(ByRef(expected))));
 }
 
 void CheckScalar(const MemoryAllocatorDump* dump,
@@ -70,7 +69,7 @@ void CheckScalar(const MemoryAllocatorDump* dump,
                  const char* expected_units,
                  uint64_t expected_value) {
   MemoryAllocatorDump::Entry expected(name, expected_units, expected_value);
-  EXPECT_THAT(dump->entries(), Contains(Eq(ByRef(expected))));
+  EXPECT_THAT(dump->entries(), testing::Contains(Eq(ByRef(expected))));
 }
 
 }  // namespace

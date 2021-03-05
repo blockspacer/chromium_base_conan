@@ -8,8 +8,8 @@
 #include <utility>
 #include <vector>
 
-#include "base/test/bind_test_util.h"
-#include GMOCK_HEADER_INCLUDE
+#include "base/test/bind.h"
+#include "testing/gmock/include/gmock/gmock.h"
 
 using testing::ElementsAre;
 using testing::IsNull;

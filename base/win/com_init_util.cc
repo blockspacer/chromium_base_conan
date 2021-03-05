@@ -5,7 +5,10 @@
 #include "base/win/com_init_util.h"
 
 #include <windows.h>
+
 #include <winternl.h>
+#include "base/logging.h"
+#include "base/notreached.h"
 
 namespace base {
 namespace win {

@@ -9,18 +9,23 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.Environment;
-import android.os.SystemClock;
+import android.os.storage.StorageManager;
+import android.provider.MediaStore;
 import android.system.Os;
 import android.text.TextUtils;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.MainDex;
-import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.task.AsyncTask;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -48,15 +53,13 @@ public abstract class PathUtils {
     // Prevent instantiation.
     private PathUtils() {}
 
-    /**
-     * Initialization-on-demand holder. This exists for thread-safe lazy initialization. It will
-     * cause getOrComputeDirectoryPaths() to be called (safely) the first time DIRECTORY_PATHS is
-     * accessed.
-     *
-     * <p>See https://en.wikipedia.org/wiki/Initialization-on-demand_holder_idiom.
-     */
-    private static class Holder {
-        private static final String[] DIRECTORY_PATHS = getOrComputeDirectoryPaths();
+    // Resetting is useful in Robolectric tests, where each test is run with a different
+    // data directory.
+    public static void resetForTesting() {
+        sInitializationStarted.set(false);
+        sDirPathFetchTask = null;
+        sDataDirectorySuffix = null;
+        sCacheSubDirectory = null;
     }
 
     /**
@@ -65,28 +68,17 @@ public abstract class PathUtils {
      * above to guarantee thread-safety as part of the initialization-on-demand holder idiom.
      */
     private static String[] getOrComputeDirectoryPaths() {
-        try {
-            // We need to call sDirPathFetchTask.cancel() here to prevent races. If it returns
-            // true, that means that the task got canceled successfully (and thus, it did not
-            // finish running its task). Otherwise, it failed to cancel, meaning that it was
-            // already finished.
-            if (sDirPathFetchTask.cancel(false)) {
-                // Allow disk access here because we have no other choice.
-                try (StrictModeContext unused = StrictModeContext.allowDiskWrites()) {
-                    // sDirPathFetchTask did not complete. We have to run the code it was supposed
-                    // to be responsible for synchronously on the UI thread.
-                    return PathUtils.setPrivateDataDirectorySuffixInternal();
-                }
-            } else {
-                // sDirPathFetchTask succeeded, and the values we need should be ready to access
-                // synchronously in its internal future.
-                return sDirPathFetchTask.get();
+        if (!sDirPathFetchTask.isDone()) {
+            try (StrictModeContext ignored = StrictModeContext.allowDiskWrites()) {
+                // No-op if already ran.
+                sDirPathFetchTask.run();
             }
-        } catch (InterruptedException e) {
-        } catch (ExecutionException e) {
         }
-
-        return null;
+        try {
+            return sDirPathFetchTask.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @SuppressLint("NewApi")
@@ -122,8 +114,11 @@ public abstract class PathUtils {
             if (sCacheSubDirectory == null) {
                 paths[CACHE_DIRECTORY] = appContext.getCacheDir().getPath();
             } else {
-                paths[CACHE_DIRECTORY] =
-                        new File(appContext.getCacheDir(), sCacheSubDirectory).getPath();
+                File cacheDir = new File(appContext.getCacheDir(), sCacheSubDirectory);
+                cacheDir.mkdir();
+                paths[CACHE_DIRECTORY] = cacheDir.getPath();
+                // Set to rwx--S--- as the Android cache dir has a distinct gid and is setgid.
+                chmod(paths[CACHE_DIRECTORY], 02700);
             }
         }
         return paths;
@@ -155,6 +150,11 @@ public abstract class PathUtils {
             // inherently posts to the UI thread for onPostExecute().
             sDirPathFetchTask = new FutureTask<>(PathUtils::setPrivateDataDirectorySuffixInternal);
             AsyncTask.THREAD_POOL_EXECUTOR.execute(sDirPathFetchTask);
+        } else {
+            assert TextUtils.equals(sDataDirectorySuffix, suffix)
+                : String.format("%s != %s", suffix, sDataDirectorySuffix);
+            assert TextUtils.equals(sCacheSubDirectory, cacheSubDir)
+                : String.format("%s != %s", cacheSubDir, sCacheSubDirectory);
         }
     }
 
@@ -167,7 +167,8 @@ public abstract class PathUtils {
      * @return The directory path requested.
      */
     private static String getDirectoryPath(int index) {
-        return Holder.DIRECTORY_PATHS[index];
+        String[] paths = getOrComputeDirectoryPaths();
+        return paths[index];
     }
 
     /**
@@ -195,20 +196,28 @@ public abstract class PathUtils {
     }
 
     /**
-     * @return the public downloads directory.
+     * Returns the downloads directory. Before Android Q, this returns the public download directory
+     * for Chrome app. On Q+, this returns the first private download directory for the app, since Q
+     * will block public directory access. May return null when there is no external storage volumes
+     * mounted.
      */
     @SuppressWarnings("unused")
     @CalledByNative
-    private static String getDownloadsDirectory() {
-        // Temporarily allowing disk access while fixing. TODO: http://crbug.com/508615
-        try (StrictModeContext unused = StrictModeContext.allowDiskReads()) {
-            long time = SystemClock.elapsedRealtime();
-            String downloadsPath =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                            .getPath();
-            RecordHistogram.recordTimesHistogram(
-                    "Android.StrictMode.DownloadsDir", SystemClock.elapsedRealtime() - time);
-            return downloadsPath;
+    public static @NonNull String getDownloadsDirectory() {
+        // TODO(crbug.com/508615): Move calls to getDownloadsDirectory() to background thread.
+        try (StrictModeContext ignored = StrictModeContext.allowDiskReads()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // https://developer.android.com/preview/privacy/scoped-storage
+                // In Q+, Android has begun sandboxing external storage. Chrome may not have
+                // permission to write to Environment.getExternalStoragePublicDirectory(). Instead
+                // using Context.getExternalFilesDir() will return a path to sandboxed external
+                // storage for which no additional permissions are required.
+                String[] dirs = getAllPrivateDownloadsDirectories();
+                assert dirs != null;
+                return dirs[0];
+            }
+            return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    .getPath();
         }
     }
 
@@ -218,21 +227,53 @@ public abstract class PathUtils {
      */
     @SuppressWarnings("unused")
     @CalledByNative
-    public static String[] getAllPrivateDownloadsDirectories() {
-        File[] files;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            try (StrictModeContext unused = StrictModeContext.allowDiskWrites()) {
-                files = ContextUtils.getApplicationContext().getExternalFilesDirs(
-                        Environment.DIRECTORY_DOWNLOADS);
+    public static @NonNull String[] getAllPrivateDownloadsDirectories() {
+        List<File> files = new ArrayList<>();
+        try (StrictModeContext ignored = StrictModeContext.allowDiskWrites()) {
+            File[] externalDirs = ContextUtils.getApplicationContext().getExternalFilesDirs(
+                    Environment.DIRECTORY_DOWNLOADS);
+            files = (externalDirs == null) ? files : Arrays.asList(externalDirs);
+        }
+        return toAbsolutePathStrings(files);
+    }
+
+    /**
+     * @return The download directory for secondary storage on Q+, returned by
+     * {@link MediaStore#getExternalVolumeNames(Context)}. Notices on Android R, apps can no longer
+     * expose app's private directory for secondary storage. Apps should put files to
+     * /storage/$volume_id/Download/ directory instead.
+     */
+    @RequiresApi(Build.VERSION_CODES.R)
+    @CalledByNative
+    public static @NonNull String[] getExternalDownloadVolumesNames() {
+        ArrayList<File> files = new ArrayList<>();
+        Set<String> volumes =
+                MediaStore.getExternalVolumeNames(ContextUtils.getApplicationContext());
+        for (String vol : volumes) {
+            if (!TextUtils.isEmpty(vol) && !vol.contains(MediaStore.VOLUME_EXTERNAL_PRIMARY)) {
+                File volumeDir = ContextUtils.getApplicationContext()
+                                         .getSystemService(StorageManager.class)
+                                         .getStorageVolume(MediaStore.Files.getContentUri(vol))
+                                         .getDirectory();
+                assert volumeDir.isDirectory();
+                assert volumeDir.exists();
+
+                File volumeDownloadDir =
+                        new File(volumeDir.getAbsolutePath(), Environment.DIRECTORY_DOWNLOADS);
+                assert volumeDownloadDir.isDirectory();
+                assert volumeDownloadDir.exists();
+                files.add(volumeDownloadDir);
             }
-        } else {
-            files = new File[] {Environment.getExternalStorageDirectory()};
         }
 
+        return toAbsolutePathStrings(files);
+    }
+
+    private static @NonNull String[] toAbsolutePathStrings(@NonNull List<File> files) {
         ArrayList<String> absolutePaths = new ArrayList<String>();
-        for (int i = 0; i < files.length; ++i) {
-            if (files[i] == null || TextUtils.isEmpty(files[i].getAbsolutePath())) continue;
-            absolutePaths.add(files[i].getAbsolutePath());
+        for (File file : files) {
+            if (file == null || TextUtils.isEmpty(file.getAbsolutePath())) continue;
+            absolutePaths.add(file.getAbsolutePath());
         }
 
         return absolutePaths.toArray(new String[absolutePaths.size()]);

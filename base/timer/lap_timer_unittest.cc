@@ -3,10 +3,11 @@
 // found in the LICENSE file.
 
 #include "base/timer/lap_timer.h"
-#include "base/test/scoped_task_environment.h"
+
+#include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 // This file contains a minimal unit test for LapTimer, used for benchmarking.
 // This file is supposed to match closely with the example code, documented in
@@ -26,12 +27,7 @@ constexpr int kTimeCheckInterval = 10;
 }  // namespace
 
 TEST(LapTimer, UsageExample) {
-  ScopedTaskEnvironment scoped_task_environment(
-      ScopedTaskEnvironment::MainThreadType::MOCK_TIME,
-      ScopedTaskEnvironment::NowSource::MAIN_THREAD_MOCK_TIME);
-
-  // Advance time a little bit so that TimeTicks::Now().is_null() becomes false.
-  scoped_task_environment.FastForwardBy(kTimeAdvance);
+  TaskEnvironment task_environment(TaskEnvironment::TimeSource::MOCK_TIME);
 
   LapTimer timer(kWarmupRuns, kTimeLimit, kTimeCheckInterval);
 
@@ -39,7 +35,7 @@ TEST(LapTimer, UsageExample) {
   EXPECT_FALSE(timer.IsWarmedUp());
 
   do {
-    scoped_task_environment.FastForwardBy(kTimeAdvance);
+    task_environment.FastForwardBy(kTimeAdvance);
     timer.NextLap();
   } while (!timer.HasTimeLimitExpired());
 
@@ -53,16 +49,10 @@ TEST(LapTimer, UsageExample) {
   EXPECT_TRUE(timer.IsWarmedUp());
 }
 
-/// \todo
-/// Expected: (timer.NumLaps()) > (20), actual: 20 vs 20
-///
-#if 0
 #if !defined(OS_IOS)
 // iOS simulator does not support using ThreadTicks.
 TEST(LapTimer, ThreadTicksUsageExample) {
-  ScopedTaskEnvironment scoped_task_environment(
-      ScopedTaskEnvironment::MainThreadType::MOCK_TIME,
-      ScopedTaskEnvironment::NowSource::MAIN_THREAD_MOCK_TIME);
+  TaskEnvironment task_environment(TaskEnvironment::TimeSource::MOCK_TIME);
   LapTimer timer(kWarmupRuns, kTimeLimit, kTimeCheckInterval,
                  LapTimer::TimerMethod::kUseThreadTicks);
 
@@ -70,11 +60,11 @@ TEST(LapTimer, ThreadTicksUsageExample) {
   EXPECT_FALSE(timer.IsWarmedUp());
 
   do {
-    scoped_task_environment.FastForwardBy(kTimeAdvance);
+    task_environment.FastForwardBy(kTimeAdvance);
     timer.NextLap();
   } while (!timer.HasTimeLimitExpired());
 
-  // Because advancing the ScopedTaskEnvironment time won't affect the
+  // Because advancing the TaskEnvironment time won't affect the
   // ThreadTicks, laps will be much faster than the regular UsageExample.
   EXPECT_GT(timer.LapsPerSecond(), 1000);
   EXPECT_LT(timer.TimePerLap().InMillisecondsF(), 1.0f);
@@ -83,7 +73,6 @@ TEST(LapTimer, ThreadTicksUsageExample) {
   EXPECT_TRUE(timer.HasTimeLimitExpired());
   EXPECT_TRUE(timer.IsWarmedUp());
 }
-#endif
 #endif
 
 }  // namespace test

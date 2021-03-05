@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//base/allocator/allocator.gni")
 import("//build/buildflag_header.gni")
-import("//build/config/allocator.gni")
 import("//build/config/compiler/compiler.gni")
 
 declare_args() {
@@ -63,7 +63,7 @@ config("tcmalloc_flags") {
     cflags = []
   }
 
-  if (is_linux || is_android) {
+  if (is_linux || is_chromeos || is_android) {
     # We enable all warnings by default, but upstream disables a few.
     # Keep "-Wno-*" flags in sync with upstream by comparing against:
     # http://code.google.com/p/google-perftools/source/browse/trunk/Makefile.am
@@ -77,11 +77,7 @@ config("tcmalloc_flags") {
 if (use_allocator == "tcmalloc") {
   # tcmalloc currently won't compile on Android.
   source_set("tcmalloc") {
-    if (use_new_tcmalloc) {
-      tcmalloc_dir = "//third_party/tcmalloc/chromium"
-    } else {
-      tcmalloc_dir = "//third_party/tcmalloc/gperftools-2.0/chromium"
-    }
+    tcmalloc_dir = "//third_party/tcmalloc/chromium"
 
     # Don't check tcmalloc's includes. These files include various files like
     # base/foo.h and they actually refer to tcmalloc's forked copy of base
@@ -92,9 +88,6 @@ if (use_allocator == "tcmalloc") {
       # Generated for our configuration from tcmalloc's build
       # and checked in.
       "$tcmalloc_dir/src/config.h",
-      "$tcmalloc_dir/src/config_android.h",
-      "$tcmalloc_dir/src/config_linux.h",
-      "$tcmalloc_dir/src/config_win.h",
 
       # tcmalloc native and forked files.
       "$tcmalloc_dir/src/base/abort.cc",
@@ -109,7 +102,6 @@ if (use_allocator == "tcmalloc") {
       "$tcmalloc_dir/src/base/atomicops-internals-x86.h",
       "$tcmalloc_dir/src/base/atomicops.h",
       "$tcmalloc_dir/src/base/commandlineflags.h",
-      "$tcmalloc_dir/src/base/cycleclock.h",
 
       # We don't list dynamic_annotations.c since its copy is already
       # present in the dynamic_annotations target.
@@ -125,7 +117,6 @@ if (use_allocator == "tcmalloc") {
       "$tcmalloc_dir/src/base/spinlock.h",
       "$tcmalloc_dir/src/base/spinlock_internal.cc",
       "$tcmalloc_dir/src/base/spinlock_internal.h",
-      "$tcmalloc_dir/src/base/synchronization_profiling.h",
       "$tcmalloc_dir/src/base/sysinfo.cc",
       "$tcmalloc_dir/src/base/sysinfo.h",
       "$tcmalloc_dir/src/base/vdso_support.cc",
@@ -137,6 +128,7 @@ if (use_allocator == "tcmalloc") {
 
       # #included by debugallocation_shim.cc
       #"$tcmalloc_dir/src/debugallocation.cc",
+      "$tcmalloc_dir/src/fake_stacktrace_scope.cc",
       "$tcmalloc_dir/src/free_list.cc",
       "$tcmalloc_dir/src/free_list.h",
       "$tcmalloc_dir/src/gperftools/heap-profiler.h",
@@ -149,6 +141,7 @@ if (use_allocator == "tcmalloc") {
       "$tcmalloc_dir/src/malloc_extension.cc",
       "$tcmalloc_dir/src/malloc_hook-inl.h",
       "$tcmalloc_dir/src/malloc_hook.cc",
+      "$tcmalloc_dir/src/maybe_emergency_malloc.h",
       "$tcmalloc_dir/src/maybe_threads.cc",
       "$tcmalloc_dir/src/maybe_threads.h",
       "$tcmalloc_dir/src/page_heap.cc",
@@ -183,13 +176,16 @@ if (use_allocator == "tcmalloc") {
       #"win_allocator.cc",
     ]
 
-    # Account for file changes in the new tcmalloc version.
-    if (use_new_tcmalloc) {
-      sources -= [ "$tcmalloc_dir/src/base/cycleclock.h" ]
-      sources += [
-        "$tcmalloc_dir/src/fake_stacktrace_scope.cc",
-        "$tcmalloc_dir/src/maybe_emergency_malloc.h",
-      ]
+    if (is_android) {
+      sources += [ "$tcmalloc_dir/src/config_android.h" ]
+    }
+
+    if (is_linux || is_chromeos) {
+      sources += [ "$tcmalloc_dir/src/config_linux.h" ]
+    }
+
+    if (is_win) {
+      sources += [ "$tcmalloc_dir/src/config_win.h" ]
     }
 
     # Not included on mips64el.
@@ -227,6 +223,7 @@ if (use_allocator == "tcmalloc") {
 
     deps = [
       ":buildflags",
+      "//build:chromeos_buildflags",
     ]
 
     if (enable_profiling) {
@@ -247,7 +244,7 @@ if (use_allocator == "tcmalloc") {
       defines += [ "ENABLE_PROFILING=1" ]
     }
 
-    if (is_linux || is_android) {
+    if (is_linux || is_chromeos || is_android) {
       sources -= [
         "$tcmalloc_dir/src/system-alloc.h",
         "$tcmalloc_dir/src/windows/port.cc",
@@ -290,9 +287,15 @@ if (use_allocator == "tcmalloc") {
 
 buildflag_header("buildflags") {
   header = "buildflags.h"
+  _use_partition_alloc = use_allocator == "partition"
+  _use_tcmalloc = use_allocator == "tcmalloc"
+  assert(use_allocator_shim || !_use_partition_alloc,
+         "Partition alloc requires the allocator shim")
+
   flags = [
     "USE_ALLOCATOR_SHIM=$use_allocator_shim",
-    "USE_NEW_TCMALLOC=$use_new_tcmalloc",
+    "USE_TCMALLOC=$_use_tcmalloc",
+    "USE_PARTITION_ALLOC_AS_MALLOC=$_use_partition_alloc",
   ]
 }
 
@@ -307,5 +310,19 @@ config("wrap_malloc_symbols") {
     "-Wl,-wrap,pvalloc",
     "-Wl,-wrap,realloc",
     "-Wl,-wrap,valloc",
+
+    # <stdlib.h> functions
+    "-Wl,-wrap,realpath",
+
+    # <string.h> functions
+    "-Wl,-wrap,strdup",
+    "-Wl,-wrap,strndup",
+
+    # <unistd.h> functions
+    "-Wl,-wrap,getcwd",
+
+    # <stdio.h> functions
+    "-Wl,-wrap,asprintf",
+    "-Wl,-wrap,vasprintf",
   ]
 }

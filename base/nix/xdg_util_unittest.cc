@@ -5,10 +5,11 @@
 #include "base/nix/xdg_util.h"
 
 #include "base/environment.h"
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::Return;
 using ::testing::SetArgPointee;

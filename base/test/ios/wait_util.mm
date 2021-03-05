@@ -6,7 +6,7 @@
 
 #import <Foundation/Foundation.h>
 
-#include "base/logging.h"
+#include "base/check.h"
 #include "base/mac/scoped_nsobject.h"
 #include "base/run_loop.h"
 #include "base/test/test_timeouts.h"
@@ -17,11 +17,12 @@ namespace test {
 namespace ios {
 
 const NSTimeInterval kSpinDelaySeconds = 0.01;
-const NSTimeInterval kWaitForJSCompletionTimeout = 4.0;
+const NSTimeInterval kWaitForJSCompletionTimeout = 6.0;
 const NSTimeInterval kWaitForUIElementTimeout = 4.0;
 const NSTimeInterval kWaitForDownloadTimeout = 10.0;
 const NSTimeInterval kWaitForPageLoadTimeout = 10.0;
 const NSTimeInterval kWaitForActionTimeout = 10.0;
+const NSTimeInterval kWaitForClearBrowsingDataTimeout = 45.0;
 const NSTimeInterval kWaitForCookiesTimeout = 4.0;
 const NSTimeInterval kWaitForFileOperationTimeout = 2.0;
 

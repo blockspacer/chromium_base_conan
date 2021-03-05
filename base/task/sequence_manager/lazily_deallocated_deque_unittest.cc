@@ -5,7 +5,7 @@
 #include "base/task/sequence_manager/lazily_deallocated_deque.h"
 
 #include "base/test/scoped_mock_clock_override.h"
-#include GMOCK_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
 
 namespace base {
 namespace sequence_manager {

@@ -7,7 +7,7 @@
 #include "base/macros.h"
 #include "base/memory/memory_pressure_listener.h"
 #include "base/test/metrics/histogram_tester.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

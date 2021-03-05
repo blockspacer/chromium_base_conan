@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,10 +11,12 @@
 
 #include <fstream>
 #include <limits>
+#include <memory>
 
+#include "base/check_op.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
-#include "base/logging.h"
+#include "base/posix/eintr_wrapper.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -24,36 +26,14 @@
 
 namespace base {
 
-#if defined(OS_EMSCRIPTEN)
-bool GetTempDir(FilePath* path) {
-    return false; // TODO
-}
-
-FilePath GetHomeDir() {
-    return FilePath("/");
-}
-
-bool DeleteFile(const FilePath& path, bool recursive) {
-    return false;
-}
-
-bool CreateDirectoryAndGetError(const FilePath& full_path,
-                                File::Error* error) {
-  return false;
-}
-#endif
-
 #if !defined(OS_NACL_NONSFI)
-namespace {
+OnceCallback<void(const FilePath&)> GetDeleteFileCallback() {
+  return BindOnce(IgnoreResult(&DeleteFile));
+}
 
-// The maximum number of 'uniquified' files we will try to create.
-// This is used when the filename we're trying to download is already in use,
-// so we create a new unique filename by appending " (nnn)" before the
-// extension, where 1 <= nnn <= kMaxUniqueFiles.
-// Also used by code that cleans up said files.
-static const int kMaxUniqueFiles = 100;
-
-}  // namespace
+OnceCallback<void(const FilePath&)> GetDeletePathRecursivelyCallback() {
+  return BindOnce(IgnoreResult(&DeletePathRecursively));
+}
 
 int64_t ComputeDirectorySize(const FilePath& root_path) {
   int64_t running_size = 0;
@@ -69,14 +49,43 @@ bool Move(const FilePath& from_path, const FilePath& to_path) {
   return internal::MoveUnsafe(from_path, to_path);
 }
 
+bool CopyFileContents(File& infile, File& outfile) {
+  static constexpr size_t kBufferSize = 32768;
+  std::vector<char> buffer(kBufferSize);
+
+  for (;;) {
+    int bytes_read = infile.ReadAtCurrentPos(buffer.data(), buffer.size());
+    if (bytes_read < 0) {
+      return false;
+    }
+    if (bytes_read == 0) {
+      return true;
+    }
+    // Allow for partial writes
+    int bytes_written_per_read = 0;
+    do {
+      int bytes_written_partial = outfile.WriteAtCurrentPos(
+          &buffer[bytes_written_per_read], bytes_read - bytes_written_per_read);
+      if (bytes_written_partial < 0) {
+        return false;
+      }
+
+      bytes_written_per_read += bytes_written_partial;
+    } while (bytes_written_per_read < bytes_read);
+  }
+
+  NOTREACHED();
+  return false;
+}
+
 bool ContentsEqual(const FilePath& filename1, const FilePath& filename2) {
   // We open the file in binary format even if they are text files because
   // we are just comparing that bytes are exactly same in both files and not
   // doing anything smart with text formatting.
 #if defined(OS_WIN)
-  std::ifstream file1(as_wcstr(filename1.value()),
+  std::ifstream file1(filename1.value().c_str(),
                       std::ios::in | std::ios::binary);
-  std::ifstream file2(as_wcstr(filename2.value()),
+  std::ifstream file2(filename2.value().c_str(),
                       std::ios::in | std::ios::binary);
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
   std::ifstream file1(filename1.value(), std::ios::in | std::ios::binary);
@@ -110,8 +119,8 @@ bool ContentsEqual(const FilePath& filename1, const FilePath& filename2) {
 
 bool TextContentsEqual(const FilePath& filename1, const FilePath& filename2) {
 #if defined(OS_WIN)
-  std::ifstream file1(as_wcstr(filename1.value()), std::ios::in);
-  std::ifstream file2(as_wcstr(filename2.value()), std::ios::in);
+  std::ifstream file1(filename1.value().c_str(), std::ios::in);
+  std::ifstream file2(filename2.value().c_str(), std::ios::in);
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
   std::ifstream file1(filename1.value(), std::ios::in);
   std::ifstream file2(filename2.value(), std::ios::in);
@@ -154,32 +163,48 @@ bool TextContentsEqual(const FilePath& filename1, const FilePath& filename2) {
 }
 #endif  // !defined(OS_NACL_NONSFI)
 
-bool ReadFileToStringWithMaxSize(const FilePath& path,
-                                 std::string* contents,
-                                 size_t max_size) {
-  //printf("file_util.cc: ReadFileToStringWithMaxSize\n");
+bool ReadStreamToString(FILE* stream, std::string* contents) {
+  return ReadStreamToStringWithMaxSize(
+      stream, std::numeric_limits<size_t>::max(), contents);
+}
 
+bool ReadStreamToStringWithMaxSize(FILE* stream,
+                                   size_t max_size,
+                                   std::string* contents) {
   if (contents)
     contents->clear();
-  if (path.ReferencesParent())
-    return false;
-  FILE* file = OpenFile(path, "rb");
-  if (!file) {
-    return false;
-  }
 
-  // Many files supplied in |path| have incorrect size (proc files etc).
-  // Hence, the file is read sequentially as opposed to a one-shot read, using
-  // file size as a hint for chunk size if available.
+  // Seeking to the beginning is best-effort -- it is expected to fail for
+  // certain non-file stream (e.g., pipes).
+  HANDLE_EINTR(fseek(stream, 0, SEEK_SET));
+
+  // Many files have incorrect size (proc files etc). Hence, the file is read
+  // sequentially as opposed to a one-shot read, using file size as a hint for
+  // chunk size if available.
   constexpr int64_t kDefaultChunkSize = 1 << 16;
-  int64_t chunk_size;
+  int64_t chunk_size = kDefaultChunkSize - 1;
 #if !defined(OS_NACL_NONSFI)
-  if (!GetFileSize(path, &chunk_size) || chunk_size <= 0)
-    chunk_size = kDefaultChunkSize - 1;
+  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+#if defined(OS_WIN)
+  BY_HANDLE_FILE_INFORMATION file_info = {};
+  if (::GetFileInformationByHandle(
+          reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stream))),
+          &file_info)) {
+    LARGE_INTEGER size;
+    size.HighPart = file_info.nFileSizeHigh;
+    size.LowPart = file_info.nFileSizeLow;
+    if (size.QuadPart > 0)
+      chunk_size = size.QuadPart;
+  }
+#else   // defined(OS_WIN)
+  stat_wrapper_t file_info = {};
+  if (!File::Fstat(fileno(stream), &file_info) && file_info.st_size > 0)
+    chunk_size = file_info.st_size;
+#endif  // defined(OS_WIN)
   // We need to attempt to read at EOF for feof flag to be set so here we
   // use |chunk_size| + 1.
   chunk_size = std::min<uint64_t>(chunk_size, max_size) + 1;
-#else
+#else   // !defined(OS_NACL_NONSFI)
   chunk_size = kDefaultChunkSize;
 #endif  // !defined(OS_NACL_NONSFI)
   size_t bytes_read_this_pass;
@@ -188,9 +213,8 @@ bool ReadFileToStringWithMaxSize(const FilePath& path,
   std::string local_contents;
   local_contents.resize(chunk_size);
 
-  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   while ((bytes_read_this_pass = fread(&local_contents[bytes_read_so_far], 1,
-                                       chunk_size, file)) > 0) {
+                                       chunk_size, stream)) > 0) {
     if ((max_size - bytes_read_so_far) < bytes_read_this_pass) {
       // Read more than max_size bytes, bail out.
       bytes_read_so_far = max_size;
@@ -205,12 +229,11 @@ bool ReadFileToStringWithMaxSize(const FilePath& path,
     bytes_read_so_far += bytes_read_this_pass;
     // Last fread syscall (after EOF) can be avoided via feof, which is just a
     // flag check.
-    if (feof(file))
+    if (feof(stream))
       break;
     local_contents.resize(bytes_read_so_far + chunk_size);
   }
-  read_status = read_status && !ferror(file);
-  CloseFile(file);
+  read_status = read_status && !ferror(stream);
   if (contents) {
     contents->swap(local_contents);
     contents->resize(bytes_read_so_far);
@@ -224,6 +247,19 @@ bool ReadFileToString(const FilePath& path, std::string* contents) {
                                      std::numeric_limits<size_t>::max());
 }
 
+bool ReadFileToStringWithMaxSize(const FilePath& path,
+                                 std::string* contents,
+                                 size_t max_size) {
+  if (contents)
+    contents->clear();
+  if (path.ReferencesParent())
+    return false;
+  ScopedFILE file_stream(OpenFile(path, "rb"));
+  if (!file_stream)
+    return false;
+  return ReadStreamToStringWithMaxSize(file_stream.get(), max_size, contents);
+}
+
 #if !defined(OS_NACL_NONSFI)
 bool IsDirectoryEmpty(const FilePath& dir_path) {
   FileEnumerator files(dir_path, false,
@@ -233,12 +269,17 @@ bool IsDirectoryEmpty(const FilePath& dir_path) {
   return false;
 }
 
-FILE* CreateAndOpenTemporaryFile(FilePath* path) {
+bool CreateTemporaryFile(FilePath* path) {
+  FilePath temp_dir;
+  return GetTempDir(&temp_dir) && CreateTemporaryFileInDir(temp_dir, path);
+}
+
+ScopedFILE CreateAndOpenTemporaryStream(FilePath* path) {
   FilePath directory;
   if (!GetTempDir(&directory))
     return nullptr;
 
-  return CreateAndOpenTemporaryFileInDir(directory, path);
+  return CreateAndOpenTemporaryStreamInDir(directory, path);
 }
 
 bool CreateDirectory(const FilePath& full_path) {
@@ -246,8 +287,6 @@ bool CreateDirectory(const FilePath& full_path) {
 }
 
 bool GetFileSize(const FilePath& file_path, int64_t* file_size) {
-  //printf("file_util.cc: GetFileSize\n");
-
   File::Info info;
   if (!GetFileInfo(file_path, &info))
     return false;
@@ -258,8 +297,6 @@ bool GetFileSize(const FilePath& file_path, int64_t* file_size) {
 bool TouchFile(const FilePath& path,
                const Time& last_accessed,
                const Time& last_modified) {
-  //printf("file_util.cc: TouchFile\n");
-
   int flags = File::FLAG_OPEN | File::FLAG_WRITE_ATTRIBUTES;
 
 #if defined(OS_WIN)
@@ -286,52 +323,6 @@ bool CloseFile(FILE* file) {
   return fclose(file) == 0;
 }
 
-#if defined(OS_EMSCRIPTEN)
-FilePath MakeAbsoluteFilePath(const FilePath& input) {
-   // __TODO__
-
-  //AssertBlockingAllowed();
-  // Only absolute paths are supported in Starboard.
-  DCHECK(input.IsAbsolute());
-  return input;
-}
-
-bool GetCurrentDirectory(FilePath* dir) {
-   // __TODO__
-
-  //ScopedBlockingCall scoped_blocking_call(BlockingType::MAY_BLOCK);
-  //
-  //// Not supported on Starboard.
-  //NOTREACHED();
-  return false;
-}
-
-bool CreateTemporaryFile(FilePath *path) {
-   // __TODO__
-
-  //AssertBlockingAllowed();
-  DCHECK(path);
-
-  FilePath directory;
-  if (!GetTempDir(&directory)) {
-    return false;
-  }
-
-  return CreateTemporaryFileInDir(directory, path);
-}
-
-// see https://github.com/blockspacer/cobalt-clone-28052019/blob/master/src/base/files/file_util_starboard.cc
-bool CreateTemporaryFileInDir(const FilePath &dir, FilePath *temp_file) {
-  // __TODO__
-
-  //AssertBlockingAllowed();
-  DCHECK(temp_file);
-  //SbFile file = CreateAndOpenTemporaryFileSafely(dir, temp_file);
-  //return (SbFileIsValid(file) && SbFileClose(file));
-  return false;
-}
-#endif // OS_EMSCRIPTEN
-
 #if !defined(OS_NACL_NONSFI)
 bool TruncateFile(FILE* file) {
   if (file == nullptr)
@@ -351,35 +342,79 @@ bool TruncateFile(FILE* file) {
   return true;
 }
 
-int GetUniquePathNumber(const FilePath& path,
-                        const FilePath::StringType& suffix) {
-  bool have_suffix = !suffix.empty();
-  if (!PathExists(path) &&
-      (!have_suffix || !PathExists(FilePath(path.value() + suffix)))) {
-    return 0;
-  }
+bool WriteFile(const FilePath& filename, span<const uint8_t> data) {
+  int size = checked_cast<int>(data.size());
+  return WriteFile(filename, reinterpret_cast<const char*>(data.data()),
+                   size) == size;
+}
 
-  FilePath new_path;
+bool WriteFile(const FilePath& filename, StringPiece data) {
+  int size = checked_cast<int>(data.size());
+  return WriteFile(filename, data.data(), size) == size;
+}
+
+int GetUniquePathNumber(const FilePath& path) {
+  DCHECK(!path.empty());
+  if (!PathExists(path))
+    return 0;
+
+  std::string number;
   for (int count = 1; count <= kMaxUniqueFiles; ++count) {
-    new_path = path.InsertBeforeExtensionASCII(StringPrintf(" (%d)", count));
-    if (!PathExists(new_path) &&
-        (!have_suffix || !PathExists(FilePath(new_path.value() + suffix)))) {
+    StringAppendF(&number, " (%d)", count);
+    if (!PathExists(path.InsertBeforeExtensionASCII(number)))
       return count;
-    }
+    number.clear();
   }
 
   return -1;
 }
 
 FilePath GetUniquePath(const FilePath& path) {
-  FilePath unique_path = path;
-  int uniquifier = GetUniquePathNumber(path, FilePath::StringType());
-  if (uniquifier > 0) {
-    unique_path = unique_path.InsertBeforeExtensionASCII(
-        StringPrintf(" (%d)", uniquifier));
-  }
-  return unique_path;
+  DCHECK(!path.empty());
+  const int uniquifier = GetUniquePathNumber(path);
+  if (uniquifier > 0)
+    return path.InsertBeforeExtensionASCII(StringPrintf(" (%d)", uniquifier));
+  return uniquifier == 0 ? path : base::FilePath();
 }
+
+namespace internal {
+
+bool PreReadFileSlow(const FilePath& file_path, int64_t max_bytes) {
+  DCHECK_GE(max_bytes, 0);
+
+  File file(file_path, File::FLAG_OPEN | File::FLAG_READ |
+                           File::FLAG_SEQUENTIAL_SCAN |
+                           File::FLAG_SHARE_DELETE);
+  if (!file.IsValid())
+    return false;
+
+  constexpr int kBufferSize = 1024 * 1024;
+  // Ensures the buffer is deallocated at function exit.
+  std::unique_ptr<char[]> buffer_deleter(new char[kBufferSize]);
+  char* const buffer = buffer_deleter.get();
+
+  while (max_bytes > 0) {
+    // The static_cast<int> is safe because kBufferSize is int, and both values
+    // are non-negative. So, the minimum is guaranteed to fit in int.
+    const int read_size =
+        static_cast<int>(std::min<int64_t>(max_bytes, kBufferSize));
+    DCHECK_GE(read_size, 0);
+    DCHECK_LE(read_size, kBufferSize);
+
+    const int read_bytes = file.ReadAtCurrentPos(buffer, read_size);
+    if (read_bytes < 0)
+      return false;
+    if (read_bytes == 0)
+      break;
+
+    max_bytes -= read_bytes;
+  }
+
+  return true;
+}
+
+}  // namespace internal
+
 #endif  // !defined(OS_NACL_NONSFI)
 
 }  // namespace base

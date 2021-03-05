@@ -7,15 +7,15 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <string>
 
-#include "base/files/file_path.h"
+#include "base/check_op.h"
+#include "base/files/file.h"
 #include "base/files/file_util.h"
-#include "base/logging.h"
+#include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
@@ -26,8 +26,8 @@ namespace {
 
 // Deny |permission| on the file |path|.
 bool DenyFilePermission(const FilePath& path, mode_t permission) {
-  struct stat stat_buf;
-  if (stat(path.value().c_str(), &stat_buf) != 0)
+  stat_wrapper_t stat_buf;
+  if (File::Stat(path.value().c_str(), &stat_buf) != 0)
     return false;
   stat_buf.st_mode &= ~permission;
 
@@ -42,8 +42,8 @@ void* GetPermissionInfo(const FilePath& path, size_t* length) {
   DCHECK(length);
   *length = 0;
 
-  struct stat stat_buf;
-  if (stat(path.value().c_str(), &stat_buf) != 0)
+  stat_wrapper_t stat_buf;
+  if (File::Stat(path.value().c_str(), &stat_buf) != 0)
     return nullptr;
 
   *length = sizeof(mode_t);
@@ -77,7 +77,9 @@ bool RestorePermissionInfo(const FilePath& path, void* info, size_t length) {
 bool DieFileDie(const FilePath& file, bool recurse) {
   // There is no need to workaround Windows problems on POSIX.
   // Just pass-through.
-  return DeleteFile(file, recurse);
+  if (recurse)
+    return DeletePathRecursively(file);
+  return DeleteFile(file);
 }
 
 void SyncPageCacheToDisk() {
@@ -85,7 +87,8 @@ void SyncPageCacheToDisk() {
   sync();
 }
 
-#if !defined(OS_LINUX) && !defined(OS_MACOSX) && !defined(OS_ANDROID)
+#if !defined(OS_LINUX) && !defined(OS_CHROMEOS) && !defined(OS_APPLE) && \
+    !defined(OS_ANDROID)
 bool EvictFileFromSystemCache(const FilePath& file) {
   // There doesn't seem to be a POSIX way to cool the disk cache.
   NOTIMPLEMENTED();

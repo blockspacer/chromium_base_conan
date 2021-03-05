@@ -9,10 +9,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/check_op.h"
 #include "base/compiler_specific.h"
-#include "base/logging.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 // EXPECT/ASSERT_DCHECK_DEATH is intended to replace EXPECT/ASSERT_DEBUG_DEATH
 // when the death is expected to be caused by a DCHECK. Contrary to
@@ -24,19 +24,24 @@
 #if DCHECK_IS_ON() && defined(GTEST_HAS_DEATH_TEST) && !defined(OS_ANDROID)
 
 // EXPECT/ASSERT_DCHECK_DEATH tests verify that a DCHECK is hit ("Check failed"
-// is part of the error message), but intentionally do not expose the gtest
-// death test's full |regex| parameter to avoid users having to verify the exact
-// syntax of the error message produced by the DCHECK.
+// is part of the error message). Optionally you may specify part of the message
+// to verify which DCHECK (or LOG(DFATAL)) is being hit.
 #define EXPECT_DCHECK_DEATH(statement) EXPECT_DEATH(statement, "Check failed")
+#define EXPECT_DCHECK_DEATH_WITH(statement, msg) EXPECT_DEATH(statement, msg)
 #define ASSERT_DCHECK_DEATH(statement) ASSERT_DEATH(statement, "Check failed")
+#define ASSERT_DCHECK_DEATH_WITH(statement, msg) ASSERT_DEATH(statement, msg)
 
 #else
 // DCHECK_IS_ON() && defined(GTEST_HAS_DEATH_TEST) && !defined(OS_ANDROID)
 
 #define EXPECT_DCHECK_DEATH(statement) \
-    GTEST_UNSUPPORTED_DEATH_TEST(statement, "Check failed", )
+  GTEST_UNSUPPORTED_DEATH_TEST(statement, "Check failed", )
+#define EXPECT_DCHECK_DEATH_WITH(statement, msg) \
+  GTEST_UNSUPPORTED_DEATH_TEST(statement, msg, )
 #define ASSERT_DCHECK_DEATH(statement) \
-    GTEST_UNSUPPORTED_DEATH_TEST(statement, "Check failed", return)
+  GTEST_UNSUPPORTED_DEATH_TEST(statement, "Check failed", return )
+#define ASSERT_DCHECK_DEATH_WITH(statement, msg) \
+  GTEST_UNSUPPORTED_DEATH_TEST(statement, msg, return )
 
 #endif
 // DCHECK_IS_ON() && defined(GTEST_HAS_DEATH_TEST) && !defined(OS_ANDROID)
@@ -44,7 +49,7 @@
 // As above, but for CHECK().
 #if defined(GTEST_HAS_DEATH_TEST) && !defined(OS_ANDROID)
 
-// Official builds will CHECK, but also eat stream parameters. So match "".
+// Official builds will eat stream parameters, so don't check the error message.
 #if defined(OFFICIAL_BUILD) && defined(NDEBUG)
 #define EXPECT_CHECK_DEATH(statement) EXPECT_DEATH(statement, "")
 #define ASSERT_CHECK_DEATH(statement) ASSERT_DEATH(statement, "")

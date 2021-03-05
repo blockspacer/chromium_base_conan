@@ -12,14 +12,15 @@
 #endif
 #include <unistd.h>
 
-#include "base/logging.h"
+#include "base/check.h"
+#include "base/notreached.h"
 #include "base/numerics/safe_math.h"
 #include "base/time/time_override.h"
 #include "build/build_config.h"
 
 // Ensure the Fuchsia and Mac builds do not include this module. Instead,
 // non-POSIX implementation is used for sampling the system clocks.
-#if defined(OS_FUCHSIA) || defined(OS_MACOSX)
+#if defined(OS_FUCHSIA) || defined(OS_APPLE)
 #error "This implementation is for POSIX platforms other than Fuchsia or Mac."
 #endif
 
@@ -46,12 +47,21 @@ int64_t ConvertTimespecToMicros(const struct timespec& ts) {
 // _POSIX_MONOTONIC_CLOCK to -1.
 #if (defined(OS_POSIX) && defined(_POSIX_MONOTONIC_CLOCK) && \
      _POSIX_MONOTONIC_CLOCK >= 0) ||                         \
-    defined(OS_BSD) || defined(OS_ANDROID) || defined(OS_EMSCRIPTEN)
+    defined(OS_BSD) || defined(OS_ANDROID)
 int64_t ClockNow(clockid_t clk_id) {
   struct timespec ts;
   CHECK(clock_gettime(clk_id, &ts) == 0);
   return ConvertTimespecToMicros(ts);
 }
+
+base::Optional<int64_t> MaybeClockNow(clockid_t clk_id) {
+  struct timespec ts;
+  int res = clock_gettime(clk_id, &ts);
+  if (res == 0)
+    return ConvertTimespecToMicros(ts);
+  return base::nullopt;
+}
+
 #else  // _POSIX_MONOTONIC_CLOCK
 #error No usable tick clock function on this platform.
 #endif  // _POSIX_MONOTONIC_CLOCK
@@ -86,6 +96,13 @@ Time TimeNowFromSystemTimeIgnoringOverride() {
 namespace subtle {
 TimeTicks TimeTicksNowIgnoringOverride() {
   return TimeTicks() + TimeDelta::FromMicroseconds(ClockNow(CLOCK_MONOTONIC));
+}
+
+base::Optional<TimeTicks> MaybeTimeTicksNowIgnoringOverride() {
+  base::Optional<int64_t> now = MaybeClockNow(CLOCK_MONOTONIC);
+  if (now.has_value())
+    return TimeTicks() + TimeDelta::FromMicroseconds(now.value());
+  return base::nullopt;
 }
 }  // namespace subtle
 

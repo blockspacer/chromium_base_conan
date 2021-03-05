@@ -6,7 +6,8 @@
 
 #include <stddef.h>
 
-#include "base/logging.h"
+#include "base/check_op.h"
+#include "base/notreached.h"
 
 namespace base {
 
@@ -27,6 +28,8 @@ bool TestResultPart::TypeFromString(const std::string& str, Type* type) {
     *type = kNonFatalFailure;
   else if (str == "fatal_failure")
     *type = kFatalFailure;
+  else if (str == "skip")
+    *type = kSkip;
   else
     return false;
   return true;
@@ -40,6 +43,8 @@ std::string TestResultPart::TypeAsString() const {
       return "failure";
     case kFatalFailure:
       return "fatal_failure";
+    case kSkip:
+      return "skip";
     default:
       NOTREACHED();
   }
@@ -93,6 +98,12 @@ std::string TestResult::GetTestCaseName() const {
   size_t dot_pos = full_name.find('.');
   CHECK_NE(dot_pos, std::string::npos);
   return full_name.substr(0, dot_pos);
+}
+
+void TestResult::AddLink(const std::string& name, const std::string& url) {
+  DCHECK(links.find(name) == links.end())
+      << name << " is already used as a link name. Ignoring...";
+  links[name] = url;
 }
 
 }  // namespace base

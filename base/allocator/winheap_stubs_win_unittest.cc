@@ -5,8 +5,8 @@
 #include "base/allocator/winheap_stubs_win.h"
 
 #include "base/bits.h"
-#include "base/logging.h"
-#include GTEST_HEADER_INCLUDE
+#include "base/check.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace allocator {
@@ -15,7 +15,7 @@ namespace {
 bool IsPtrAligned(void* ptr, size_t alignment) {
   CHECK(base::bits::IsPowerOfTwo(alignment));
   uintptr_t address = reinterpret_cast<uintptr_t>(ptr);
-  return base::bits::Align(address, alignment) == address;
+  return base::bits::AlignUp(address, alignment) == address;
 }
 
 }  // namespace

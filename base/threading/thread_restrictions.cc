@@ -4,21 +4,29 @@
 
 #include "base/threading/thread_restrictions.h"
 
-#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
-  // todo
-#elif DCHECK_IS_ON()
+#include "base/trace_event/base_tracing.h"
 
+#if DCHECK_IS_ON()
+
+#include "base/check_op.h"
 #include "base/debug/stack_trace.h"
 #include "base/lazy_instance.h"
-#include "base/logging.h"
 #include "base/threading/thread_local.h"
+#include "base/trace_event/base_tracing.h"
 #include "build/build_config.h"
 
 namespace base {
 
+std::ostream& operator<<(std::ostream&out, const ThreadLocalBoolean& tl) {
+  out << "currently set to " << (tl.Get() ? "true" : "false");
+  return out;
+}
+
 namespace {
 
-#if defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL) || defined(OS_ANDROID)
+// NaCL doesn't support stack sampling and Android is slow at stack
+// sampling and this causes timeouts (crbug.com/959139).
 using ThreadLocalBooleanWithStacks = ThreadLocalBoolean;
 #else
 class ThreadLocalBooleanWithStacks {
@@ -34,7 +42,7 @@ class ThreadLocalBooleanWithStacks {
 
   friend std::ostream& operator<<(std::ostream& out,
                                   const ThreadLocalBooleanWithStacks& tl) {
-    out << "currently set to " << (tl.bool_.Get() ? "true" : "false") << " by ";
+    out << tl.bool_ << " by ";
 
     if (!tl.stack_.Get())
       return out << "default value\n";
@@ -74,10 +82,7 @@ void AssertBlockingAllowed() {
          "to have MayBlock() in its TaskTraits. Otherwise, consider making "
          "this blocking work asynchronous or, as a last resort, you may use "
          "ScopedAllowBlocking (see its documentation for best practices).\n"
-#if !defined(OS_NACL)
-      << "g_blocking_disallowed " << g_blocking_disallowed.Get()
-#endif
-      ;
+      << "g_blocking_disallowed " << g_blocking_disallowed.Get();
 }
 
 }  // namespace internal
@@ -96,16 +101,6 @@ ScopedDisallowBlocking::~ScopedDisallowBlocking() {
   g_blocking_disallowed.Get().Set(was_disallowed_);
 }
 
-ScopedAllowBlocking::ScopedAllowBlocking()
-    : was_disallowed_(g_blocking_disallowed.Get().Get()) {
-  g_blocking_disallowed.Get().Set(false);
-}
-
-ScopedAllowBlocking::~ScopedAllowBlocking() {
-  DCHECK(!g_blocking_disallowed.Get().Get());
-  g_blocking_disallowed.Get().Set(was_disallowed_);
-}
-
 void DisallowBaseSyncPrimitives() {
   g_base_sync_primitives_disallowed.Get().Set(true);
 }
@@ -115,26 +110,11 @@ ScopedAllowBaseSyncPrimitives::ScopedAllowBaseSyncPrimitives()
   DCHECK(!g_blocking_disallowed.Get().Get())
       << "To allow //base sync primitives in a scope where blocking is "
          "disallowed use ScopedAllowBaseSyncPrimitivesOutsideBlockingScope.\n"
-#if !defined(OS_NACL)
-      << "g_blocking_disallowed " << g_blocking_disallowed.Get()
-#endif
-      ;
+      << "g_blocking_disallowed " << g_blocking_disallowed.Get();
   g_base_sync_primitives_disallowed.Get().Set(false);
 }
 
 ScopedAllowBaseSyncPrimitives::~ScopedAllowBaseSyncPrimitives() {
-  DCHECK(!g_base_sync_primitives_disallowed.Get().Get());
-  g_base_sync_primitives_disallowed.Get().Set(was_disallowed_);
-}
-
-ScopedAllowBaseSyncPrimitivesOutsideBlockingScope::
-    ScopedAllowBaseSyncPrimitivesOutsideBlockingScope()
-    : was_disallowed_(g_base_sync_primitives_disallowed.Get().Get()) {
-  g_base_sync_primitives_disallowed.Get().Set(false);
-}
-
-ScopedAllowBaseSyncPrimitivesOutsideBlockingScope::
-    ~ScopedAllowBaseSyncPrimitivesOutsideBlockingScope() {
   DCHECK(!g_base_sync_primitives_disallowed.Get().Get());
   g_base_sync_primitives_disallowed.Get().Set(was_disallowed_);
 }
@@ -151,6 +131,25 @@ ScopedAllowBaseSyncPrimitivesForTesting::
   g_base_sync_primitives_disallowed.Get().Set(was_disallowed_);
 }
 
+ScopedAllowUnresponsiveTasksForTesting::ScopedAllowUnresponsiveTasksForTesting()
+    : was_disallowed_base_sync_(g_base_sync_primitives_disallowed.Get().Get()),
+      was_disallowed_blocking_(g_blocking_disallowed.Get().Get()),
+      was_disallowed_cpu_(g_cpu_intensive_work_disallowed.Get().Get()) {
+  g_base_sync_primitives_disallowed.Get().Set(false);
+  g_blocking_disallowed.Get().Set(false);
+  g_cpu_intensive_work_disallowed.Get().Set(false);
+}
+
+ScopedAllowUnresponsiveTasksForTesting::
+    ~ScopedAllowUnresponsiveTasksForTesting() {
+  DCHECK(!g_base_sync_primitives_disallowed.Get().Get());
+  DCHECK(!g_blocking_disallowed.Get().Get());
+  DCHECK(!g_cpu_intensive_work_disallowed.Get().Get());
+  g_base_sync_primitives_disallowed.Get().Set(was_disallowed_base_sync_);
+  g_blocking_disallowed.Get().Set(was_disallowed_blocking_);
+  g_cpu_intensive_work_disallowed.Get().Set(was_disallowed_cpu_);
+}
+
 namespace internal {
 
 void AssertBaseSyncPrimitivesAllowed() {
@@ -160,13 +159,10 @@ void AssertBaseSyncPrimitivesAllowed() {
          "unavoidable, do it within the scope of a "
          "ScopedAllowBaseSyncPrimitives. If in a test, "
          "use ScopedAllowBaseSyncPrimitivesForTesting.\n"
-#if !defined(OS_NACL)
       << "g_base_sync_primitives_disallowed "
       << g_base_sync_primitives_disallowed.Get()
       << "It can be useful to know that g_blocking_disallowed is "
-      << g_blocking_disallowed.Get()
-#endif
-      ;
+      << g_blocking_disallowed.Get();
 }
 
 void ResetThreadRestrictionsForTesting() {
@@ -183,24 +179,14 @@ void AssertLongCPUWorkAllowed() {
       << "Function marked as CPU intensive was called from a scope that "
          "disallows this kind of work! Consider making this work "
          "asynchronous.\n"
-#if !defined(OS_NACL)
       << "g_cpu_intensive_work_disallowed "
-      << g_cpu_intensive_work_disallowed.Get()
-#endif
-      ;
+      << g_cpu_intensive_work_disallowed.Get();
 }
 
 void DisallowUnresponsiveTasks() {
   DisallowBlocking();
   DisallowBaseSyncPrimitives();
   g_cpu_intensive_work_disallowed.Get().Set(true);
-}
-
-ThreadRestrictions::ScopedAllowIO::ScopedAllowIO()
-    : was_allowed_(SetIOAllowed(true)) {}
-
-ThreadRestrictions::ScopedAllowIO::~ScopedAllowIO() {
-  SetIOAllowed(was_allowed_);
 }
 
 // static
@@ -227,10 +213,7 @@ void ThreadRestrictions::AssertSingletonAllowed() {
          "shutdown, leading to a potential shutdown crash. If you need to use "
          "the object from this context, it'll have to be updated to use Leaky "
          "traits.\n"
-#if !defined(OS_NACL)
-      << "g_singleton_disallowed " << g_singleton_disallowed.Get()
-#endif
-      ;
+      << "g_singleton_disallowed " << g_singleton_disallowed.Get();
 }
 
 // static
@@ -247,3 +230,82 @@ bool ThreadRestrictions::SetWaitAllowed(bool allowed) {
 }  // namespace base
 
 #endif  // DCHECK_IS_ON()
+
+namespace base {
+
+ScopedAllowBlocking::ScopedAllowBlocking(const Location& from_here)
+#if DCHECK_IS_ON()
+    : was_disallowed_(g_blocking_disallowed.Get().Get())
+#endif
+{
+  TRACE_EVENT_BEGIN(
+      "base", "ScopedAllowBlocking", [&](perfetto::EventContext ctx) {
+        ctx.event()->set_source_location_iid(
+            base::trace_event::InternedSourceLocation::Get(
+                &ctx, base::trace_event::TraceSourceLocation(from_here)));
+      });
+
+#if DCHECK_IS_ON()
+  g_blocking_disallowed.Get().Set(false);
+#endif
+}
+
+ScopedAllowBlocking::~ScopedAllowBlocking() {
+  TRACE_EVENT_END0("base", "ScopedAllowBlocking");
+
+#if DCHECK_IS_ON()
+  DCHECK(!g_blocking_disallowed.Get().Get());
+  g_blocking_disallowed.Get().Set(was_disallowed_);
+#endif
+}
+
+ScopedAllowBaseSyncPrimitivesOutsideBlockingScope::
+    ScopedAllowBaseSyncPrimitivesOutsideBlockingScope(const Location& from_here)
+#if DCHECK_IS_ON()
+    : was_disallowed_(g_base_sync_primitives_disallowed.Get().Get())
+#endif
+{
+  TRACE_EVENT_BEGIN(
+      "base", "ScopedAllowBaseSyncPrimitivesOutsideBlockingScope",
+      [&](perfetto::EventContext ctx) {
+        ctx.event()->set_source_location_iid(
+            base::trace_event::InternedSourceLocation::Get(
+                &ctx, base::trace_event::TraceSourceLocation(from_here)));
+      });
+
+#if DCHECK_IS_ON()
+  g_base_sync_primitives_disallowed.Get().Set(false);
+#endif
+}
+
+ScopedAllowBaseSyncPrimitivesOutsideBlockingScope::
+    ~ScopedAllowBaseSyncPrimitivesOutsideBlockingScope() {
+  TRACE_EVENT_END0("base", "ScopedAllowBaseSyncPrimitivesOutsideBlockingScope");
+
+#if DCHECK_IS_ON()
+  DCHECK(!g_base_sync_primitives_disallowed.Get().Get());
+  g_base_sync_primitives_disallowed.Get().Set(was_disallowed_);
+#endif
+}
+
+ThreadRestrictions::ScopedAllowIO::ScopedAllowIO(const Location& from_here)
+#if DCHECK_IS_ON()
+    : was_allowed_(SetIOAllowed(true))
+#endif
+{
+  TRACE_EVENT_BEGIN("base", "ScopedAllowIO", [&](perfetto::EventContext ctx) {
+    ctx.event()->set_source_location_iid(
+        base::trace_event::InternedSourceLocation::Get(
+            &ctx, base::trace_event::TraceSourceLocation(from_here)));
+  });
+}
+
+ThreadRestrictions::ScopedAllowIO::~ScopedAllowIO() {
+  TRACE_EVENT_END0("base", "ScopedAllowIO");
+
+#if DCHECK_IS_ON()
+  SetIOAllowed(was_allowed_);
+#endif
+}
+
+}  // namespace base

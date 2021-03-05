@@ -5,6 +5,7 @@
 #include "base/message_loop/message_pump_fuchsia.h"
 
 #include <lib/async-loop/cpp/loop.h>
+#include <lib/async-loop/default.h>
 #include <lib/fdio/io.h>
 #include <lib/fdio/unsafe.h>
 #include <lib/zx/time.h>
@@ -14,7 +15,7 @@
 #include "base/auto_reset.h"
 #include "base/fuchsia/fuchsia_logging.h"
 #include "base/logging.h"
-#include "base/trace_event/trace_event.h"
+#include "base/trace_event/base_tracing.h"
 
 namespace base {
 
@@ -59,8 +60,7 @@ bool MessagePumpFuchsia::ZxHandleWatchController::StopWatchingZxHandle() {
   if (!weak_pump_)
     return true;
 
-  // |handler| is set when waiting for a signal.
-  if (!handler)
+  if (!is_active())
     return true;
 
   async_wait_t::handler = nullptr;
@@ -92,14 +92,6 @@ void MessagePumpFuchsia::ZxHandleWatchController::HandleSignal(
 
   controller->handler = nullptr;
 
-  // |signal| can include other spurious things, in particular, that an fd
-  // is writable, when we only asked to know when it was readable. In that
-  // case, we don't want to call both the CanWrite and CanRead callback,
-  // when the caller asked for only, for example, readable callbacks. So,
-  // mask with the events that we actually wanted to know about.
-  zx_signals_t signals = signal->trigger & signal->observed;
-  DCHECK_NE(0u, signals);
-
   // In the case of a persistent Watch, the Watch may be stopped and
   // potentially deleted by the caller within the callback, in which case
   // |controller| should not be accessed again, and we mustn't continue the
@@ -108,7 +100,7 @@ void MessagePumpFuchsia::ZxHandleWatchController::HandleSignal(
   bool was_stopped = false;
   controller->was_stopped_ = &was_stopped;
 
-  controller->watcher_->OnZxHandleSignalled(wait->object, signals);
+  controller->watcher_->OnZxHandleSignalled(wait->object, signal->observed);
 
   if (was_stopped)
     return;
@@ -124,6 +116,14 @@ void MessagePumpFuchsia::FdWatchController::OnZxHandleSignalled(
     zx_signals_t signals) {
   uint32_t events;
   fdio_unsafe_wait_end(io_, signals, &events);
+
+  // |events| can include other spurious things, in particular, that an fd
+  // is writable, when we only asked to know when it was readable. In that
+  // case, we don't want to call both the CanWrite and CanRead callback,
+  // when the caller asked for only, for example, readable callbacks. So,
+  // mask with the events that we actually wanted to know about.
+  events &= desired_events_;
+  DCHECK_NE(0u, events);
 
   // Each |watcher_| callback we invoke may stop or delete |this|. The pump has
   // set |was_stopped_| to point to a safe location on the calling stack, so we
@@ -149,7 +149,7 @@ MessagePumpFuchsia::FdWatchController::~FdWatchController() {
 }
 
 bool MessagePumpFuchsia::FdWatchController::WaitBegin() {
-  // Refresh the |handle_| and |desired_signals_| from the mxio for the fd.
+  // Refresh the |handle_| and |desired_signals_| from the fdio for the fd.
   // Some types of fdio map read/write events to different signals depending on
   // their current state, so we must do this every time we begin to wait.
   fdio_unsafe_wait_begin(io_, desired_events_, &object, &trigger);
@@ -172,7 +172,7 @@ bool MessagePumpFuchsia::FdWatchController::StopWatchingFileDescriptor() {
 }
 
 MessagePumpFuchsia::MessagePumpFuchsia()
-    : async_loop_(new async::Loop(&kAsyncLoopConfigAttachToThread)),
+    : async_loop_(new async::Loop(&kAsyncLoopConfigAttachToCurrentThread)),
       weak_factory_(this) {}
 MessagePumpFuchsia::~MessagePumpFuchsia() = default;
 
@@ -228,8 +228,10 @@ bool MessagePumpFuchsia::WatchZxHandle(zx_handle_t handle,
   DCHECK_NE(0u, signals);
   DCHECK(controller);
   DCHECK(delegate);
-  DCHECK(handle == ZX_HANDLE_INVALID ||
-         controller->async_wait_t::object == ZX_HANDLE_INVALID ||
+
+  // If the watch controller is active then WatchZxHandle() can be called only
+  // for the same handle.
+  DCHECK(handle == ZX_HANDLE_INVALID || !controller->is_active() ||
          handle == controller->async_wait_t::object);
 
   if (!controller->StopWatchingZxHandle())
@@ -245,7 +247,7 @@ bool MessagePumpFuchsia::WatchZxHandle(zx_handle_t handle,
   return controller->WaitBegin();
 }
 
-bool MessagePumpFuchsia::HandleEvents(zx_time_t deadline) {
+bool MessagePumpFuchsia::HandleIoEventsUntil(zx_time_t deadline) {
   zx_status_t status = async_loop_->Run(zx::time(deadline), /*once=*/true);
   switch (status) {
     // Return true if some tasks or events were dispatched or if the dispatcher
@@ -270,33 +272,31 @@ void MessagePumpFuchsia::Run(Delegate* delegate) {
   AutoReset<bool> auto_reset_keep_running(&keep_running_, true);
 
   for (;;) {
-    bool did_work = delegate->DoWork();
+    const Delegate::NextWorkInfo next_work_info = delegate->DoWork();
     if (!keep_running_)
       break;
 
-    did_work |= delegate->DoDelayedWork(&delayed_work_time_);
+    const bool did_handle_io_event = HandleIoEventsUntil(/*deadline=*/0);
     if (!keep_running_)
       break;
 
-    did_work |= HandleEvents(/*deadline=*/0);
-    if (!keep_running_)
-      break;
-
-    if (did_work)
+    bool attempt_more_work =
+        next_work_info.is_immediate() || did_handle_io_event;
+    if (attempt_more_work)
       continue;
 
-    did_work = delegate->DoIdleWork();
+    attempt_more_work = delegate->DoIdleWork();
     if (!keep_running_)
       break;
 
-    if (did_work)
+    if (attempt_more_work)
       continue;
 
-    zx_time_t deadline = delayed_work_time_.is_null()
+    zx_time_t deadline = next_work_info.delayed_run_time.is_max()
                              ? ZX_TIME_INFINITE
-                             : delayed_work_time_.ToZxTime();
+                             : next_work_info.delayed_run_time.ToZxTime();
 
-    HandleEvents(deadline);
+    HandleIoEventsUntil(deadline);
   }
 }
 
@@ -311,10 +311,11 @@ void MessagePumpFuchsia::ScheduleWork() {
 
 void MessagePumpFuchsia::ScheduleDelayedWork(
     const TimeTicks& delayed_work_time) {
-  // We know that we can't be blocked right now since this method can only be
-  // called on the same thread as Run, so we only need to update our record of
-  // how long to sleep when we do sleep.
-  delayed_work_time_ = delayed_work_time;
+  // Since this is always called from the same thread as Run(), there is nothing
+  // to do as the loop is already running. It will wait in Run() with the
+  // correct timeout when it's out of immediate tasks.
+  // TODO(https://crbug.com/885371): Consider removing ScheduleDelayedWork()
+  // when all pumps function this way (bit.ly/merge-message-pump-do-work).
 }
 
 }  // namespace base

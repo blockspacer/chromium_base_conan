@@ -6,8 +6,6 @@
 #define BASE_THREADING_THREAD_LOCAL_STORAGE_H_
 
 #include <stdint.h>
-#include <vector>
-#include <map>
 
 #include "base/atomicops.h"
 #include "base/base_export.h"
@@ -18,10 +16,6 @@
 #include "base/win/windows_types.h"
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
 #include <pthread.h>
-#endif
-
-#if defined(DISABLE_PTHREADS) || defined(USE_FAKE_THREAD_LS)
-#include "base/logging.h"
 #endif
 
 namespace ui {
@@ -79,33 +73,12 @@ class BASE_EXPORT PlatformThreadLocalStorage {
   static void FreeTLS(TLSKey key);
   static void SetTLSValue(TLSKey key, void* value);
   static void* GetTLSValue(TLSKey key) {
-#if defined(DISABLE_PTHREADS) || defined(USE_FAKE_THREAD_LS)
-    //DCHECK_LT(key, GetFakeTLSArray().size());
-    return GetFakeTLSArray()[key];
-#elif defined(OS_WIN)
+#if defined(OS_WIN)
     return TlsGetValue(key);
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
     return pthread_getspecific(key);
 #endif
   }
-
-// see https://github.com/save7502/youkyoung/blob/master/Engine/Source/Runtime/Core/Public/HTML5/HTML5PlatformTLS.h
-#if defined(DISABLE_PTHREADS) || defined(USE_FAKE_THREAD_LS)
-  /**
-   * In singlethreaded Emscripten builds, returns a
-   * regular array to serve as an emulated TLS storage
-   * (Emscripten does support the pthread API even in
-   * singlethreaded builds, so the same set/getspecific
-   * code below could be used there, but it's faster
-   * to use this this approach and reduces code size
-   * a tiny bit.
-   */
-  static std::map<TLSKey, void*>& GetFakeTLSArray()
-  {
-    static std::map<TLSKey, void*> TLS;
-    return TLS;
-  }
-#endif
 
   // Each platform (OS implementation) is required to call this method on each
   // terminating thread when the thread is about to terminate.  This method
@@ -180,13 +153,16 @@ class BASE_EXPORT ThreadLocalStorage {
   // If you are working in code that runs during thread destruction, contact the
   // base OWNERs for advice and then make a friend request.
   //
-  // Returns |true| if Chrome's implementation of TLS has been destroyed during
-  // thread destruction. Attempting to call Slot::Get() during destruction is
-  // disallowed and will hit a DCHECK. Any code that relies on TLS during thread
-  // destruction must first check this method before calling Slot::Get().
-  friend class base::SamplingHeapProfiler;
-  friend class base::internal::ThreadLocalStorageTestInternal;
-  friend class base::trace_event::MallocDumpProvider;
+  // Returns |true| if Chrome's implementation of TLS is being or has been
+  // destroyed during thread destruction. Attempting to call Slot::Get() during
+  // destruction is disallowed and will hit a DCHECK. Any code that relies on
+  // TLS during thread destruction must first check this method before calling
+  // Slot::Get().
+  friend class SequenceCheckerImpl;
+  friend class SamplingHeapProfiler;
+  friend class ThreadCheckerImpl;
+  friend class internal::ThreadLocalStorageTestInternal;
+  friend class trace_event::MallocDumpProvider;
   friend class debug::GlobalActivityTracker;
   friend class ui::TLSDestructionCheckerForX11;
   static bool HasBeenDestroyed();

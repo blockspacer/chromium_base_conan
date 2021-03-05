@@ -11,8 +11,8 @@
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/platform_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 namespace base {
 
@@ -39,7 +39,7 @@ class MemoryMappedFileTest : public PlatformTest {
     CreateTemporaryFile(&temp_file_path_);
   }
 
-  void TearDown() override { EXPECT_TRUE(DeleteFile(temp_file_path_, false)); }
+  void TearDown() override { EXPECT_TRUE(DeleteFile(temp_file_path_)); }
 
   void CreateTemporaryTestFile(size_t size) {
     File file(temp_file_path_,

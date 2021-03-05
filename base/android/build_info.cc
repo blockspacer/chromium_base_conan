@@ -9,10 +9,11 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/scoped_java_ref.h"
-#include "base/logging.h"
+#include "base/base_jni_headers/BuildInfo_jni.h"
+#include "base/check_op.h"
 #include "base/memory/singleton.h"
+#include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
-#include "jni/BuildInfo_jni.h"
 
 namespace base {
 namespace android {
@@ -76,7 +77,9 @@ BuildInfo::BuildInfo(const std::vector<std::string>& params)
       custom_themes_(StrDupParam(params, 19)),
       resources_version_(StrDupParam(params, 20)),
       extracted_file_suffix_(params[21]),
-      is_at_least_q_(GetIntParam(params, 22)) {}
+      target_sdk_version_(GetIntParam(params, 22)),
+      is_debug_android_(GetIntParam(params, 23)),
+      is_tv_(GetIntParam(params, 24)) {}
 
 // static
 BuildInfo* BuildInfo::GetInstance() {

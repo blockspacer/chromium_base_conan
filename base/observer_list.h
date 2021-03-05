@@ -13,16 +13,14 @@
 #include <utility>
 #include <vector>
 
+#include "base/check_op.h"
 #include "base/gtest_prod_util.h"
-#include "base/logging.h"
-#include "base/macros.h"
+#include "base/notreached.h"
 #include "base/observer_list_internal.h"
+#include "base/ranges/algorithm.h"
 #include "base/sequence_checker.h"
 #include "base/stl_util.h"
-
-#if defined(STARBOARD)
-#include "starboard/types.h"
-#endif
+#include "base/strings/strcat.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -59,7 +57,7 @@
 //       observers_.AddObserver(obs);
 //     }
 //
-//     void RemoveObserver(const Observer* obs) {
+//     void RemoveObserver(Observer* obs) {
 //       observers_.RemoveObserver(obs);
 //     }
 //
@@ -250,7 +248,8 @@ class ObserverList {
     // Sequence checks only apply when iterators are live.
     DETACH_FROM_SEQUENCE(iteration_sequence_checker_);
   }
-
+  ObserverList(const ObserverList&) = delete;
+  ObserverList& operator=(const ObserverList&) = delete;
   ~ObserverList() {
     // If there are live iterators, ensure destruction is thread-safe.
     if (!live_iterators_.empty())
@@ -260,7 +259,7 @@ class ObserverList {
       live_iterators_.head()->value()->Invalidate();
     if (check_empty) {
       Compact();
-      DCHECK(observers_.empty());
+      DCHECK(observers_.empty()) << GetObserversCreationStackString();
     }
   }
 
@@ -271,12 +270,11 @@ class ObserverList {
   // Precondition: !HasObserver(obs)
   void AddObserver(ObserverType* obs) {
     DCHECK(obs);
-#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
     if (HasObserver(obs)) {
       NOTREACHED() << "Observers can only be added once!";
       return;
     }
-#endif
+    observers_count_++;
     observers_.emplace_back(ObserverStorageType(obs));
   }
 
@@ -284,12 +282,12 @@ class ObserverList {
   // not in this list.
   void RemoveObserver(const ObserverType* obs) {
     DCHECK(obs);
-    const auto it =
-        std::find_if(observers_.begin(), observers_.end(),
-                     [obs](const auto& o) { return o.IsEqual(obs); });
+    const auto it = ranges::find_if(
+        observers_, [obs](const auto& o) { return o.IsEqual(obs); });
     if (it == observers_.end())
       return;
-
+    if (!it->IsMarkedForRemoval())
+      observers_count_--;
     if (live_iterators_.empty()) {
       observers_.erase(it);
     } else {
@@ -305,9 +303,9 @@ class ObserverList {
     // probably DCHECK, but some client code currently does pass null.
     if (obs == nullptr)
       return false;
-    return std::find_if(observers_.begin(), observers_.end(),
-                        [obs](const auto& o) { return o.IsEqual(obs); }) !=
-           observers_.end();
+    return ranges::find_if(observers_, [obs](const auto& o) {
+             return o.IsEqual(obs);
+           }) != observers_.end();
   }
 
   // Removes all the observers from this list.
@@ -319,9 +317,10 @@ class ObserverList {
       for (auto& observer : observers_)
         observer.MarkForRemoval();
     }
+    observers_count_ = 0;
   }
 
-  bool might_have_observers() const { return !observers_.empty(); }
+  bool empty() const { return !observers_count_; }
 
  private:
   friend class internal::WeakLinkNode<ObserverList>;
@@ -335,30 +334,29 @@ class ObserverList {
     EraseIf(observers_, [](const auto& o) { return o.IsMarkedForRemoval(); });
   }
 
+  std::string GetObserversCreationStackString() const {
+    std::string result;
+#if DCHECK_IS_ON()
+    for (const auto& observer : observers_)
+      StrAppend(&result, {observer.GetCreationStackString(), "\n"});
+#endif
+    return result;
+  }
+
   std::vector<ObserverStorageType> observers_;
 
   base::LinkedList<internal::WeakLinkNode<ObserverList>> live_iterators_;
 
+  size_t observers_count_{0};
+
   const ObserverListPolicy policy_;
 
   SEQUENCE_CHECKER(iteration_sequence_checker_);
-
-  DISALLOW_COPY_AND_ASSIGN(ObserverList);
 };
 
 template <class ObserverType, bool check_empty = false>
 using ReentrantObserverList = ObserverList<ObserverType, check_empty, true>;
 
 }  // namespace base
-
-#define FOR_EACH_OBSERVER(ObserverType, observer_list, func)          \
-  do {                                                                \
-    if ((observer_list).might_have_observers()) {                     \
-      for (base::ObserverList<ObserverType>::Iter it(&observer_list); \
-           it != base::ObserverList<ObserverType>::Iter(); it++) {    \
-        it->func;                                                     \
-      }                                                               \
-    }                                                                 \
-  } while (0)
 
 #endif  // BASE_OBSERVER_LIST_H_

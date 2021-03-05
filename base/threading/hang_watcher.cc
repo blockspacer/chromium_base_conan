@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/bind.h"
-#include "base/location.h"
 #include "base/callback_forward.h"
 #include "base/callback_helpers.h"
 #include "base/containers/flat_map.h"
@@ -333,14 +332,11 @@ HangWatcher::HangWatcher()
     : monitor_period_(kMonitoringPeriod),
       should_monitor_(WaitableEvent::ResetPolicy::AUTOMATIC),
       thread_(this, kThreadName),
-      tick_clock_(base::DefaultTickClock::GetInstance())
-//#if FIXME /// \todo
-      , memory_pressure_listener_(
+      tick_clock_(base::DefaultTickClock::GetInstance()),
+      memory_pressure_listener_(
           FROM_HERE,
           base::BindRepeating(&HangWatcher::OnMemoryPressure,
-                              base::Unretained(this)))
-//#endif
-{
+                              base::Unretained(this))) {
   // |thread_checker_| should not be bound to the constructing thread.
   DETACH_FROM_THREAD(hang_watcher_thread_checker_);
 
@@ -384,7 +380,6 @@ HangWatcher::GetTimeSinceLastCriticalMemoryPressureCrashKey() {
 }
 #endif
 
-//#if FIXME /// \todo
 void HangWatcher::OnMemoryPressure(
     base::MemoryPressureListener::MemoryPressureLevel memory_pressure_level) {
   if (memory_pressure_level ==
@@ -393,7 +388,6 @@ void HangWatcher::OnMemoryPressure(
                                          std::memory_order_relaxed);
   }
 }
-//#endif
 
 HangWatcher::~HangWatcher() {
   DCHECK_EQ(g_instance, this);
@@ -497,9 +491,7 @@ HangWatcher* HangWatcher::GetInstance() {
 // static
 void HangWatcher::RecordHang() {
   base::debug::DumpWithoutCrashing();
-  // Inhibit code folding.
-  const int line_number = __LINE__;
-  base::debug::Alias(&line_number);
+  NO_CODE_FOLDING();
 }
 
 ScopedClosureRunner HangWatcher::RegisterThreadInternal(

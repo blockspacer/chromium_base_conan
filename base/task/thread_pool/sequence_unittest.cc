@@ -7,12 +7,12 @@
 #include <utility>
 
 #include "base/bind.h"
-#include "base/bind_helpers.h"
+#include "base/callback_helpers.h"
 #include "base/memory/ptr_util.h"
 #include "base/test/gtest_util.h"
 #include "base/time/time.h"
-#include GMOCK_HEADER_INCLUDE
-#include GTEST_HEADER_INCLUDE
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace internal {
@@ -51,50 +51,68 @@ TEST(ThreadPoolSequenceTest, PushTakeRemove) {
 
   // Push task A in the sequence. PushTask() should return true since it's the
   // first task->
-  EXPECT_TRUE(sequence_transaction.PushTask(CreateTask(&mock_task_a)));
+  EXPECT_TRUE(sequence_transaction.WillPushTask());
+  sequence_transaction.PushTask(CreateTask(&mock_task_a));
 
-  // Push task B, C and D in the sequence. PushTask() should return false since
-  // there is already a task in a sequence.
-  EXPECT_FALSE(sequence_transaction.PushTask(CreateTask(&mock_task_b)));
-  EXPECT_FALSE(sequence_transaction.PushTask(CreateTask(&mock_task_c)));
-  EXPECT_FALSE(sequence_transaction.PushTask(CreateTask(&mock_task_d)));
+  // Push task B, C and D in the sequence. PushTask() should return false
+  // since there is already a task in a sequence.
+  EXPECT_FALSE(sequence_transaction.WillPushTask());
+  sequence_transaction.PushTask(CreateTask(&mock_task_b));
+  EXPECT_FALSE(sequence_transaction.WillPushTask());
+  sequence_transaction.PushTask(CreateTask(&mock_task_c));
+  EXPECT_FALSE(sequence_transaction.WillPushTask());
+  sequence_transaction.PushTask(CreateTask(&mock_task_d));
 
   // Take the task in front of the sequence. It should be task A.
-  Optional<Task> task = sequence_transaction.TakeTask();
+  auto registered_task_source =
+      RegisteredTaskSource::CreateForTesting(sequence);
+  registered_task_source.WillRunTask();
+  Optional<Task> task = registered_task_source.TakeTask(&sequence_transaction);
   ExpectMockTask(&mock_task_a, &task.value());
   EXPECT_FALSE(task->queue_time.is_null());
 
   // Remove the empty slot. Task B should now be in front.
-  EXPECT_TRUE(sequence_transaction.DidRunTask());
-  task = sequence_transaction.TakeTask();
+  EXPECT_TRUE(registered_task_source.DidProcessTask(&sequence_transaction));
+
+  EXPECT_FALSE(sequence_transaction.WillPushTask());
+  registered_task_source.WillRunTask();
+  task = registered_task_source.TakeTask(&sequence_transaction);
   ExpectMockTask(&mock_task_b, &task.value());
   EXPECT_FALSE(task->queue_time.is_null());
 
   // Remove the empty slot. Task C should now be in front.
-  EXPECT_TRUE(sequence_transaction.DidRunTask());
-  task = sequence_transaction.TakeTask();
+  EXPECT_TRUE(registered_task_source.DidProcessTask(&sequence_transaction));
+
+  EXPECT_FALSE(sequence_transaction.WillPushTask());
+  registered_task_source.WillRunTask();
+  task = registered_task_source.TakeTask(&sequence_transaction);
   ExpectMockTask(&mock_task_c, &task.value());
   EXPECT_FALSE(task->queue_time.is_null());
 
   // Remove the empty slot.
-  EXPECT_TRUE(sequence_transaction.DidRunTask());
+  EXPECT_TRUE(registered_task_source.DidProcessTask(&sequence_transaction));
 
   // Push task E in the sequence.
-  EXPECT_FALSE(sequence_transaction.PushTask(CreateTask(&mock_task_e)));
+  EXPECT_FALSE(sequence_transaction.WillPushTask());
+  sequence_transaction.PushTask(CreateTask(&mock_task_e));
 
   // Task D should be in front.
-  task = sequence_transaction.TakeTask();
+  registered_task_source.WillRunTask();
+  task = registered_task_source.TakeTask(&sequence_transaction);
   ExpectMockTask(&mock_task_d, &task.value());
   EXPECT_FALSE(task->queue_time.is_null());
 
   // Remove the empty slot. Task E should now be in front.
-  EXPECT_TRUE(sequence_transaction.DidRunTask());
-  task = sequence_transaction.TakeTask();
+  EXPECT_TRUE(registered_task_source.DidProcessTask(&sequence_transaction));
+  EXPECT_FALSE(sequence_transaction.WillPushTask());
+  registered_task_source.WillRunTask();
+  task = registered_task_source.TakeTask(&sequence_transaction);
   ExpectMockTask(&mock_task_e, &task.value());
   EXPECT_FALSE(task->queue_time.is_null());
 
   // Remove the empty slot. The sequence should now be empty.
-  EXPECT_FALSE(sequence_transaction.DidRunTask());
+  EXPECT_FALSE(registered_task_source.DidProcessTask(&sequence_transaction));
+  EXPECT_TRUE(sequence_transaction.WillPushTask());
 }
 
 // Verifies the sort key of a BEST_EFFORT sequence that contains one task.
@@ -109,20 +127,25 @@ TEST(ThreadPoolSequenceTest, GetSortKeyBestEffort) {
   best_effort_sequence_transaction.PushTask(std::move(best_effort_task));
 
   // Get the sort key.
-  const SequenceSortKey best_effort_sort_key =
-      best_effort_sequence_transaction.GetSortKey();
+  const TaskSourceSortKey best_effort_sort_key =
+      best_effort_sequence->GetSortKey();
 
   // Take the task from the sequence, so that its sequenced time is available
   // for the check below.
-  auto take_best_effort_task = best_effort_sequence_transaction.TakeTask();
+  auto best_effort_registered_task_source =
+      RegisteredTaskSource::CreateForTesting(best_effort_sequence);
+  best_effort_registered_task_source.WillRunTask();
+  auto take_best_effort_task = best_effort_registered_task_source.TakeTask(
+      &best_effort_sequence_transaction);
 
   // Verify the sort key.
   EXPECT_EQ(TaskPriority::BEST_EFFORT, best_effort_sort_key.priority());
-  EXPECT_EQ(take_best_effort_task->queue_time,
-            best_effort_sort_key.next_task_sequenced_time());
+  EXPECT_EQ(take_best_effort_task.queue_time,
+            best_effort_sort_key.ready_time());
 
-  // DidRunTask for correctness.
-  best_effort_sequence_transaction.DidRunTask();
+  // DidProcessTask for correctness.
+  best_effort_registered_task_source.DidProcessTask(
+      &best_effort_sequence_transaction);
 }
 
 // Same as ThreadPoolSequenceTest.GetSortKeyBestEffort, but with a
@@ -138,31 +161,39 @@ TEST(ThreadPoolSequenceTest, GetSortKeyForeground) {
   foreground_sequence_transaction.PushTask(std::move(foreground_task));
 
   // Get the sort key.
-  const SequenceSortKey foreground_sort_key =
-      foreground_sequence_transaction.GetSortKey();
+  const TaskSourceSortKey foreground_sort_key =
+      foreground_sequence->GetSortKey();
 
   // Take the task from the sequence, so that its sequenced time is available
   // for the check below.
-  auto take_foreground_task = foreground_sequence_transaction.TakeTask();
+  auto foreground_registered_task_source =
+      RegisteredTaskSource::CreateForTesting(foreground_sequence);
+  foreground_registered_task_source.WillRunTask();
+  auto take_foreground_task = foreground_registered_task_source.TakeTask(
+      &foreground_sequence_transaction);
 
   // Verify the sort key.
   EXPECT_EQ(TaskPriority::USER_VISIBLE, foreground_sort_key.priority());
-  EXPECT_EQ(take_foreground_task->queue_time,
-            foreground_sort_key.next_task_sequenced_time());
+  EXPECT_EQ(take_foreground_task.queue_time, foreground_sort_key.ready_time());
 
-  // DidRunTask for correctness.
-  foreground_sequence_transaction.DidRunTask();
+  // DidProcessTask for correctness.
+  foreground_registered_task_source.DidProcessTask(
+      &foreground_sequence_transaction);
 }
 
-// Verify that a DCHECK fires if DidRunTask() is called on a sequence which
+// Verify that a DCHECK fires if DidProcessTask() is called on a sequence which
 // didn't return a Task.
-TEST(ThreadPoolSequenceTest, DidRunTaskWithoutTakeTask) {
+TEST(ThreadPoolSequenceTest, DidProcessTaskWithoutWillRunTask) {
   scoped_refptr<Sequence> sequence = MakeRefCounted<Sequence>(
       TaskTraits(), nullptr, TaskSourceExecutionMode::kParallel);
   Sequence::Transaction sequence_transaction(sequence->BeginTransaction());
   sequence_transaction.PushTask(Task(FROM_HERE, DoNothing(), TimeDelta()));
 
-  EXPECT_DCHECK_DEATH({ sequence_transaction.DidRunTask(); });
+  auto registered_task_source =
+      RegisteredTaskSource::CreateForTesting(sequence);
+  EXPECT_DCHECK_DEATH({
+    registered_task_source.DidProcessTask(&sequence_transaction);
+  });
 }
 
 // Verify that a DCHECK fires if TakeTask() is called on a sequence whose front
@@ -173,16 +204,29 @@ TEST(ThreadPoolSequenceTest, TakeEmptyFrontSlot) {
   Sequence::Transaction sequence_transaction(sequence->BeginTransaction());
   sequence_transaction.PushTask(Task(FROM_HERE, DoNothing(), TimeDelta()));
 
-  EXPECT_TRUE(sequence_transaction.TakeTask());
-  EXPECT_DCHECK_DEATH({ sequence_transaction.TakeTask(); });
+  auto registered_task_source =
+      RegisteredTaskSource::CreateForTesting(sequence);
+  {
+    registered_task_source.WillRunTask();
+    IgnoreResult(registered_task_source.TakeTask(&sequence_transaction));
+    registered_task_source.DidProcessTask(&sequence_transaction);
+  }
+  EXPECT_DCHECK_DEATH({
+    registered_task_source.WillRunTask();
+    auto task = registered_task_source.TakeTask(&sequence_transaction);
+  });
 }
 
 // Verify that a DCHECK fires if TakeTask() is called on an empty sequence.
 TEST(ThreadPoolSequenceTest, TakeEmptySequence) {
   scoped_refptr<Sequence> sequence = MakeRefCounted<Sequence>(
       TaskTraits(), nullptr, TaskSourceExecutionMode::kParallel);
-  Sequence::Transaction sequence_transaction(sequence->BeginTransaction());
-  EXPECT_DCHECK_DEATH({ sequence_transaction.TakeTask(); });
+  auto registered_task_source =
+      RegisteredTaskSource::CreateForTesting(sequence);
+  EXPECT_DCHECK_DEATH({
+    registered_task_source.WillRunTask();
+    auto task = registered_task_source.TakeTask();
+  });
 }
 
 }  // namespace internal

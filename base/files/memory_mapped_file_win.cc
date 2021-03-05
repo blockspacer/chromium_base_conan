@@ -10,15 +10,17 @@
 #include <limits>
 
 #include "base/files/file_path.h"
+#include "base/logging.h"
 #include "base/strings/string16.h"
 #include "base/threading/scoped_blocking_call.h"
+#include "base/win/pe_image.h"
 
 #include <windows.h>
+#include <winnt.h>  // NOLINT(build/include_order)
 
 namespace base {
 
-MemoryMappedFile::MemoryMappedFile() : data_(NULL), length_(0) {
-}
+MemoryMappedFile::MemoryMappedFile() : data_(nullptr), length_(0) {}
 
 bool MemoryMappedFile::MapImageToMemory(Access access) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
@@ -31,23 +33,21 @@ bool MemoryMappedFile::MapImageToMemory(Access access) {
     return false;
 
   file_mapping_.Set(::CreateFileMapping(file_.GetPlatformFile(), nullptr,
-                                        PAGE_EXECUTE_READ | SEC_IMAGE, 0, 0,
-                                        NULL));
+                                        PAGE_READONLY | SEC_IMAGE_NO_EXECUTE, 0,
+                                        0, NULL));
   if (!file_mapping_.IsValid())
     return false;
 
   data_ = static_cast<uint8_t*>(
-      ::MapViewOfFile(file_mapping_.Get(),
-                      FILE_MAP_READ | FILE_MAP_EXECUTE | SEC_IMAGE, 0, 0, 0));
+      ::MapViewOfFile(file_mapping_.Get(), FILE_MAP_READ, 0, 0, 0));
   if (!data_)
     return false;
 
   // We need to know how large the mapped file is in some cases
-  int64_t file_len = file_.GetLength();
-  if (!IsValueInRangeForNumericType<size_t>(file_len))
-    return false;
 
-  length_ = static_cast<size_t>(file_len);
+  base::win::PEImage pe_image(data_);
+  length_ = pe_image.GetNTHeaders()->OptionalHeader.SizeOfImage;
+
   return true;
 }
 
@@ -123,7 +123,7 @@ bool MemoryMappedFile::MapFileRegionToMemory(
       ::MapViewOfFile(file_mapping_.Get(),
                       (flags & PAGE_READONLY) ? FILE_MAP_READ : FILE_MAP_WRITE,
                       map_start.HighPart, map_start.LowPart, map_size));
-  if (data_ == NULL)
+  if (data_ == nullptr)
     return false;
   data_ += data_offset;
   return true;
@@ -137,7 +137,7 @@ void MemoryMappedFile::CloseHandles() {
   if (file_.IsValid())
     file_.Close();
 
-  data_ = NULL;
+  data_ = nullptr;
   length_ = 0;
 }
 

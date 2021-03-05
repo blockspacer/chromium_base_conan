@@ -4,7 +4,7 @@
 
 #include "base/task/sequence_manager/work_queue_sets.h"
 
-#include "base/logging.h"
+#include "base/check_op.h"
 
 namespace base {
 namespace sequence_manager {
@@ -236,6 +236,19 @@ bool WorkQueueSets::ContainsWorkQueueForTest(
   return false;
 }
 #endif
+
+void WorkQueueSets::CollectSkippedOverLowerPriorityTasks(
+    const internal::WorkQueue* selected_work_queue,
+    std::vector<const Task*>* result) const {
+  EnqueueOrder selected_enqueue_order;
+  CHECK(selected_work_queue->GetFrontTaskEnqueueOrder(&selected_enqueue_order));
+  for (size_t priority = selected_work_queue->work_queue_set_index() + 1;
+       priority < TaskQueue::kQueuePriorityCount; priority++) {
+    for (const OldestTaskEnqueueOrder& pair : work_queue_heaps_[priority]) {
+      pair.value->CollectTasksOlderThan(selected_enqueue_order, result);
+    }
+  }
+}
 
 }  // namespace internal
 }  // namespace sequence_manager

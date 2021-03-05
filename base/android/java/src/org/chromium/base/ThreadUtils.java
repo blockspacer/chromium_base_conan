@@ -27,6 +27,76 @@ public class ThreadUtils {
 
     private static boolean sThreadAssertsDisabled;
 
+    /**
+     * A helper object to ensure that interactions with a particular object only happens on a
+     * particular thread.
+     *
+     * Example:
+     * <pre>
+     * {@code
+     * class Foo {
+     *     // Valid thread is set during construction here.
+     *     private final ThreadChecker mThreadChecker = new ThreadChecker();
+     *
+     *     public void doFoo() {
+     *         mThreadChecker.assertOnValidThread();
+     *     }
+     * }
+     * }
+     * </pre>
+     *
+     * Another way to use this class is to also use the baked in support for destruction:
+     * <pre>
+     * {@code
+     * class Foo {
+     *     // Valid thread is set during construction here.
+     *     private final ThreadChecker mThreadChecker = new ThreadChecker();
+     *
+     *     public void doFoo() {
+     *         mThreadChecker.assertOnValidThreadAndState();
+     *     }
+     *
+     *     public void destroy() {
+     *         mThreadChecker.destroy();
+     *     }
+     * }
+     * }
+     * </pre>
+     */
+    public static class ThreadChecker {
+        private final long mThreadId = Process.myTid();
+        private boolean mDestroyed;
+
+        /**
+         * Asserts that the current thread is the same as the one the ThreadChecker was constructed
+         * on.
+         */
+        public void assertOnValidThread() {
+            assert sThreadAssertsDisabled
+                    || mThreadId == Process.myTid() : "Must only be used on a single thread.";
+        }
+
+        /**
+         * Asserts that the current thread is the same as the one the ThreadChecker was constructed
+         * on and that the ThreadChecker has not been marked as destroyed.
+         */
+        public void assertOnValidThreadAndState() {
+            assertOnValidThread();
+            if (mDestroyed) {
+                throw new IllegalStateException("Operation is not allowed after destroy().");
+            }
+        }
+
+        /**
+         * Marks the ThreadChecker as destroyed, leading to all future calls to
+         * {@link #assertOnValidThreadAndState} to throw an IllegalStateException.
+         */
+        public void destroy() {
+            assertOnValidThreadAndState();
+            mDestroyed = true;
+        }
+    }
+
     public static void setWillOverrideUiThread(boolean willOverrideUiThread) {
         synchronized (sLock) {
             sWillOverride = willOverrideUiThread;
@@ -48,18 +118,24 @@ public class ThreadUtils {
                 sUiThreadHandler = new Handler(looper);
             }
         }
+        TraceEvent.onUiThreadReady();
     }
 
     public static Handler getUiThreadHandler() {
+        boolean createdHandler = false;
         synchronized (sLock) {
             if (sUiThreadHandler == null) {
                 if (sWillOverride) {
                     throw new RuntimeException("Did not yet override the UI thread");
                 }
                 sUiThreadHandler = new Handler(Looper.getMainLooper());
+                createdHandler = true;
             }
-            return sUiThreadHandler;
         }
+        if (createdHandler) {
+            TraceEvent.onUiThreadReady();
+        }
+        return sUiThreadHandler;
     }
 
     /**
@@ -102,7 +178,6 @@ public class ThreadUtils {
      * @return The result of the callable
      */
     @Deprecated
-    @VisibleForTesting
     public static <T> T runOnUiThreadBlockingNoException(Callable<T> c) {
         try {
             return runOnUiThreadBlocking(c);
@@ -238,7 +313,6 @@ public class ThreadUtils {
      * @param task The Runnable to run
      * @param delayMillis The delay in milliseconds until the Runnable will be run
      */
-    @VisibleForTesting
     @Deprecated
     public static void postOnUiThreadDelayed(Runnable task, long delayMillis) {
         getUiThreadHandler().postDelayed(task, delayMillis);

@@ -20,7 +20,6 @@ import zipfile
 import jni_generator
 from util import build_utils
 
-
 # All but FULL_CLASS_NAME, which is used only for sorting.
 MERGEABLE_KEYS = [
     'CLASS_PATH_DECLARATIONS',
@@ -28,11 +27,13 @@ MERGEABLE_KEYS = [
     'JNI_NATIVE_METHOD',
     'JNI_NATIVE_METHOD_ARRAY',
     'PROXY_NATIVE_SIGNATURES',
+    'FORWARDING_PROXY_METHODS',
     'PROXY_NATIVE_METHOD_ARRAY',
     'PROXY_NATIVE_METHOD_ARRAY_MAIN_DEX',
     'REGISTER_MAIN_DEX_NATIVES',
     'REGISTER_NON_MAIN_DEX_NATIVES',
 ]
+
 
 def _Generate(java_file_paths,
               srcjar_path,
@@ -83,11 +84,24 @@ def _Generate(java_file_paths,
 
   with build_utils.AtomicOutput(srcjar_path) as f:
     with zipfile.ZipFile(f, 'w') as srcjar:
-      build_utils.AddToZipHermetic(
-          srcjar,
-          '%s.java' % jni_generator.ProxyHelpers.GetQualifiedClass(
-              proxy_opts.use_hash),
-          data=CreateProxyJavaFromDict(combined_dict, proxy_opts))
+      if proxy_opts.use_hash:
+        # J/N.java
+        build_utils.AddToZipHermetic(
+            srcjar,
+            '%s.java' % jni_generator.ProxyHelpers.GetQualifiedClass(True),
+            data=CreateProxyJavaFromDict(combined_dict, proxy_opts))
+        # org/chromium/base/natives/GEN_JNI.java
+        build_utils.AddToZipHermetic(
+            srcjar,
+            '%s.java' % jni_generator.ProxyHelpers.GetQualifiedClass(False),
+            data=CreateProxyJavaFromDict(
+                combined_dict, proxy_opts, forwarding=True))
+      else:
+        # org/chromium/base/natives/GEN_JNI.java
+        build_utils.AddToZipHermetic(
+            srcjar,
+            '%s.java' % jni_generator.ProxyHelpers.GetQualifiedClass(False),
+            data=CreateProxyJavaFromDict(combined_dict, proxy_opts))
 
 
 def _DictForPath(path, use_proxy_hash=False):
@@ -103,8 +117,7 @@ def _DictForPath(path, use_proxy_hash=False):
   natives += jni_generator.ProxyHelpers.ExtractStaticProxyNatives(
       fully_qualified_class=fully_qualified_class,
       contents=contents,
-      ptr_type='long',
-      use_hash=use_proxy_hash)
+      ptr_type='long')
   if len(natives) == 0:
     return None
   namespace = jni_generator.ExtractJNINamespace(contents)
@@ -123,10 +136,13 @@ static const JNINativeMethod kMethods_${ESCAPED_PROXY_CLASS}[] = {
 ${KMETHODS}
 };
 
+namespace {
+
 JNI_REGISTRATION_EXPORT bool ${REGISTRATION_NAME}(JNIEnv* env) {
   const int number_of_methods = base::size(kMethods_${ESCAPED_PROXY_CLASS});
 
-  base::android::ScopedJavaLocalRef<jclass> native_clazz = base::android::GetClass(env, "${PROXY_CLASS}");
+  base::android::ScopedJavaLocalRef<jclass> native_clazz =
+      base::android::GetClass(env, "${PROXY_CLASS}");
   if (env->RegisterNatives(
       native_clazz.obj(),
       kMethods_${ESCAPED_PROXY_CLASS},
@@ -138,6 +154,8 @@ JNI_REGISTRATION_EXPORT bool ${REGISTRATION_NAME}(JNIEnv* env) {
 
   return true;
 }
+
+}  // namespace
 """)
 
   registration_call = string.Template("""\
@@ -150,15 +168,15 @@ JNI_REGISTRATION_EXPORT bool ${REGISTRATION_NAME}(JNIEnv* env) {
 
   sub_dict = {
       'ESCAPED_PROXY_CLASS':
-          jni_generator.EscapeClassName(
-              jni_generator.ProxyHelpers.GetQualifiedClass(use_hash)),
+      jni_generator.EscapeClassName(
+          jni_generator.ProxyHelpers.GetQualifiedClass(use_hash)),
       'PROXY_CLASS':
-          jni_generator.ProxyHelpers.GetQualifiedClass(use_hash),
+      jni_generator.ProxyHelpers.GetQualifiedClass(use_hash),
       'KMETHODS':
-          registration_dict['PROXY_NATIVE_METHOD_ARRAY'],
+      registration_dict['PROXY_NATIVE_METHOD_ARRAY'],
       'REGISTRATION_NAME':
-          jni_generator.GetRegistrationFunctionName(
-              jni_generator.ProxyHelpers.GetQualifiedClass(use_hash)),
+      jni_generator.GetRegistrationFunctionName(
+          jni_generator.ProxyHelpers.GetQualifiedClass(use_hash)),
   }
 
   if registration_dict['PROXY_NATIVE_METHOD_ARRAY']:
@@ -183,7 +201,7 @@ JNI_REGISTRATION_EXPORT bool ${REGISTRATION_NAME}(JNIEnv* env) {
   registration_dict['REGISTER_MAIN_DEX_PROXY_NATIVES'] = main_dex_call
 
 
-def CreateProxyJavaFromDict(registration_dict, proxy_opts):
+def CreateProxyJavaFromDict(registration_dict, proxy_opts, forwarding=False):
   template = string.Template("""\
 // Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -196,25 +214,36 @@ package ${PACKAGE};
 // Please do not change its content.
 
 public class ${CLASS_NAME} {
-  public static final boolean TESTING_ENABLED = ${TESTING_ENABLED};
-  public static final boolean REQUIRE_MOCK = ${REQUIRE_MOCK};
-${SIGNATURES}
-
+${FIELDS}
+${METHODS}
 }
 """)
 
+  is_natives_class = not forwarding and proxy_opts.use_hash
+  class_name = jni_generator.ProxyHelpers.GetClass(is_natives_class)
+  package = jni_generator.ProxyHelpers.GetPackage(is_natives_class)
+
+  if forwarding or not proxy_opts.use_hash:
+    fields = string.Template("""\
+    public static final boolean TESTING_ENABLED = ${TESTING_ENABLED};
+    public static final boolean REQUIRE_MOCK = ${REQUIRE_MOCK};
+""").substitute({
+        'TESTING_ENABLED': str(proxy_opts.enable_mocks).lower(),
+        'REQUIRE_MOCK': str(proxy_opts.require_mocks).lower(),
+    })
+  else:
+    fields = ''
+
+  if forwarding:
+    methods = registration_dict['FORWARDING_PROXY_METHODS']
+  else:
+    methods = registration_dict['PROXY_NATIVE_SIGNATURES']
+
   return template.substitute({
-      'TESTING_ENABLED':
-          str(proxy_opts.enable_mocks).lower(),
-      'REQUIRE_MOCK':
-          str(proxy_opts.require_mocks).lower(),
-      'CLASS_NAME':
-          jni_generator.ProxyHelpers.GetClass(proxy_opts.use_hash),
-      'PACKAGE':
-          jni_generator.ProxyHelpers.GetPackage(proxy_opts.use_hash).replace(
-              '/', '.'),
-      'SIGNATURES':
-          registration_dict['PROXY_NATIVE_SIGNATURES']
+      'CLASS_NAME': class_name,
+      'FIELDS': fields,
+      'PACKAGE': package.replace('/', '.'),
+      'METHODS': methods
   })
 
 
@@ -296,7 +325,7 @@ class HeaderGenerator(object):
     self.class_name = self.fully_qualified_class.split('/')[-1]
     self.main_dex = main_dex
     self.helper = jni_generator.HeaderFileGeneratorHelper(
-        self.class_name, fully_qualified_class, use_proxy_hash)
+        self.class_name, fully_qualified_class, use_proxy_hash, None)
     self.use_proxy_hash = use_proxy_hash
     self.registration_dict = None
 
@@ -305,10 +334,17 @@ class HeaderGenerator(object):
     self._AddClassPathDeclarations()
     self._AddForwardDeclaration()
     self._AddJNINativeMethodsArrays()
-    self._AddProxySignatures()
     self._AddProxyNativeMethodKStrings()
     self._AddRegisterNativesCalls()
     self._AddRegisterNativesFunctions()
+
+    self.registration_dict['PROXY_NATIVE_SIGNATURES'] = (''.join(
+        _MakeProxySignature(n, self.use_proxy_hash)
+        for n in self.proxy_natives))
+    if self.use_proxy_hash:
+      self.registration_dict['FORWARDING_PROXY_METHODS'] = ('\n'.join(
+          _MakeForwardingProxy(n) for n in self.proxy_natives))
+
     return self.registration_dict
 
   def _SetDictValue(self, key, value):
@@ -316,7 +352,8 @@ class HeaderGenerator(object):
 
   def _AddClassPathDeclarations(self):
     classes = self.helper.GetUniqueClasses(self.natives)
-    self._SetDictValue('CLASS_PATH_DECLARATIONS',
+    self._SetDictValue(
+        'CLASS_PATH_DECLARATIONS',
         self.helper.GetClassPathLines(classes, declare_only=True))
 
   def _AddForwardDeclaration(self):
@@ -349,8 +386,7 @@ JNI_GENERATOR_EXPORT ${RETURN} ${STUB_NAME}(
 """)
     value = {
         'REGISTER_NAME':
-            jni_generator.GetRegistrationFunctionName(
-                self.fully_qualified_class)
+        jni_generator.GetRegistrationFunctionName(self.fully_qualified_class)
     }
     register_body = template.substitute(value)
     if self.main_dex:
@@ -377,14 +413,14 @@ ${KMETHODS}
       close_namespace = '\n'.join(all_namespaces) + '\n\n'
 
     body = self._SubstituteNativeMethods(template)
-    self._SetDictValue('JNI_NATIVE_METHOD_ARRAY',
-                       ''.join((open_namespace, body, close_namespace)))
+    self._SetDictValue('JNI_NATIVE_METHOD_ARRAY', ''.join((open_namespace, body,
+                                                           close_namespace)))
 
   def _GetKMethodsString(self, clazz):
     ret = []
     for native in self.non_proxy_natives:
-      if (native.java_class_name == clazz or
-          (not native.java_class_name and clazz == self.class_name)):
+      if (native.java_class_name == clazz
+          or (not native.java_class_name and clazz == self.class_name)):
         ret += [self._GetKMethodArrayEntry(native)]
     return '\n'.join(ret)
 
@@ -396,20 +432,19 @@ ${KMETHODS}
     if native.is_proxy:
       # Literal name of the native method in the class that contains the actual
       # native declaration.
-      name = native.proxy_name
+      if self.use_proxy_hash:
+        name = native.hashed_proxy_name
+      else:
+        name = native.proxy_name
     values = {
         'NAME':
-            name,
+        name,
         'JNI_SIGNATURE':
-            self.jni_params.Signature(native.params, native.return_type),
+        self.jni_params.Signature(native.params, native.return_type),
         'STUB_NAME':
-            self.helper.GetStubName(native)
+        self.helper.GetStubName(native)
     }
     return template.substitute(values)
-
-  def _AddProxySignatures(self):
-    self.registration_dict['PROXY_NATIVE_SIGNATURES'] = ('\n'.join(
-        _MakeProxySignature(n) for n in self.proxy_natives))
 
   def _AddProxyNativeMethodKStrings(self):
     """Returns KMethodString for wrapped native methods in all_classes """
@@ -473,9 +508,10 @@ ${NATIVES}\
 
 """)
     values = {
-      'REGISTER_NAME': jni_generator.GetRegistrationFunctionName(
-          self.fully_qualified_class),
-      'NATIVES': natives
+        'REGISTER_NAME':
+        jni_generator.GetRegistrationFunctionName(self.fully_qualified_class),
+        'NATIVES':
+        natives
     }
     self._SetDictValue('JNI_NATIVE_METHOD', template.substitute(values))
 
@@ -502,18 +538,58 @@ ${NATIVES}\
     return ''
 
 
-def _MakeProxySignature(proxy_native):
-  signature_template = string.Template("""
-  public static native ${RETURN_TYPE} ${NAME}(${PARAMS});""")
+def _MakeForwardingProxy(proxy_native):
+  template = string.Template("""
+    public static ${RETURN_TYPE} ${METHOD_NAME}(${PARAMS_WITH_TYPES}) {
+        ${MAYBE_RETURN}${PROXY_CLASS}.${HASHED_NAME}($PARAM_NAMES);
+    }""")
 
-  return signature_template.substitute({
+  params_with_types = ', '.join(
+      '%s %s' % (p.datatype, p.name) for p in proxy_native.params)
+  param_names = ', '.join(p.name for p in proxy_native.params)
+  proxy_class = jni_generator.ProxyHelpers.GetQualifiedClass(True)
+
+  return template.substitute({
       'RETURN_TYPE':
-          proxy_native.return_type,
-      'NAME':
-          proxy_native.proxy_name,
-      'PARAMS':
-          jni_generator.JniParams.MakeProxyParamSignature(proxy_native.params)
+      proxy_native.return_type,
+      'METHOD_NAME':
+      proxy_native.proxy_name,
+      'PARAMS_WITH_TYPES':
+      params_with_types,
+      'MAYBE_RETURN':
+      '' if proxy_native.return_type == 'void' else 'return ',
+      'PROXY_CLASS':
+      proxy_class.replace('/', '.'),
+      'HASHED_NAME':
+      proxy_native.hashed_proxy_name,
+      'PARAM_NAMES':
+      param_names,
   })
+
+
+def _MakeProxySignature(proxy_native, use_proxy_hash):
+  if use_proxy_hash:
+    signature_template = string.Template("""
+      // Original name: ${ALT_NAME}
+      public static native ${RETURN_TYPE} ${NAME}(${PARAMS_WITH_TYPES});""")
+  else:
+    signature_template = string.Template("""
+      // Hashed name: ${ALT_NAME}
+      public static native ${RETURN_TYPE} ${NAME}(${PARAMS_WITH_TYPES});""")
+
+  params_with_types = ', '.join(
+      '%s %s' % (p.datatype, p.name) for p in proxy_native.params)
+  args = {
+      'RETURN_TYPE': proxy_native.return_type,
+      'PARAMS_WITH_TYPES': params_with_types,
+  }
+  if use_proxy_hash:
+    args['NAME'] = proxy_native.hashed_proxy_name
+    args['ALT_NAME'] = proxy_native.proxy_name
+  else:
+    args['NAME'] = proxy_native.proxy_name
+    args['ALT_NAME'] = proxy_native.hashed_proxy_name
+  return signature_template.substitute(args)
 
 
 class ProxyOptions:
@@ -533,6 +609,7 @@ def main(argv):
   arg_parser.add_argument(
       '--sources-files',
       required=True,
+      action='append',
       help='A list of .sources files which contain Java '
       'file paths.')
   arg_parser.add_argument(
@@ -540,17 +617,18 @@ def main(argv):
   arg_parser.add_argument(
       '--srcjar-path',
       required=True,
-      help='Path to output srcjar for GEN_JNI.java (Or J/N.java if proxy'
+      help='Path to output srcjar for GEN_JNI.java (and J/N.java if proxy'
       ' hash is enabled).')
   arg_parser.add_argument(
-      '--sources-blacklist',
+      '--sources-exclusions',
       default=[],
       help='A list of Java files which should be ignored '
       'by the parser.')
-  arg_parser.add_argument('--namespace',
-                          default='',
-                          help='Namespace to wrap the registration functions '
-                          'into.')
+  arg_parser.add_argument(
+      '--namespace',
+      default='',
+      help='Namespace to wrap the registration functions '
+      'into.')
   # TODO(crbug.com/898261) hook these flags up to the build config to enable
   # mocking in instrumentation tests
   arg_parser.add_argument(
@@ -576,19 +654,18 @@ def main(argv):
         'Invalid arguments: --require_mocks without --enable_proxy_mocks. '
         'Cannot require mocks if they are not enabled.')
 
-  args.sources_files = build_utils.ParseGnList(args.sources_files)
-
+  sources_files = sorted(set(build_utils.ParseGnList(args.sources_files)))
   proxy_opts = ProxyOptions(
       use_hash=args.use_proxy_hash,
       require_mocks=args.require_mocks,
       enable_mocks=args.enable_proxy_mocks)
 
   java_file_paths = []
-  for f in args.sources_files:
+  for f in sources_files:
     # Skip generated files, since the GN targets do not declare any deps.
     java_file_paths.extend(
         p for p in build_utils.ReadSourcesList(f)
-        if p.startswith('..') and p not in args.sources_blacklist)
+        if p.startswith('..') and p not in args.sources_exclusions)
   _Generate(
       java_file_paths,
       args.srcjar_path,
@@ -597,11 +674,8 @@ def main(argv):
       namespace=args.namespace)
 
   if args.depfile:
-    build_utils.WriteDepfile(
-        args.depfile,
-        args.srcjar_path,
-        args.sources_files + java_file_paths,
-        add_pydeps=False)
+    build_utils.WriteDepfile(args.depfile, args.srcjar_path,
+                             sources_files + java_file_paths)
 
 
 if __name__ == '__main__':

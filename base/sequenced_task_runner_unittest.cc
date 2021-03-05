@@ -9,10 +9,10 @@
 #include "base/bind.h"
 #include "base/gtest_prod_util.h"
 #include "base/run_loop.h"
-#include "base/test/scoped_task_environment.h"
+#include "base/test/task_environment.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_task_runner_handle.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {
@@ -23,6 +23,8 @@ class FlagOnDelete {
                scoped_refptr<SequencedTaskRunner> expected_deletion_sequence)
       : deleted_(deleted),
         expected_deletion_sequence_(std::move(expected_deletion_sequence)) {}
+  FlagOnDelete(const FlagOnDelete&) = delete;
+  FlagOnDelete& operator=(const FlagOnDelete&) = delete;
 
  private:
   friend class DeleteHelper<FlagOnDelete>;
@@ -38,11 +40,13 @@ class FlagOnDelete {
 
   bool* deleted_;
   const scoped_refptr<SequencedTaskRunner> expected_deletion_sequence_;
-
-  DISALLOW_COPY_AND_ASSIGN(FlagOnDelete);
 };
 
 class SequencedTaskRunnerTest : public testing::Test {
+ public:
+  SequencedTaskRunnerTest(const SequencedTaskRunnerTest&) = delete;
+  SequencedTaskRunnerTest& operator=(const SequencedTaskRunnerTest&) = delete;
+
  protected:
   SequencedTaskRunnerTest() : foreign_thread_("foreign") {}
 
@@ -56,9 +60,7 @@ class SequencedTaskRunnerTest : public testing::Test {
   Thread foreign_thread_;
 
  private:
-  test::ScopedTaskEnvironment scoped_task_environment_;
-
-  DISALLOW_COPY_AND_ASSIGN(SequencedTaskRunnerTest);
+  test::TaskEnvironment task_environment_;
 };
 
 using SequenceBoundUniquePtr =

@@ -3,11 +3,8 @@
 // found in the LICENSE file.
 
 // OneShotTimer, RepeatingTimer and RetainingOneShotTimer provide a simple timer
-// API.
-// As the names suggest, OneShotTimer calls you back once after a time
+// API.  As the names suggest, OneShotTimer calls you back once after a time
 // delay expires.
-// It uses `PostDelayedTask` on provided custom task runner
-// or `base::SequencedTaskRunnerHandle::Get()` (if custom task runner not provided).
 // RepeatingTimer on the other hand calls you back periodically with the
 // prescribed time interval.
 // RetainingOneShotTimer doesn't repeat the task itself like RepeatingTimer, but
@@ -52,7 +49,7 @@
 // By default, the scheduled tasks will be run on the same sequence that the
 // Timer was *started on*. To mock time in unit tests, some old tests used
 // SetTaskRunner() to schedule the delay on a test-controlled TaskRunner. The
-// modern and preferred approach to mock time is to use ScopedTaskEnvironment's
+// modern and preferred approach to mock time is to use TaskEnvironment's
 // MOCK_TIME mode.
 
 #ifndef BASE_TIMER_TIMER_H_
@@ -67,8 +64,8 @@
 
 #include "base/base_export.h"
 #include "base/bind.h"
-#include "base/bind_helpers.h"
 #include "base/callback.h"
+#include "base/callback_helpers.h"
 #include "base/location.h"
 #include "base/macros.h"
 #include "base/sequence_checker_impl.h"
@@ -117,13 +114,10 @@ class BASE_EXPORT TimerBase {
   // this Timer is running. This method can only be called while this Timer
   // isn't running. This is an alternative (old) approach to mock time in tests.
   // The modern and preferred approach is to use
-  // ScopedTaskEnvironment::MainThreadType::MOCK_TIME
-  // (ScopedTaskEnvironment::NowSource::MAIN_THREAD_MOCK_TIME may also be useful
-  // if the Timer is ever restarted). To avoid racy usage of Timer,
+  // TaskEnvironment::TimeSource::MOCK_TIME. To avoid racy usage of Timer,
   // |task_runner| must run tasks on the same sequence which this Timer is bound
-  // to (started from).
-  // TODO(gab): Migrate all callers to
-  // ScopedTaskEnvironment::MainThreadType::MOCK_TIME.
+  // to (started from). TODO(gab): Migrate all callers to
+  // TaskEnvironment::TimeSource::MOCK_TIME.
   virtual void SetTaskRunner(scoped_refptr<SequencedTaskRunner> task_runner);
 
   // Call this method to stop and cancel the timer.  It is a no-op if the timer
@@ -236,7 +230,7 @@ class BASE_EXPORT OneShotTimer : public internal::TimerBase {
 
   // Start the timer to run at the given |delay| from now. If the timer is
   // already running, it will be replaced to call a task formed from
-  // |reviewer->*method|.
+  // |receiver->*method|.
   template <class Receiver>
   void Start(const Location& posted_from,
              TimeDelta delay,
@@ -282,7 +276,7 @@ class BASE_EXPORT RepeatingTimer : public internal::TimerBase {
 
   // Start the timer to run at the given |delay| from now. If the timer is
   // already running, it will be replaced to call a task formed from
-  // |reviewer->*method|.
+  // |receiver->*method|.
   template <class Receiver>
   void Start(const Location& posted_from,
              TimeDelta delay,
@@ -305,8 +299,8 @@ class BASE_EXPORT RepeatingTimer : public internal::TimerBase {
 };
 
 //-----------------------------------------------------------------------------
-// A simple, one-shot timer with the retained user task.  See usage notes at the
-// top of the file.
+// A simple, one-shot timer with the retained user_task which is reused for
+// multiple invocations of Start(). See usage notes at the top of the file.
 class BASE_EXPORT RetainingOneShotTimer : public internal::TimerBase {
  public:
   RetainingOneShotTimer();
@@ -329,7 +323,7 @@ class BASE_EXPORT RetainingOneShotTimer : public internal::TimerBase {
 
   // Start the timer to run at the given |delay| from now. If the timer is
   // already running, it will be replaced to call a task formed from
-  // |reviewer->*method|.
+  // |receiver->*method|.
   template <class Receiver>
   void Start(const Location& posted_from,
              TimeDelta delay,

@@ -59,17 +59,21 @@ namespace base {
 // for this call and generate slightly less code. This is something we can
 // explore more in the future.
 
-BASE_EXPORT std::string StrCat(span<const StringPiece> pieces);
-BASE_EXPORT string16 StrCat(span<const StringPiece16> pieces);
-BASE_EXPORT std::string StrCat(span<const std::string> pieces);
-BASE_EXPORT string16 StrCat(span<const string16> pieces);
+BASE_EXPORT std::string StrCat(span<const StringPiece> pieces)
+    WARN_UNUSED_RESULT;
+BASE_EXPORT string16 StrCat(span<const StringPiece16> pieces)
+    WARN_UNUSED_RESULT;
+BASE_EXPORT std::string StrCat(span<const std::string> pieces)
+    WARN_UNUSED_RESULT;
+BASE_EXPORT string16 StrCat(span<const string16> pieces) WARN_UNUSED_RESULT;
 
 // Initializer list forwards to the array version.
 inline std::string StrCat(std::initializer_list<StringPiece> pieces) {
-  return StrCat(make_span(pieces.begin(), pieces.size()));
+  return StrCat(make_span(pieces));
 }
+
 inline string16 StrCat(std::initializer_list<StringPiece16> pieces) {
-  return StrCat(make_span(pieces.begin(), pieces.size()));
+  return StrCat(make_span(pieces));
 }
 
 // StrAppend -------------------------------------------------------------------
@@ -88,13 +92,18 @@ BASE_EXPORT void StrAppend(string16* dest, span<const string16> pieces);
 // Initializer list forwards to the array version.
 inline void StrAppend(std::string* dest,
                       std::initializer_list<StringPiece> pieces) {
-  return StrAppend(dest, make_span(pieces.begin(), pieces.size()));
+  StrAppend(dest, make_span(pieces));
 }
+
 inline void StrAppend(string16* dest,
                       std::initializer_list<StringPiece16> pieces) {
-  return StrAppend(dest, make_span(pieces.begin(), pieces.size()));
+  StrAppend(dest, make_span(pieces));
 }
 
 }  // namespace base
+
+#if defined(OS_WIN)
+#include "base/strings/strcat_win.h"
+#endif
 
 #endif  // BASE_STRINGS_STRCAT_H_

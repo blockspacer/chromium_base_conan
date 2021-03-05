@@ -15,7 +15,7 @@
 #include "base/test/gtest_util.h"
 #include "base/test/test_timeouts.h"
 #include "base/threading/thread.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {
@@ -79,8 +79,8 @@ struct Arrow {
   WeakPtr<Target> target;
 };
 struct TargetWithFactory : public Target {
-  TargetWithFactory() : factory(this) {}
-  WeakPtrFactory<Target> factory;
+  TargetWithFactory() {}
+  WeakPtrFactory<Target> factory{this};
 };
 
 // Helper class to create and destroy weak pointer copies
@@ -527,11 +527,11 @@ TEST(WeakPtrTest, MoveOwnershipImplicitly) {
   {
     // Main thread creates another WeakPtr, but this does not trigger implicitly
     // thread ownership move.
-    Arrow arrow;
-    arrow.target = target->AsWeakPtr();
+    Arrow scoped_arrow;
+    scoped_arrow.target = target->AsWeakPtr();
 
     // The new WeakPtr is owned by background thread.
-    EXPECT_EQ(target, background.DeRef(&arrow));
+    EXPECT_EQ(target, background.DeRef(&scoped_arrow));
   }
 
   // Target can only be deleted on background thread.
@@ -796,6 +796,28 @@ TEST(WeakPtrDeathTest, NonOwnerThreadReferencesObjectAfterDeletion) {
 
   // Main thread attempts to dereference the target, violating thread binding.
   ASSERT_DCHECK_DEATH(arrow.target.get());
+}
+
+TEST(WeakPtrDeathTest, ArrowOperatorChecksOnBadDereference) {
+  // The default style "fast" does not support multi-threaded tests
+  // (introduces deadlock on Linux).
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+
+  auto target = std::make_unique<Target>();
+  WeakPtr<Target> weak = target->AsWeakPtr();
+  target.reset();
+  EXPECT_CHECK_DEATH(weak->AsWeakPtr());
+}
+
+TEST(WeakPtrDeathTest, StarOperatorChecksOnBadDereference) {
+  // The default style "fast" does not support multi-threaded tests
+  // (introduces deadlock on Linux).
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+
+  auto target = std::make_unique<Target>();
+  WeakPtr<Target> weak = target->AsWeakPtr();
+  target.reset();
+  EXPECT_CHECK_DEATH((*weak).AsWeakPtr());
 }
 
 }  // namespace base

@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -38,7 +39,7 @@ class HistogramSnapshotManager;
 //
 // All the public methods are static and act on a global recorder. This global
 // recorder is internally synchronized and all the static methods are thread
-// safe.
+// safe. This is intended to only be run/used in the browser process.
 //
 // StatisticsRecorder doesn't have any public constructor. For testing purpose,
 // you can create a temporary recorder using the factory method
@@ -53,7 +54,6 @@ class BASE_EXPORT StatisticsRecorder {
    public:
     // Merges all histogram information into the global versions.
     virtual void MergeHistogramDeltas() = 0;
-    virtual ~HistogramProvider();
   };
 
   typedef std::vector<HistogramBase*> Histograms;
@@ -94,12 +94,11 @@ class BASE_EXPORT StatisticsRecorder {
   static const BucketRanges* RegisterOrDeleteDuplicateRanges(
       const BucketRanges* ranges);
 
-  // Methods for appending histogram data to a string.  Only histograms which
+  // A method for appending histogram data to a string. Only histograms which
   // have |query| as a substring are written to |output| (an empty string will
   // process all registered histograms).
   //
-  // These methods are thread safe.
-  static void WriteHTMLGraph(const std::string& query, std::string* output);
+  // This method is thread safe.
   static void WriteGraph(const std::string& query, std::string* output);
 
   // Returns the histograms with |verbosity_level| as the serialization
@@ -144,7 +143,10 @@ class BASE_EXPORT StatisticsRecorder {
                             HistogramBase::Flags required_flags,
                             HistogramSnapshotManager* snapshot_manager);
 
-  using OnSampleCallback = base::RepeatingCallback<void(HistogramBase::Sample)>;
+  using OnSampleCallback =
+      base::RepeatingCallback<void(const char* /*=histogram_name*/,
+                                   uint64_t /*=name_hash*/,
+                                   HistogramBase::Sample)>;
 
   // Sets the callback to notify when a new sample is recorded on the histogram
   // referred to by |histogram_name|. Can be called before or after the
@@ -221,6 +223,28 @@ class BASE_EXPORT StatisticsRecorder {
   // Filters histograms by persistency. Only non-persistent histograms are kept.
   static Histograms NonPersistent(Histograms histograms);
 
+  using GlobalSampleCallback = void (*)(const char* /*=histogram_name*/,
+                                        uint64_t /*=name_hash*/,
+                                        HistogramBase::Sample);
+  // Installs a global callback which will be called for every added
+  // histogram sample. The given callback is a raw function pointer in order
+  // to be accessed lock-free and can be called on any thread.
+  static void SetGlobalSampleCallback(
+      const GlobalSampleCallback& global_sample_callback);
+
+  // Returns the global callback, if any, that should be called every time a
+  // histogram sample is added.
+  static GlobalSampleCallback global_sample_callback() {
+    return global_sample_callback_.load(std::memory_order_relaxed);
+  }
+
+  // Returns whether there's either a global histogram callback set,
+  // or if any individual histograms have callbacks set. Used for early return
+  // when histogram samples are added.
+  static bool have_active_callbacks() {
+    return have_active_callbacks_.load(std::memory_order_relaxed);
+  }
+
  private:
   typedef std::vector<WeakPtr<HistogramProvider>> HistogramProviders;
 
@@ -294,6 +318,13 @@ class BASE_EXPORT StatisticsRecorder {
   // Tracks whether InitLogOnShutdownWhileLocked() has registered a logging
   // function that will be called when the program finishes.
   static bool is_vlog_initialized_;
+
+  // Track whether there are active histogram callbacks present.
+  static std::atomic<bool> have_active_callbacks_;
+
+  // Stores a raw callback which should be called on any every histogram sample
+  // which gets added.
+  static std::atomic<GlobalSampleCallback> global_sample_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(StatisticsRecorder);
 };

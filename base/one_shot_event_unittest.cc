@@ -5,11 +5,11 @@
 #include "base/one_shot_event.h"
 
 #include "base/bind.h"
-#include "base/message_loop/message_loop.h"
 #include "base/run_loop.h"
 #include "base/single_thread_task_runner.h"
+#include "base/test/task_environment.h"
 #include "base/test/test_simple_task_runner.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -24,6 +24,8 @@ class RefCountedClass : public base::RefCounted<RefCountedClass> {
       : did_delete_instance_(did_delete_instance) {
     DCHECK(!*did_delete_instance_);
   }
+  RefCountedClass(const RefCountedClass&) = delete;
+  RefCountedClass& operator=(const RefCountedClass&) = delete;
 
   void PerformTask() { did_perform_task_ = true; }
   bool did_perform_task() const { return did_perform_task_; }
@@ -36,8 +38,6 @@ class RefCountedClass : public base::RefCounted<RefCountedClass> {
   bool* const did_delete_instance_;  // Not owned.
 
   bool did_perform_task_ = false;
-
-  DISALLOW_COPY_AND_ASSIGN(RefCountedClass);
 };
 
 TEST(OneShotEventTest, RecordsSignal) {
@@ -98,7 +98,7 @@ TEST(OneShotEventTest, PostDefaultsToCurrentMessageLoop) {
   OneShotEvent event;
   scoped_refptr<base::TestSimpleTaskRunner> runner(
       new base::TestSimpleTaskRunner);
-  base::MessageLoop loop;
+  base::test::SingleThreadTaskEnvironment task_environment;
   int runner_i = 0;
   int loop_i = 0;
 
@@ -157,10 +157,9 @@ TEST(OneShotEventTest, DropsCallbackRefUponSignalled) {
   {
     auto ref_counted_class =
         base::MakeRefCounted<RefCountedClass>(&did_delete_instance);
-    event.Post(
-        FROM_HERE,
-        base::BindRepeating(&RefCountedClass::PerformTask, ref_counted_class),
-        runner);
+    event.Post(FROM_HERE,
+               base::BindOnce(&RefCountedClass::PerformTask, ref_counted_class),
+               runner);
     event.Signal();
     runner->RunPendingTasks();
     EXPECT_TRUE(ref_counted_class->did_perform_task());

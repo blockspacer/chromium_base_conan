@@ -14,7 +14,7 @@
 #include "base/stl_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/values.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace internal {
@@ -27,17 +27,6 @@ class JSONParserTest : public testing::Test {
     parser->input_ = input;
     parser->index_ = 0;
     return parser;
-  }
-
-  // MSan will do a better job detecting over-read errors if the input is
-  // not nul-terminated on the heap. This will copy |input| to a new buffer
-  // owned by |owner|, returning a StringPiece to |owner|.
-  StringPiece MakeNotNullTerminatedInput(const char* input,
-                                         std::unique_ptr<char[]>* owner) {
-    size_t str_len = strlen(input);
-    owner->reset(new char[str_len]);
-    memcpy(owner->get(), input, str_len);
-    return StringPiece(owner->get(), str_len);
   }
 
   void TestLastThree(JSONParser* parser) {
@@ -221,223 +210,102 @@ TEST_F(JSONParserTest, ConsumeNumbers) {
 }
 
 TEST_F(JSONParserTest, ErrorMessages) {
-  JSONReader::ValueWithError root =
-      JSONReader::ReadAndReturnValueWithError("[42]", JSON_PARSE_RFC);
-  EXPECT_TRUE(root.error_message.empty());
-  EXPECT_EQ(0, root.error_code);
-
-  // Test line and column counting
-  const char big_json[] = "[\n0,\n1,\n2,\n3,4,5,6 7,\n8,\n9\n]";
-  // error here ----------------------------------^
-  root = JSONReader::ReadAndReturnValueWithError(big_json, JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(5, 10, JSONReader::kSyntaxError),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_SYNTAX_ERROR, root.error_code);
-
-  // Test line and column counting with "\r\n" line ending
-  const char big_json_crlf[] =
-      "[\r\n0,\r\n1,\r\n2,\r\n3,4,5,6 7,\r\n8,\r\n9\r\n]";
-  // error here ----------------------^
-  root = JSONReader::ReadAndReturnValueWithError(big_json_crlf, JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(5, 10, JSONReader::kSyntaxError),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_SYNTAX_ERROR, root.error_code);
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("[42]");
+    EXPECT_TRUE(value);
+    EXPECT_TRUE(parser.GetErrorMessage().empty());
+    EXPECT_EQ(0, parser.error_code());
+  }
 
   // Test each of the error conditions
-  root = JSONReader::ReadAndReturnValueWithError("{},{}", JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(
-                1, 3, JSONReader::kUnexpectedDataAfterRoot),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_UNEXPECTED_DATA_AFTER_ROOT, root.error_code);
-
-  std::string nested_json;
-  for (int i = 0; i < 201; ++i) {
-    nested_json.insert(nested_json.begin(), '[');
-    nested_json.append(1, ']');
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("{},{}");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(
+                  1, 3, JSONParser::kUnexpectedDataAfterRoot),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_UNEXPECTED_DATA_AFTER_ROOT, parser.error_code());
   }
-  root = JSONReader::ReadAndReturnValueWithError(nested_json, JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 200, JSONReader::kTooMuchNesting),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_TOO_MUCH_NESTING, root.error_code);
 
-  root = JSONReader::ReadAndReturnValueWithError("[1,]", JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 4, JSONReader::kTrailingComma),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_TRAILING_COMMA, root.error_code);
-
-  root =
-      JSONReader::ReadAndReturnValueWithError("{foo:\"bar\"}", JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(
-      JSONParser::FormatErrorMessage(1, 2, JSONReader::kUnquotedDictionaryKey),
-      root.error_message);
-  EXPECT_EQ(JSONReader::JSON_UNQUOTED_DICTIONARY_KEY, root.error_code);
-
-  root = JSONReader::ReadAndReturnValueWithError("{\"foo\":\"bar\",}",
-                                                 JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 14, JSONReader::kTrailingComma),
-            root.error_message);
-
-  root = JSONReader::ReadAndReturnValueWithError("[nu]", JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 2, JSONReader::kSyntaxError),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_SYNTAX_ERROR, root.error_code);
-
-  root =
-      JSONReader::ReadAndReturnValueWithError("[\"xxx\\xq\"]", JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 7, JSONReader::kInvalidEscape),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_INVALID_ESCAPE, root.error_code);
-
-  root =
-      JSONReader::ReadAndReturnValueWithError("[\"xxx\\uq\"]", JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 7, JSONReader::kInvalidEscape),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_INVALID_ESCAPE, root.error_code);
-
-  root =
-      JSONReader::ReadAndReturnValueWithError("[\"xxx\\q\"]", JSON_PARSE_RFC);
-  EXPECT_FALSE(root.value);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 7, JSONReader::kInvalidEscape),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_INVALID_ESCAPE, root.error_code);
-
-  root = JSONReader::ReadAndReturnValueWithError(("[\"\\ufffe\"]"),
-                                                 JSON_PARSE_RFC);
-  EXPECT_EQ(JSONParser::FormatErrorMessage(1, 8, JSONReader::kInvalidEscape),
-            root.error_message);
-  EXPECT_EQ(JSONReader::JSON_INVALID_ESCAPE, root.error_code);
-}
-
-TEST_F(JSONParserTest, Decode4ByteUtf8Char) {
-  // This test strings contains a 4 byte unicode character (a smiley!) that the
-  // reader should be able to handle (the character is \xf0\x9f\x98\x87).
-  const char kUtf8Data[] =
-      "[\"😇\",[],[],[],{\"google:suggesttype\":[]}]";
-  JSONReader::ValueWithError root =
-      JSONReader::ReadAndReturnValueWithError(kUtf8Data, JSON_PARSE_RFC);
-  EXPECT_TRUE(root.value) << root.error_message;
-}
-
-TEST_F(JSONParserTest, DecodeUnicodeNonCharacter) {
-  // Tests Unicode code points (encoded as escaped UTF-16) that are not valid
-  // characters.
-  EXPECT_FALSE(JSONReader::Read("[\"\\ufdd0\"]"));
-  EXPECT_FALSE(JSONReader::Read("[\"\\ufffe\"]"));
-  EXPECT_FALSE(JSONReader::Read("[\"\\ud83f\\udffe\"]"));
-
-  EXPECT_TRUE(
-      JSONReader::Read("[\"\\ufdd0\"]", JSON_REPLACE_INVALID_CHARACTERS));
-  EXPECT_TRUE(
-      JSONReader::Read("[\"\\ufffe\"]", JSON_REPLACE_INVALID_CHARACTERS));
-}
-
-TEST_F(JSONParserTest, DecodeNegativeEscapeSequence) {
-  EXPECT_FALSE(JSONReader::Read("[\"\\x-A\"]"));
-  EXPECT_FALSE(JSONReader::Read("[\"\\u-00A\"]"));
-}
-
-// Verifies invalid utf-8 characters are replaced.
-TEST_F(JSONParserTest, ReplaceInvalidCharacters) {
-  const std::string bogus_char = "󿿿";
-  const std::string quoted_bogus_char = "\"" + bogus_char + "\"";
-  std::unique_ptr<JSONParser> parser(
-      NewTestParser(quoted_bogus_char, JSON_REPLACE_INVALID_CHARACTERS));
-  Optional<Value> value(parser->ConsumeString());
-  ASSERT_TRUE(value);
-  std::string str;
-  EXPECT_TRUE(value->GetAsString(&str));
-  EXPECT_EQ(kUnicodeReplacementString, str);
-}
-
-TEST_F(JSONParserTest, ReplaceInvalidUTF16EscapeSequence) {
-  const std::string invalid = "\"\\ufffe\"";
-  std::unique_ptr<JSONParser> parser(
-      NewTestParser(invalid, JSON_REPLACE_INVALID_CHARACTERS));
-  Optional<Value> value(parser->ConsumeString());
-  ASSERT_TRUE(value);
-  std::string str;
-  EXPECT_TRUE(value->GetAsString(&str));
-  EXPECT_EQ(kUnicodeReplacementString, str);
-}
-
-TEST_F(JSONParserTest, ParseNumberErrors) {
-  const struct {
-    const char* input;
-    bool parse_success;
-    double value;
-  } kCases[] = {
-      // clang-format off
-      {"1", true, 1},
-      {"2.", false, 0},
-      {"42", true, 42},
-      {"6e", false, 0},
-      {"43e2", true, 4300},
-      {"43e-", false, 0},
-      {"9e-3", true, 0.009},
-      {"2e+", false, 0},
-      {"2e+2", true, 200},
-      // clang-format on
-  };
-
-  for (unsigned int i = 0; i < base::size(kCases); ++i) {
-    auto test_case = kCases[i];
-    SCOPED_TRACE(StringPrintf("case %u: \"%s\"", i, test_case.input));
-
-    std::unique_ptr<char[]> input_owner;
-    StringPiece input =
-        MakeNotNullTerminatedInput(test_case.input, &input_owner);
-
-    Optional<Value> result = JSONReader::Read(input);
-    EXPECT_EQ(test_case.parse_success, result.has_value());
-
-    if (!result)
-      continue;
-
-    ASSERT_TRUE(result->is_double() || result->is_int());
-    EXPECT_EQ(test_case.value, result->GetDouble());
+  {
+    std::string nested_json;
+    for (int i = 0; i < 201; ++i) {
+      nested_json.insert(nested_json.begin(), '[');
+      nested_json.append(1, ']');
+    }
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse(nested_json);
+    EXPECT_FALSE(value);
+    EXPECT_EQ(
+        JSONParser::FormatErrorMessage(1, 200, JSONParser::kTooMuchNesting),
+        parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_TOO_MUCH_NESTING, parser.error_code());
   }
-}
 
-TEST_F(JSONParserTest, UnterminatedInputs) {
-  const char* const kCases[] = {
-      // clang-format off
-      "/",
-      "//",
-      "/*",
-      "\"xxxxxx",
-      "\"",
-      "{   ",
-      "[\t",
-      "tru",
-      "fals",
-      "nul",
-      "\"\\x",
-      "\"\\x2",
-      "\"\\u123",
-      "\"\\uD803\\u",
-      "\"\\",
-      "\"\\/",
-      // clang-format on
-  };
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("[1,]");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(1, 4, JSONParser::kTrailingComma),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_TRAILING_COMMA, parser.error_code());
+  }
 
-  for (unsigned int i = 0; i < base::size(kCases); ++i) {
-    auto* test_case = kCases[i];
-    SCOPED_TRACE(StringPrintf("case %u: \"%s\"", i, test_case));
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("{foo:\"bar\"}");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(
+                  1, 2, JSONParser::kUnquotedDictionaryKey),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_UNQUOTED_DICTIONARY_KEY, parser.error_code());
+  }
 
-    std::unique_ptr<char[]> input_owner;
-    StringPiece input = MakeNotNullTerminatedInput(test_case, &input_owner);
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("{\"foo\":\"bar\",}");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(1, 14, JSONParser::kTrailingComma),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_TRAILING_COMMA, parser.error_code());
+  }
 
-    EXPECT_FALSE(JSONReader::Read(input));
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("[nu]");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(1, 2, JSONParser::kSyntaxError),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_SYNTAX_ERROR, parser.error_code());
+  }
+
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("[\"xxx\\xq\"]");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(1, 7, JSONParser::kInvalidEscape),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_INVALID_ESCAPE, parser.error_code());
+  }
+
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("[\"xxx\\uq\"]");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(1, 7, JSONParser::kInvalidEscape),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_INVALID_ESCAPE, parser.error_code());
+  }
+
+  {
+    JSONParser parser(JSON_PARSE_RFC);
+    Optional<Value> value = parser.Parse("[\"xxx\\q\"]");
+    EXPECT_FALSE(value);
+    EXPECT_EQ(JSONParser::FormatErrorMessage(1, 7, JSONParser::kInvalidEscape),
+              parser.GetErrorMessage());
+    EXPECT_EQ(JSONParser::JSON_INVALID_ESCAPE, parser.error_code());
   }
 }
 

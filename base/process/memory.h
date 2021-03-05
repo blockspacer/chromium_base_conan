@@ -11,14 +11,6 @@
 #include "base/process/process_handle.h"
 #include "build/build_config.h"
 
-#ifdef PVALLOC_AVAILABLE
-// Build config explicitly tells us whether or not pvalloc is available.
-#elif defined(LIBC_GLIBC) && !defined(USE_TCMALLOC)
-#define PVALLOC_AVAILABLE 1
-#else
-#define PVALLOC_AVAILABLE 0
-#endif
-
 namespace base {
 
 // Enables 'terminate on heap corruption' flag. Helps protect against heap
@@ -29,12 +21,18 @@ BASE_EXPORT void EnableTerminationOnHeapCorruption();
 BASE_EXPORT void EnableTerminationOnOutOfMemory();
 
 // Terminates process. Should be called only for out of memory errors.
+// |size| is the size of the failed allocation, or 0 if not known.
 // Crash reporting classifies such crashes as OOM.
+// Must be allocation-safe.
 BASE_EXPORT void TerminateBecauseOutOfMemory(size_t size);
 
-#if defined(OS_LINUX) || defined(OS_ANDROID) || defined(OS_AIX)
+// Records the size of the allocation that caused the current OOM crash, for
+// consumption by Breakpad.
+// TODO: this can be removed when Breakpad is no longer supported.
 BASE_EXPORT extern size_t g_oom_size;
 
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_ANDROID) || \
+    defined(OS_AIX)
 // The maximum allowed value for the OOM score.
 const int kMaxOomScore = 1000;
 
@@ -47,6 +45,12 @@ const int kMaxOomScore = 1000;
 // may occur in that case, of course.
 BASE_EXPORT bool AdjustOOMScore(ProcessId process, int score);
 #endif
+
+namespace internal {
+// Returns true if address-space was released. Some configurations reserve part
+// of the process address-space for special allocations (e.g. WASM).
+bool ReleaseAddressSpaceReservation();
+}  // namespace internal
 
 #if defined(OS_WIN)
 namespace win {

@@ -9,12 +9,24 @@
 #include "base/time/time.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include GTEST_HEADER_INCLUDE
-#include "base/test/testing/perf/perf_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/perf/perf_result_reporter.h"
 
 namespace base {
 
 namespace {
+
+constexpr char kMetricPrefixJSON[] = "JSON.";
+constexpr char kMetricReadTime[] = "read_time";
+constexpr char kMetricWriteTime[] = "write_time";
+
+perf_test::PerfResultReporter SetUpReporter(const std::string& story_name) {
+  perf_test::PerfResultReporter reporter(kMetricPrefixJSON, story_name);
+  reporter.RegisterImportantMetric(kMetricReadTime, "ms");
+  reporter.RegisterImportantMetric(kMetricWriteTime, "ms");
+  return reporter;
+}
+
 // Generates a simple dictionary value with simple data types, a string and a
 // list.
 DictionaryValue GenerateDict() {
@@ -25,10 +37,10 @@ DictionaryValue GenerateDict() {
   root.SetStringKey("String", "Foo");
 
   ListValue list;
-  list.GetList().emplace_back(2.718);
-  list.GetList().emplace_back(false);
-  list.GetList().emplace_back(123);
-  list.GetList().emplace_back("Bar");
+  list.Append(2.718);
+  list.Append(false);
+  list.Append(123);
+  list.Append("Bar");
   root.SetKey("List", std::move(list));
 
   return root;
@@ -62,28 +74,24 @@ class JSONPerfTest : public testing::Test {
     TimeTicks start_write = TimeTicks::Now();
     JSONWriter::Write(dict, &json);
     TimeTicks end_write = TimeTicks::Now();
-    perf_test::PrintResult("Write", "", description,
-                           (end_write - start_write).InMillisecondsF(), "ms",
-                           true);
+    auto reporter = SetUpReporter("breadth_" + base::NumberToString(breadth) +
+                                  "_depth_" + base::NumberToString(depth));
+    reporter.AddResult(kMetricWriteTime, end_write - start_write);
 
     TimeTicks start_read = TimeTicks::Now();
     JSONReader::Read(json);
     TimeTicks end_read = TimeTicks::Now();
-    perf_test::PrintResult("Read", "", description,
-                           (end_read - start_read).InMillisecondsF(), "ms",
-                           true);
+    reporter.AddResult(kMetricReadTime, end_read - start_read);
   }
 };
 
-// Times out on Android (crbug.com/906686).
-#if defined(OS_ANDROID)
-#define MAYBE_StressTest DISABLED_StressTest
-#else
-#define MAYBE_StressTest StressTest
-#endif
-TEST_F(JSONPerfTest, MAYBE_StressTest) {
+TEST_F(JSONPerfTest, StressTest) {
+  // These loop ranges are chosen such that this test will complete in a
+  // reasonable amount of time and will work on a 32-bit build without hitting
+  // an out-of-memory failure. Having j go to 10 uses over 2 GiB of memory and
+  // might hit Android timeouts so be wary of going that high.
   for (int i = 0; i < 4; ++i) {
-    for (int j = 0; j < 12; ++j) {
+    for (int j = 0; j < 10; ++j) {
       TestWriteAndRead(i + 1, j + 1);
     }
   }

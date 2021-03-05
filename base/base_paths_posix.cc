@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,6 +20,7 @@
 #include "base/files/file_util.h"
 #include "base/logging.h"
 #include "base/nix/xdg_util.h"
+#include "base/notreached.h"
 #include "base/path_service.h"
 #include "base/process/process_metrics.h"
 #include "build/build_config.h"
@@ -37,11 +38,7 @@ bool PathProviderPosix(int key, FilePath* result) {
   switch (key) {
     case FILE_EXE:
     case FILE_MODULE: {  // TODO(evanm): is this correct?
-#if defined(OS_EMSCRIPTEN)
-      //*result = FilePath("/usr/local/chrome/chrome");
-      *result = FilePath("/"); // TODO
-      return true;
-#elif defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
       FilePath bin_dir;
       if (!ReadSymbolicLink(FilePath(kProcSelfExe), &bin_dir)) {
         NOTREACHED() << "Unable to resolve " << kProcSelfExe << ".";
@@ -107,21 +104,13 @@ bool PathProviderPosix(int key, FilePath* result) {
       return false;
     }
     case DIR_USER_DESKTOP:
-#if defined(OS_EMSCRIPTEN)
-      *result = FilePath("/"); // TODO
-#else
       *result = nix::GetXDGUserDirectory("DESKTOP", "Desktop");
-#endif
       return true;
     case DIR_CACHE: {
-#if defined(OS_EMSCRIPTEN)
-        *result = FilePath("/"); // TODO
-#else
-        std::unique_ptr<Environment> env(Environment::Create());
-        FilePath cache_dir(
-            nix::GetXDGDirectory(env.get(), "XDG_CACHE_HOME", ".cache"));
-        *result = cache_dir;
-#endif
+      std::unique_ptr<Environment> env(Environment::Create());
+      FilePath cache_dir(
+          nix::GetXDGDirectory(env.get(), "XDG_CACHE_HOME", ".cache"));
+      *result = cache_dir;
       return true;
     }
   }

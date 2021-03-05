@@ -5,7 +5,7 @@
 #include "base/trace_event/cfi_backtrace_android.h"
 
 #include "base/files/file_util.h"
-#include GTEST_HEADER_INCLUDE
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace trace_event {
@@ -68,10 +68,10 @@ TEST(CFIBacktraceAndroidTest, DISABLED_TestFindCFIRow) {
   STACK CFI 2204 .cfa: sp 44 + .ra: .cfa -8 + ^ r4: .cfa -16 + ^
   */
   uint16_t input[] = {// UNW_INDEX size
-                      0x2A,
+                      0x07, 0x0,
 
                       // UNW_INDEX address column (4 byte rows).
-                      0x0, 0x1000, 0x0, 0x1502, 0x0, 0x2000, 0x0, 0x2024, 0x0,
+                      0x1000, 0x0, 0x1502, 0x0, 0x2000, 0x0, 0x2024, 0x0,
                       0x2126, 0x0, 0x2200, 0x0, 0x2212, 0x0,
 
                       // UNW_INDEX index column (2 byte rows).
