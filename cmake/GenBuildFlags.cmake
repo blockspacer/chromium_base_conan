@@ -124,6 +124,7 @@ if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
 endif()
 # `NOTREACHED()` will log without crash
 set(ENABLE_LOG_ERROR_NOT_REACHED "(1)")
+set(FROM_HERE_USES_LOCATION_BUILTINS "(1)")
 set(EXPENSIVE_DCHECKS_ARE_ON "(0)")
 if(cmake_build_type_tolower MATCHES "debug")
   set(ENABLE_LOG_ERROR_NOT_REACHED "(0)")

@@ -522,6 +522,7 @@ target_link_libraries(${STATIC_LIB_NAME} PRIVATE
 
 list(APPEND USED_3DPARTY_LIBS
   ${CUSTOM_ICU_LIB}
+  CONAN_PKG::abseil
 )
 
 if(NOT DEFINED build_util_LIB)

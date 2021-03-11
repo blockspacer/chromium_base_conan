@@ -1,5 +1,0 @@
-include_rules = [
-  "-base",
-  "+base/util/type-safety",
-  "-third_party",
-]

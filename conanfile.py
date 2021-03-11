@@ -190,6 +190,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.build_requires("cmake_platform_detection/master@conan/stable")
         self.build_requires("cmake_build_options/master@conan/stable")
         self.build_requires("cmake_helper_utils/master@conan/stable")
+        self.build_requires("abseil/lts_2020_09_23@conan/stable")
 
         if self.options.enable_tsan \
             or self.options.enable_msan \

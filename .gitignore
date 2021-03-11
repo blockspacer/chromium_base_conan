@@ -46,11 +46,10 @@ tmp/
 .pydevproject
 .settings/*
 
-
-# emacs
 *~
 /base/allocator/buildflags.h
+*_buildflags.h
 *.txt.user
 /typescript
 *.directory
-*_buildflags.h
+/base/extensions/testing/libfuzzer/fuzzers/*

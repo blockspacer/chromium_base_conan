@@ -1,5 +1,77 @@
 ﻿include_guard( DIRECTORY )
 
+# Filter values through regex
+function(filter_regex)
+  # see https://cliutils.gitlab.io/modern-cmake/chapters/basics/functions.html
+  #set(options ) # empty
+  set(oneValueArgs OUTPUT_VAR IS_INCLUDE_REGEX REGEX)
+  set(multiValueArgs INPUT_ITEMS)
+  #
+  cmake_parse_arguments(
+    ARGUMENTS # prefix of output variables
+    "${options}" # list of names of the boolean arguments (only defined ones will be true)
+    "${oneValueArgs}" # list of names of mono-valued arguments
+    "${multiValueArgs}" # list of names of multi-valued arguments (output variables are lists)
+    ${ARGN} # arguments of the function to parse, here we take the all original ones
+  )
+  #
+  set(INPUT_ITEMS)
+  list(APPEND INPUT_ITEMS ${ARGUMENTS_INPUT_ITEMS})
+  #
+  set(OUTPUT_VAR ${ARGUMENTS_OUTPUT_VAR})
+  #
+  set(IS_INCLUDE_REGEX ${ARGUMENTS_IS_INCLUDE_REGEX})
+  #
+  set(REGEX ${ARGUMENTS_REGEX})
+  #
+  set(result_list)
+  foreach(element ${INPUT_ITEMS})
+    string(REGEX MATCH ${REGEX} has_match ${element})
+    if(has_match)
+      if(IS_INCLUDE_REGEX)
+        list(APPEND result_list ${element})
+        #message(FATAL_ERROR "{element}=${element}")
+      endif()
+    else()
+      if(NOT IS_INCLUDE_REGEX)
+        list(APPEND result_list ${element})
+      endif()
+    endif()
+  endforeach()
+
+  # put result in parent scope variable
+  #message(STATUS "result=${result_list}")
+  set(${OUTPUT_VAR} ${result_list} PARENT_SCOPE)
+  #message(STATUS "OUTPUT_VAR=${${OUTPUT_VAR}}")
+endfunction()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources.cmake)
+#
+if(TARGET_EMSCRIPTEN OR TARGET_LINUX)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_posix.cmake)
+endif()
+#
+if(TARGET_WINDOWS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_win.cmake)
+endif()
+#
+if(TARGET_MACOS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_mac.cmake)
+endif()
+#
+if(TARGET_IOS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_ios.cmake)
+endif()
+#
+if(TARGET_ANDROID)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_android.cmake)
+endif()
+#
+if(USE_ALLOC_SHIM)
+endif()
+#
+message(STATUS "COMPONENT_BASE_SOURCES=${COMPONENT_BASE_SOURCES}")
+
 if(ENABLE_UKM)
   list(APPEND BASE_SOURCES
      ${BASE_SOURCES_PATH}metrics/ukm_source_id.cc
@@ -7,67 +79,80 @@ if(ENABLE_UKM)
   )
 endif(ENABLE_UKM)
 
-if(BASE_USE_JSON)
-  list(APPEND BASE_SOURCES
-     ${BASE_SOURCES_PATH}json/json_file_value_serializer.cc
-     ${BASE_SOURCES_PATH}json/json_file_value_serializer.h
-     ${BASE_SOURCES_PATH}json/json_parser.cc
-     ${BASE_SOURCES_PATH}json/json_parser.h
-     ${BASE_SOURCES_PATH}json/json_reader.cc
-     ${BASE_SOURCES_PATH}json/json_reader.h
-     ${BASE_SOURCES_PATH}json/json_string_value_serializer.cc
-     ${BASE_SOURCES_PATH}json/json_string_value_serializer.h
-     ${BASE_SOURCES_PATH}json/json_value_converter.cc
-     ${BASE_SOURCES_PATH}json/json_value_converter.h
-     ${BASE_SOURCES_PATH}json/json_writer.cc
-     ${BASE_SOURCES_PATH}json/json_writer.h
-     ${BASE_SOURCES_PATH}json/string_escape.cc
-     ${BASE_SOURCES_PATH}json/string_escape.h
-  )
-endif(BASE_USE_JSON)
-
 if(USE_ALLOC_SHIM)
-  # https://github.com/blockspacer/chromium_base_conan/blob/8e45a5dc6abfc06505fd660c08ad43c592daf5aa/base/BUILD.gn#L1249
-  list(APPEND BASE_SOURCES
+  list(APPEND COMPONENT_BASE_SOURCES
     ${BASE_SOURCES_PATH}allocator/allocator_shim.cc
+    ${BASE_SOURCES_PATH}allocator/allocator_shim.h
+    ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_partition_alloc.cc
+    ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_partition_alloc.h
+    ${BASE_SOURCES_PATH}allocator/allocator_shim_internals.h
   )
-  if(TARGET_WINDOWS)
+  if(TARGET_ANDROID)
+    message(STATUS "Enabled allocator shim for ANDROID")
+    list(APPEND COMPONENT_BASE_SOURCES
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_override_cpp_symbols.h
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_override_linker_wrapped_symbols.h
+    )
+  elseif(TARGET_MACOS OR TARGET_IOS)
+    message(STATUS "Enabled allocator shim for APPLE")
+    list(APPEND COMPONENT_BASE_SOURCES
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_override_mac_symbols.h
+    )
+  elseif(TARGET_WINDOWS)
     message(STATUS "Enabled allocator shim for Windows")
-    list(APPEND BASE_SOURCES
-      ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_winheap.cc
+    list(APPEND COMPONENT_BASE_SOURCES
       ${BASE_SOURCES_PATH}allocator/winheap_stubs_win.cc
     )
   elseif(TARGET_LINUX)
-    if(ALLOCATOR_TCMALLOC)
-      message(STATUS "Enabled TCMALLOC allocator shim for Linux")
-      list(APPEND BASE_SOURCES
-        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_tcmalloc.cc
-        ${BASE_SOURCES_PATH}allocator/allocator_shim_override_glibc_weak_symbols.h
-      )
-    elseif(ALLOCATOR_NONE)
-      message(STATUS "Enabled glibc allocator shim for Linux")
-      list(APPEND BASE_SOURCES
-        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_glibc.cc
-      )
-    else()
-      message(FATAL_ERROR "You must specify allocator")
-    endif()
+    message(STATUS "Enabled TCMALLOC allocator shim for Linux")
+    list(APPEND COMPONENT_BASE_SOURCES
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_override_glibc_weak_symbols.h
+    )
   else()
     message(FATAL_ERROR "Platform not supported")
+  endif()
+  #
+  if(ALLOCATOR_TCMALLOC)
+    message(STATUS "Enabled TCMALLOC allocator shim")
+    list(APPEND COMPONENT_BASE_SOURCES
+      ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_tcmalloc.cc
+    )
+  elseif(ALLOCATOR_NONE)
+    message(STATUS "Enabled glibc allocator shim")
+    if(TARGET_ANDROID)
+      list(APPEND COMPONENT_BASE_SOURCES
+        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_linker_wrapped_symbols.cc
+      )
+    elseif(TARGET_MACOS OR TARGET_IOS)
+      list(APPEND COMPONENT_BASE_SOURCES
+        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_mac_zoned_malloc.cc
+      )
+    elseif(TARGET_LINUX OR TARGET_EMSCRIPTEN)
+      list(APPEND COMPONENT_BASE_SOURCES
+        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_glibc.cc
+      )
+    elseif(TARGET_WINDOWS)
+      message(STATUS "Enabled allocator shim for Windows")
+      list(APPEND COMPONENT_BASE_SOURCES
+        ${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_winheap.cc
+      )
+    endif()
+  else()
+    message(FATAL_ERROR "You must specify allocator")
   endif()
 endif(USE_ALLOC_SHIM)
 
 if(USE_TEST_SUPPORT)
   # NOTE: `testing` dir not from `base`!
   list(APPEND BASE_SOURCES
-    ${BASE_SOURCES_PATH}test/testing/platform_test.h
+    ${TESTING_SOURCES_PATH}/platform_test.h
     # TODO
     #${BASE_SOURCES_PATH}test/testing/platform_test_ios.mm
     #${BASE_SOURCES_PATH}test/testing/platform_test_mac.mm
-    ${BASE_SOURCES_PATH}test/testing/multiprocess_func_list.h
-    ${BASE_SOURCES_PATH}test/testing/multiprocess_func_list.cc
-    ${BASE_SOURCES_PATH}test/testing/perf/perf_test.h
-    ${BASE_SOURCES_PATH}test/testing/perf/perf_test.cc
+    ${TESTING_SOURCES_PATH}/multiprocess_func_list.h
+    ${TESTING_SOURCES_PATH}/multiprocess_func_list.cc
+    ${TESTING_SOURCES_PATH}/perf/perf_test.h
+    ${TESTING_SOURCES_PATH}/perf/perf_test.cc
   )
 
   list(APPEND BASE_SOURCES
@@ -1763,30 +1848,5 @@ if(TARGET_LINUX)
   )
 endif()
 
-if(ENABLE_COBALT)
-  list(APPEND COBALT_port_base_SOURCES
-    # TODO: port chromium base to starboard
-    #${LOCAL_COBALT_DIR}base/base_paths_starboard.cc
-    #${LOCAL_COBALT_DIR}base/debug/debugger_starboard.cc
-    #${LOCAL_COBALT_DIR}base/debug/stack_trace_starboard.cc
-    #${LOCAL_COBALT_DIR}base/files/file_enumerator_starboard.cc
-    #${LOCAL_COBALT_DIR}base/files/file_starboard.cc
-    #${LOCAL_COBALT_DIR}base/files/file_util_starboard.cc
-    #${LOCAL_COBALT_DIR}base/message_loop/message_pump_io_starboard.cc
-    #${LOCAL_COBALT_DIR}base/message_loop/message_pump_ui_starboard.cc
-    #${LOCAL_COBALT_DIR}base/process/memory_starboard.cc
-    #${LOCAL_COBALT_DIR}base/process/process_starboard.cc
-    #${LOCAL_COBALT_DIR}base/profiler/native_stack_sampler_starboard.cc
-    #${LOCAL_COBALT_DIR}base/rand_util_starboard.cc
-    #${LOCAL_COBALT_DIR}base/sampling_heap_profiler/module_cache_starboard.cc
-    #${LOCAL_COBALT_DIR}base/strings/sys_string_conversions_starboard.cc
-    #${LOCAL_COBALT_DIR}base/synchronization/condition_variable_starboard.cc
-    #${LOCAL_COBALT_DIR}base/synchronization/lock_impl_starboard.cc
-    #${LOCAL_COBALT_DIR}base/synchronization/waitable_event_starboard.cc
-    #${LOCAL_COBALT_DIR}base/sys_info_starboard.cc
-    #${LOCAL_COBALT_DIR}base/threading/platform_thread_starboard.cc
-    #${LOCAL_COBALT_DIR}base/threading/thread_local_storage_starboard.cc
-    #${LOCAL_COBALT_DIR}base/time/time_now_starboard.cc
-    ${LOCAL_COBALT_DIR}base/time/time_starboard.cc
-  )
-endif(ENABLE_COBALT)
+
+list(APPEND BASE_SOURCES ${COMPONENT_BASE_SOURCES})
