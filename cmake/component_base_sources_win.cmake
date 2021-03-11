@@ -156,5 +156,25 @@ list(APPEND COMPONENT_BASE_SOURCES_WIN_UNPROCESSED
   "win/wrapped_window_proc.h"
 )
 
-list(TRANSFORM COMPONENT_BASE_SOURCES_WIN_UNPROCESSED PREPEND ${BASE_SOURCES_PATH})
+list(APPEND COMPONENT_BASE_SOURCES_WIN_UNPROCESSED
+  "files/file_enumerator_win.cc"
+  "memory/platform_shared_memory_region_win.cc"
+  "power_monitor/power_monitor_device_source_win.cc"
+  "profiler/win32_stack_frame_unwinder.cc"
+  "profiler/win32_stack_frame_unwinder.h"
+  "rand_util_win.cc"
+  "system/sys_info_win.cc"
+  "time/time_win.cc"
+)
+
+
+list(APPEND LIB_PE_IMAGE_UNPROCESSED
+  "../no_destructor.h"
+  "current_module.h"
+  "pe_image.cc"
+  "pe_image.h"
+)
+list(TRANSFORM LIB_PE_IMAGE_UNPROCESSED PREPEND "win/")
+list(APPEND COMPONENT_BASE_SOURCES_WIN_UNPROCESSED ${LIB_PE_IMAGE_UNPROCESSED})
+
 list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_WIN_UNPROCESSED})

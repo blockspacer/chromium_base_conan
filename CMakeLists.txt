@@ -107,6 +107,23 @@ validate_out_dirs() # from cmake_helper_utils (conan package)
 # In-source builds not allowed
 validate_out_source_build(WARNING) # from cmake_helper_utils (conan package)
 
+message(STATUS "Conan setup done!")
+message(STATUS "CONAN_INCLUDE_DIRS_PROTOBUF: ${CONAN_INCLUDE_DIRS_PROTOBUF}")
+message(STATUS "CONAN_LIBS: ${CONAN_LIBS}")
+message(STATUS "_gRPC_PROTOBUF_LIBRARIES: ${_gRPC_PROTOBUF_LIBRARIES}")
+#message(STATUS "CONAN_LIBS_GRPC_CONAN: ${CONAN_LIBS_GRPC_CONAN}")
+message(STATUS "CONAN_LIBS_PROTOBUF: ${CONAN_LIBS_PROTOBUF}")
+message(STATUS "CMAKE_LIBRARY_PATH: ${CMAKE_LIBRARY_PATH}")
+message(STATUS "CMAKE_PROGRAM_PATH: ${CMAKE_PROGRAM_PATH}")
+message(STATUS "CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
+message(STATUS "CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+find_program(_gRPC_PROTOBUF_PROTOC_EXECUTABLE protoc NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+message(STATUS "_gRPC_PROTOBUF_PROTOC_EXECUTABLE: ${_gRPC_PROTOBUF_PROTOC_EXECUTABLE}")
+find_program(PROTOBUF_PROTOC_EXECUTABLE protoc NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+message(STATUS "PROTOBUF_PROTOC_EXECUTABLE: ${PROTOBUF_PROTOC_EXECUTABLE}")
+find_program(Protobuf_PROTOC_EXECUTABLE protoc NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+message(STATUS "Protobuf_PROTOC_EXECUTABLE: ${Protobuf_PROTOC_EXECUTABLE}")
+
 if(ENABLE_MSAN OR ENABLE_TSAN OR ENABLE_ASAN OR ENABLE_UBSAN)
   find_package(cmake_sanitizers REQUIRED)
 endif()
@@ -249,6 +266,7 @@ if(TARGET_LINUX)
   find_package(chromium_libevent REQUIRED)
   if(TARGET chromium_libevent::chromium_libevent-static)
     set(libevent_LIB chromium_libevent::chromium_libevent-static)
+    set(USE_LIBEVENT TRUE)
   else()
     message(FATAL_ERROR "not supported: using system provided libevent library")
   endif()
@@ -280,40 +298,6 @@ if(ENABLE_COMPACT_ENC_DET)
   endif()
 endif(ENABLE_COMPACT_ENC_DET)
 
-set(ENABLE_COBALT FALSE CACHE BOOL "ENABLE_COBALT")
-if(ENABLE_COBALT)
-  message(FATAL_ERROR "not supported: cobalt_starboard")
-
-  find_package(cobalt_starboard_headers_only REQUIRED)
-  if(TARGET cobalt_starboard_headers_only::cobalt_starboard_headers_only-static)
-    set(cobalt_starboard_headers_only_LIB cobalt_starboard_headers_only::cobalt_starboard_headers_only-static)
-  else()
-    message(FATAL_ERROR "not supported: using system provided cobalt_starboard_headers_only library")
-  endif()
-  #
-  find_package(cobalt_starboard REQUIRED)
-  if(TARGET cobalt_starboard::cobalt_starboard-static)
-    set(cobalt_starboard_LIB cobalt_starboard::cobalt_starboard-static)
-  else()
-    message(FATAL_ERROR "not supported: using system provided cobalt_starboard library")
-  endif()
-endif(ENABLE_COBALT)
-
-# TODO
-#if(NOT DEFINED BASE_STANDALONE)
-#  message("FATAL_ERROR: TODO: USE BASE_STANDALONE")
-#  set(BASE_STANDALONE TRUE) # TODO
-#endif(NOT DEFINED BASE_STANDALONE)
-
-#if(BASE_STANDALONE)
-#  set(CHROMIUM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../chromium/)
-#  set(COMMON_THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/)
-#  set(ICU_PARENT_FULL_DIR ${COMMON_THIRDPARTY_DIR}/icu_wrapper/)
-#  set(ICU_FULL_DIR ${ICU_PARENT_FULL_DIR}third_party/icu/)
-#  set(BASE_PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/)
-#  set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/base/)
-#endif(BASE_STANDALONE)
-
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenBuildFlags.cmake)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProjectFiles.cmake)
@@ -344,11 +328,6 @@ endmacro(add_relative_include_dir)
 if(TARGET_LINUX)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect_atomic32_support.cmake)
 endif(TARGET_LINUX)
-
-if(ENABLE_COBALT)
-  list(APPEND BASE_SOURCES
-    ${COBALT_port_base_SOURCES})
-endif(ENABLE_COBALT)
 
 add_library(${STATIC_LIB_NAME} STATIC
   ${BASE_SOURCES}
@@ -460,62 +439,12 @@ if(NOT DEFINED dynamic_annotations_LIB)
   message(FATAL_ERROR "NOT DEFINED: dynamic_annotations_LIB")
 endif(NOT DEFINED dynamic_annotations_LIB)
 
-#if(TARGET_WINDOWS)
-#  list(APPEND EXTRA_STARBOARD_DEFINES
-#    STARBOARD_ATOMIC_INCLUDE="starboard/win/x64x11/atomic_public.h"
-#    STARBOARD_THREAD_TYPES_INCLUDE="starboard/win/x64x11/thread_types_public.h"
-#    STARBOARD_CONFIGURATION_INCLUDE="starboard/win/x64x11/configuration_public.h"
-#  )
-#elseif(TARGET_LINUX OR TARGET_EMSCRIPTEN)
-#  list(APPEND EXTRA_STARBOARD_DEFINES
-#    STARBOARD_ATOMIC_INCLUDE="starboard/linux/x64x11/atomic_public.h"
-#    STARBOARD_THREAD_TYPES_INCLUDE="starboard/linux/x64x11/thread_types_public.h"
-#    STARBOARD_CONFIGURATION_INCLUDE="starboard/linux/x64x11/configuration_public.h"
-#  )
-#else()
-#  message(FATAL_ERROR "platform not supported")
-#endif()
-#
-#target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
-#  ${EXTRA_STARBOARD_DEFINES}
-#)
-
-if(ENABLE_COBALT)
-  message(FATAL_ERROR "not supported: cobalt_starboard")
-
-  if(NOT DEFINED cobalt_starboard_LIB)
-    message(FATAL_ERROR "NOT DEFINED: cobalt_starboard_LIB")
-  endif(NOT DEFINED cobalt_starboard_LIB)
-
-  list(APPEND USED_3DPARTY_LIBS
-    ${cobalt_starboard_LIB}
-    ${cobalt_starboard_headers_only_LIB}
-  )
-endif(ENABLE_COBALT)
-
-#'dependencies': [
-#  '<(DEPTH)/nb/nb.gyp:nb',
-#  '<(DEPTH)/starboard/client_porting/eztime/eztime.gyp:eztime',
-#  '<(DEPTH)/starboard/starboard.gyp:starboard',
-#  '<(DEPTH)/testing/gtest.gyp:gtest_prod',
-#  '<(DEPTH)/third_party/modp_b64/modp_b64.gyp:modp_b64',
-#  'base_static',
-#  'third_party/dynamic_annotations/dynamic_annotations.gyp:dynamic_annotations',
-#],
 target_link_libraries(${STATIC_LIB_NAME} PRIVATE
-  # ${cobalt_nanobase_LIB} # TODO: recursion
-  # ${STARBOARD_PLATFORM_LIB} # TODO: recursion
-  # #starboard_core
-  # ${STARBOARD_EZTIME_LIB} # TODO: recursion
-  # ${STARBOARD_COMMON_LIB} # TODO: recursion
   ${modp_b64_LIB}
   #
   ${dynamic_annotations_LIB}
   ${EXTRA_CHROMIUM_BASE_LIBS}
   ${LIBATOMIC} # from system, no dep. for __atomic_is_lock_free
-  # see https://stackoverflow.com/questions/1236670/how-to-make-opengl-apps-in-64-bit-windows
-  #${FOUND_OPENGL_LIBRARIES}
-  # ${GLEW_LIBRARY}
   ${PTHREADS_LIBS} # note: not set for emscripten
   ${CMAKE_DL_LIBS} # https://cmake.org/cmake/help/v3.13/variable/CMAKE_DL_LIBS.html
 )
@@ -528,6 +457,12 @@ list(APPEND USED_3DPARTY_LIBS
 if(NOT DEFINED build_util_LIB)
   message(FATAL_ERROR "NOT DEFINED: build_util_LIB")
 endif(NOT DEFINED build_util_LIB)
+
+if(USE_PERFETTO_CLIENT_LIBRARY)
+  target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
+    BASE_USE_PERFETTO_CLIENT_LIBRARY=1
+  )
+endif(USE_PERFETTO_CLIENT_LIBRARY)
 
 if(USE_TEST_SUPPORT)
   message(STATUS "enabled USE_TEST_SUPPORT")
@@ -547,11 +482,11 @@ if(USE_TEST_SUPPORT)
 
   target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
     IS_BASE_TEST_IMPL=1
+    BUILD_DATE=BASE_BUILD_DATE
   )
 
   target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
     UNIT_TEST=1
-    #PERF_TEST=1
   )
 
   target_link_libraries(${STATIC_LIB_NAME} PUBLIC
@@ -615,36 +550,26 @@ endif(NOT ALLOCATOR_TCMALLOC)
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "")
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "extensions")
 
-if(ENABLE_COBALT)
-  add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "${COBALT_DIR}")
-endif(ENABLE_COBALT)
-
 # path to base/threading/thread.h
 
-# TODO: COBALT_COMMON_INCLUDES
-# add_relative_include_dir(${STATIC_LIB_NAME} PRIVATE PRIVATE "")
+# TODO || is_chromeos_ash || is_chromecast || is_fuchsia
+if(TARGET_MACOS OR TARGET_IOS)
+  list(APPEND BASE_EXTRA_DEFINITIONS
+    SYSTEM_NATIVE_UTF8=1
+  )
+endif()
 
 if(TARGET_LINUX)
   list(APPEND BASE_EXTRA_DEFINITIONS
     HAVE_MMAP=1
+    USE_SYMBOLIZE=1
   )
 elseif(TARGET_WINDOWS)
+  # TODO if (com_init_check_hook_disabled)
   list(APPEND BASE_EXTRA_DEFINITIONS
     COM_INIT_CHECK_HOOK_DISABLED=1
   )
 endif()
-
-if(ENABLE_COBALT)
-  list(APPEND BASE_EXTRA_DEFINITIONS
-    STARBOARD_IMPLEMENTATION=1
-    COBALT_IMPLEMENTATION=1
-  )
-
-  target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
-    # TODO
-    ${COBALT_COMMON_DEFINES}
-  )
-endif(ENABLE_COBALT)
 
 target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
   # was #include "testing/gtest/include/gtest/gtest.h"
@@ -655,16 +580,11 @@ target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
 
 target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
   ${BASE_DEFINES}
-  #${WTF_EMCC_DEFINITIONS}
-  #${WTF_COMMON_DEFINITIONS}
   ${EXTRA_DEFINES}
-  # _HAS_ITERATOR_DEBUGGING=0 # https://github.com/blockspacer/skia-opengl-emscripten/blob/7c423190544c8da1bf8ae79b800c9c0c83dd3c6e/src/chromium/build/config/BUILD.gn#L164
   _USE_MATH_DEFINES=1 # https://stackoverflow.com/a/58379321
   BASE_IMPLEMENTATION=1
   BASE_I18N_IMPLEMENTATION=1
   ${BASE_EXTRA_DEFINITIONS}
-  # TODO
-  #${COBALT_COMMON_DEFINES}
 )
 
 if(TARGET_EMSCRIPTEN)

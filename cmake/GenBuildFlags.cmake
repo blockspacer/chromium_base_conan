@@ -77,10 +77,15 @@ if(NOT DEFINED USE_ALLOC_SHIM)
   message(FATAL_ERROR "define USE_ALLOC_SHIM")
 endif()
 #
-set(USE_ALLOCATOR_SHIM_FLAG "(0)")
+set(BUILDFLAG_INTERNAL_USE_ALLOCATOR_SHIM "(0)")
 if(USE_ALLOC_SHIM)
-  set(USE_ALLOCATOR_SHIM_FLAG "(1)")
+  set(BUILDFLAG_INTERNAL_USE_ALLOCATOR_SHIM "(1)")
 endif(USE_ALLOC_SHIM)
+set(BUILDFLAG_INTERNAL_USE_TCMALLOC "(0)")
+if(ALLOCATOR_TCMALLOC)
+  set(BUILDFLAG_INTERNAL_USE_TCMALLOC "(1)")
+endif(ALLOCATOR_TCMALLOC)
+set(BUILDFLAG_INTERNAL_USE_PARTITION_ALLOC_AS_MALLOC "(0)")
 #
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/allocator_buildflags.h.inc
@@ -105,6 +110,7 @@ if(ALLOCATOR_TCMALLOC)
   set(USE_PROFILING "(1)")
 endif(ALLOCATOR_TCMALLOC)
 set(CAN_UNWIND_WITH_FRAME_POINTERS "(0)")
+set(EXCLUDE_UNWIND_TABLES "(0)")
 if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
   set(CAN_UNWIND_WITH_FRAME_POINTERS "(1)")
 endif()
@@ -115,8 +121,10 @@ if(USE_ALLOC_SHIM AND cmake_build_type_tolower MATCHES "debug")
   set(ENABLE_MEMORY_TASK_PROFILER "(1)")
 endif()
 set(ENABLE_GDBINIT_WARNING "(0)")
+set(ENABLE_LLDBINIT_WARNING "(0)")
 if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
   set(ENABLE_GDBINIT_WARNING "(1)")
+  set(ENABLE_LLDBINIT_WARNING "(1)")
 endif()
 set(IS_UNSAFE_DEVELOPER_BUILD "(0)")
 if(TARGET_LINUX AND cmake_build_type_tolower MATCHES "debug")
@@ -130,15 +138,21 @@ if(cmake_build_type_tolower MATCHES "debug")
   set(ENABLE_LOG_ERROR_NOT_REACHED "(0)")
   set(EXPENSIVE_DCHECKS_ARE_ON "(1)")
 endif()
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tracing_buildflags.cmake)
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/chromeos_buildflags.h.inc
-  OUTPUT ${BASE_SOURCES_PATH}/build/chromeos_buildflags.h
+  OUTPUT ${EXTENSIONS_PATH}/build/chromeos_buildflags.h
   TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/chromeos_buildflags.tmp)
 
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/logging_buildflags.h.inc
   OUTPUT ${BASE_SOURCES_PATH}/logging_buildflags.h
   TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/logging_buildflags.tmp)
+
+configure_file_if_changed(
+  INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/tracing_buildflags.h.inc
+  OUTPUT ${BASE_SOURCES_PATH}/tracing_buildflags.h
+  TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/tracing_buildflags.tmp)
 
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/clang_profiling_buildflags.h.inc

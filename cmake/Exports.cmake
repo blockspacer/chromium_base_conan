@@ -21,9 +21,9 @@ install(
 # NOTE: preserve directory structure
 install(
   DIRECTORY
-    ${CMAKE_SOURCE_DIR}/cobalt/
+    ${CMAKE_SOURCE_DIR}/extensions/
   DESTINATION
-    ${CMAKE_INSTALL_INCLUDEDIR}/cobalt
+    ${CMAKE_INSTALL_INCLUDEDIR}/extensions
   FILES_MATCHING
     PATTERN "*")
 

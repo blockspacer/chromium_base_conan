@@ -92,5 +92,22 @@ list(APPEND COMPONENT_BASE_SOURCES_MAC_UNPROCESSED
   "threading/platform_thread_mac.mm"
 )
 
-list(TRANSFORM COMPONENT_BASE_SOURCES_MAC_UNPROCESSED PREPEND ${BASE_SOURCES_PATH})
+list(APPEND COMPONENT_BASE_SOURCES_MAC_UNPROCESSED
+  "files/file_path_watcher_fsevents.cc"
+  "files/file_path_watcher_fsevents.h"
+  "files/file_path_watcher_kqueue.cc"
+  "files/file_path_watcher_kqueue.h"
+  "mac/scoped_typeref.h"
+  "memory/platform_shared_memory_region_mac.cc"
+  "message_loop/message_pump_kqueue.cc"
+  "message_loop/message_pump_kqueue.h"
+  "power_monitor/power_monitor_device_source_mac.mm"
+  "power_monitor/thermal_state_observer_mac.h"
+  "power_monitor/thermal_state_observer_mac.mm"
+  "system/sys_info_mac.mm"
+  "time/time_conversion_posix.cc"
+  "time/time_exploded_posix.cc"
+  "time/time_mac.cc"
+)
+
 list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_MAC_UNPROCESSED})

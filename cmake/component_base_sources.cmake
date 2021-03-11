@@ -688,6 +688,16 @@ list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
   "vlog.h"
 )
 
+list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+  "hash/md5.h"
+  "hash/md5_constexpr.h"
+  "hash/md5_constexpr_internal.h"
+  "hash/sha1.h"
+  "hash/md5_boringssl.cc"
+  "hash/md5_boringssl.h"
+  "hash/sha1_boringssl.cc"
+)
+
 # if (!is_nacl)
 list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
   "base_paths.cc"
@@ -735,23 +745,257 @@ if(TARGET_EMSCRIPTEN OR TARGET_LINUX)
   )
 endif()
 
-list(TRANSFORM COMPONENT_BASE_SOURCES_UNPROCESSED PREPEND ${BASE_SOURCES_PATH})
+if (USE_LIBEVENT)
+  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+    "message_loop/message_pump_libevent.cc"
+    "message_loop/message_pump_libevent.h"
+  )
+endif()
+
+if (ENABLE_BASE_TRACING)
+  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+    "trace_event/auto_open_close_event.h"
+    "trace_event/blame_context.cc"
+    "trace_event/blame_context.h"
+    "trace_event/builtin_categories.cc"
+    "trace_event/builtin_categories.h"
+    "trace_event/category_registry.cc"
+    "trace_event/category_registry.h"
+    "trace_event/event_name_filter.cc"
+    "trace_event/event_name_filter.h"
+    "trace_event/heap_profiler.h"
+    "trace_event/heap_profiler_event_filter.cc"
+    "trace_event/heap_profiler_event_filter.h"
+    "trace_event/interned_args_helper.cc"
+    "trace_event/interned_args_helper.h"
+    "trace_event/log_message.cc"
+    "trace_event/log_message.h"
+    "trace_event/malloc_dump_provider.cc"
+    "trace_event/malloc_dump_provider.h"
+    "trace_event/memory_allocator_dump.cc"
+    "trace_event/memory_allocator_dump.h"
+    "trace_event/memory_dump_manager.cc"
+    "trace_event/memory_dump_manager.h"
+    "trace_event/memory_dump_manager_test_utils.h"
+    "trace_event/memory_dump_provider.h"
+    "trace_event/memory_dump_provider_info.cc"
+    "trace_event/memory_dump_provider_info.h"
+    "trace_event/memory_dump_request_args.cc"
+    "trace_event/memory_dump_request_args.h"
+    "trace_event/memory_dump_scheduler.cc"
+    "trace_event/memory_dump_scheduler.h"
+    "trace_event/memory_infra_background_allowlist.cc"
+    "trace_event/memory_infra_background_allowlist.h"
+    "trace_event/memory_usage_estimator.cc"
+    "trace_event/memory_usage_estimator.h"
+    "trace_event/optional_trace_event.h"
+    "trace_event/process_memory_dump.cc"
+    "trace_event/process_memory_dump.h"
+    "trace_event/task_execution_macros.h"
+    "trace_event/thread_instruction_count.cc"
+    "trace_event/thread_instruction_count.h"
+    "trace_event/trace_arguments.cc"
+    "trace_event/trace_arguments.h"
+    "trace_event/trace_buffer.cc"
+    "trace_event/trace_buffer.h"
+    "trace_event/trace_category.h"
+    "trace_event/trace_config.cc"
+    "trace_event/trace_config.h"
+    "trace_event/trace_config_category_filter.cc"
+    "trace_event/trace_config_category_filter.h"
+    "trace_event/trace_conversion_helper.h"
+    "trace_event/trace_event.h"
+    "trace_event/trace_event_filter.cc"
+    "trace_event/trace_event_filter.h"
+    "trace_event/trace_event_impl.cc"
+    "trace_event/trace_event_impl.h"
+    "trace_event/trace_event_memory_overhead.cc"
+    "trace_event/trace_event_memory_overhead.h"
+    "trace_event/trace_log.cc"
+    "trace_event/trace_log.h"
+    "trace_event/trace_log_constants.cc"
+    "trace_event/traced_value.cc"
+    "trace_event/traced_value.h"
+    "trace_event/traced_value_support.h"
+    "trace_event/tracing_agent.cc"
+    "trace_event/tracing_agent.h"
+    "trace_event/typed_macros.h"
+    "trace_event/typed_macros_embedder_support.h"
+    "trace_event/typed_macros_internal.cc"
+    "trace_event/typed_macros_internal.h"
+  )
+
+  if (TARGET_WINDOWS)
+    list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+      "trace_event/trace_event_etw_export_win.cc"
+      "trace_event/trace_event_etw_export_win.h"
+      "trace_event/trace_logging_minimal_win.cc"
+      "trace_event/trace_logging_minimal_win.h"
+    )
+  endif()
+
+  if (TARGET_ANDROID)
+    list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+      "trace_event/cpufreq_monitor_android.cc"
+      "trace_event/cpufreq_monitor_android.h"
+      "trace_event/java_heap_dump_provider_android.cc"
+      "trace_event/java_heap_dump_provider_android.h"
+      "trace_event/trace_event_android.cc"
+    )
+  endif()
+endif()
+
+# source_set("base_numerics")
+list(APPEND COMPONENT_BASE_NUMERICS_UNPROCESSED
+  "checked_math_impl.h"
+  "clamped_math_impl.h"
+  "safe_conversions_arm_impl.h"
+  "safe_conversions_impl.h"
+  "safe_math_arm_impl.h"
+  "safe_math_clang_gcc_impl.h"
+  "safe_math_shared_impl.h"
+)
+list(TRANSFORM COMPONENT_BASE_NUMERICS_UNPROCESSED PREPEND "numerics/")
+list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED ${COMPONENT_BASE_NUMERICS_UNPROCESSED})
+
+# TODO
+#if (!use_glib) {
+#  sources -= [
+#    "message_loop/message_pump_glib.cc"
+#    "message_loop/message_pump_glib.h"
+#  ]
+#}
+
+# TODO
+#if (is_fuchsia) {
+#     sources += [
+#       "files/dir_reader_posix_unittest.cc"
+#       "files/file_descriptor_watcher_posix_unittest.cc"
+#       "fuchsia/file_utils_unittest.cc"
+#       "fuchsia/filtered_service_directory_unittest.cc"
+#       "fuchsia/intl_profile_watcher_unittest.cc"
+#       "fuchsia/scoped_service_binding_unittest.cc"
+#       "fuchsia/scoped_service_publisher_unittest.cc"
+#       "fuchsia/service_directory_test_base.cc"
+#       "fuchsia/service_directory_test_base.h"
+#       "fuchsia/service_provider_impl_unittest.cc"
+#       "fuchsia/test_component_context_for_process_unittest.cc"
+#       "fuchsia/time_zone_data_unittest.cc"
+#       "message_loop/fd_watch_controller_posix_unittest.cc"
+#       "posix/file_descriptor_shuffle_unittest.cc"
+#       "task/thread_pool/task_tracker_posix_unittest.cc"
+#     ]
+#     # TODO(crbug.com/851641): FilePatchWatcherImpl is not implemented.
+#     sources -= [ "files/file_path_watcher_unittest.cc" ]
+#     deps += [
+#       ":test_interface_impl"
+#       ":test_log_listener_safe"
+#       ":testfidl"
+#       "//third_party/fuchsia-sdk/sdk/fidl/fuchsia.intl"
+#       "//third_party/fuchsia-sdk/sdk/fidl/fuchsia.logger"
+#       "//third_party/fuchsia-sdk/sdk/fidl/fuchsia.sys"
+#       "//third_party/fuchsia-sdk/sdk/pkg/async"
+#       "//third_party/fuchsia-sdk/sdk/pkg/async-default"
+#       "//third_party/fuchsia-sdk/sdk/pkg/fdio"
+#       "//third_party/fuchsia-sdk/sdk/pkg/sys_cpp"
+#     ]
+#     manifest = "fuchsia/base_unittests.test-cmx"
+#   }
+#
+# TODO
+# Chromeos.
+#if (is_chromeos_ash) {
+#  sources += [
+#    "logging_chromeos.cc"
+#    "power_monitor/power_monitor_device_source_chromeos.cc"
+#    "system/sys_info_chromeos.cc"
+#  ]
+#}
+## Lacros.
+#if (is_chromeos_lacros) {
+#  sources += [ "system/sys_info_chromeos.cc" ]
+#}
+## Fuchsia.
+#if (is_fuchsia) {
+#  sources += [
+#    "base_paths_fuchsia.cc"
+#    "base_paths_fuchsia.h"
+#    "debug/debugger_posix.cc"
+#    "debug/elf_reader.cc"
+#    "debug/elf_reader.h"
+#    "debug/stack_trace_fuchsia.cc"
+#    "file_descriptor_posix.h"
+#    "files/dir_reader_posix.h"
+#    "files/file_descriptor_watcher_posix.cc"
+#    "files/file_descriptor_watcher_posix.h"
+#    "files/file_enumerator_posix.cc"
+#    "files/file_path_watcher_fuchsia.cc"
+#    "files/file_posix.cc"
+#    "files/file_util_posix.cc"
+#    "files/memory_mapped_file_posix.cc"
+#    "fuchsia/default_job.cc"
+#    "fuchsia/default_job.h"
+#    "fuchsia/file_utils.cc"
+#    "fuchsia/file_utils.h"
+#    "fuchsia/filtered_service_directory.cc"
+#    "fuchsia/filtered_service_directory.h"
+#    "fuchsia/fuchsia_logging.cc"
+#    "fuchsia/fuchsia_logging.h"
+#    "fuchsia/intl_profile_watcher.cc"
+#    "fuchsia/intl_profile_watcher.h"
+#    "fuchsia/process_context.cc"
+#    "fuchsia/process_context.h"
+#    "fuchsia/scoped_fx_logger.cc"
+#    "fuchsia/scoped_fx_logger.h"
+#    "fuchsia/scoped_service_binding.h"
+#    "fuchsia/scoped_service_publisher.h"
+#    "fuchsia/service_provider_impl.cc"
+#    "fuchsia/service_provider_impl.h"
+#    "fuchsia/startup_context.cc"
+#    "fuchsia/startup_context.h"
+#    "memory/platform_shared_memory_region_fuchsia.cc"
+#    "message_loop/message_pump_fuchsia.cc"
+#    "message_loop/message_pump_fuchsia.h"
+#    "message_loop/watchable_io_message_pump_posix.cc"
+#    "message_loop/watchable_io_message_pump_posix.h"
+#    "native_library_fuchsia.cc"
+#    "posix/eintr_wrapper.h"
+#    "posix/file_descriptor_shuffle.cc"
+#    "posix/file_descriptor_shuffle.h"
+#    "posix/global_descriptors.cc"
+#    "posix/global_descriptors.h"
+#    "posix/safe_strerror.cc"
+#    "posix/safe_strerror.h"
+#    "process/kill_fuchsia.cc"
+#    "process/launch_fuchsia.cc"
+#    "process/memory_fuchsia.cc"
+#    "process/process_fuchsia.cc"
+#    "process/process_handle_fuchsia.cc"
+#    "process/process_iterator_fuchsia.cc"
+#    "process/process_metrics_fuchsia.cc"
+#    "process/process_metrics_posix.cc"
+#    "profiler/module_cache_posix.cc"
+#    "profiler/stack_sampler_posix.cc"
+#    "rand_util_fuchsia.cc"
+#    "strings/string_util_posix.h"
+#    "strings/sys_string_conversions_posix.cc"
+#    "sync_socket_posix.cc"
+#    "synchronization/condition_variable_posix.cc"
+#    "synchronization/lock_impl_posix.cc"
+#    "synchronization/waitable_event_posix.cc"
+#    "synchronization/waitable_event_watcher_posix.cc"
+#    "system/sys_info_fuchsia.cc"
+#    "task/thread_pool/task_tracker_posix.cc"
+#    "task/thread_pool/task_tracker_posix.h"
+#    "threading/platform_thread_fuchsia.cc"
+#    "threading/platform_thread_posix.cc"
+#    "threading/thread_local_storage_posix.cc"
+#    "time/time_conversion_posix.cc"
+#    "time/time_exploded_icu.cc"
+#    "time/time_fuchsia.cc"
+#    "timer/hi_res_timer_manager_posix.cc"
+#  ]
+
+# Filter resulting COMPONENT_BASE_SOURCES_UNPROCESSED...
+
 list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_UNPROCESSED})
-
-if(NOT BASE_USE_JSON)
-  filter_regex(
-    OUTPUT_VAR COMPONENT_BASE_SOURCES
-    IS_INCLUDE_REGEX FALSE
-    REGEX "json"
-    INPUT_ITEMS ${COMPONENT_BASE_SOURCES}
-  )
-endif()
-
-if(NOT TARGET_WINDOWS)
-  filter_regex(
-    OUTPUT_VAR COMPONENT_BASE_SOURCES
-    IS_INCLUDE_REGEX FALSE
-    REGEX "_msvc"
-    INPUT_ITEMS ${COMPONENT_BASE_SOURCES}
-  )
-endif()

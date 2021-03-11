@@ -247,7 +247,7 @@ target_link_libraries(${test_main_gtest} PUBLIC
 )
 
 target_compile_definitions( ${test_main_gtest} PUBLIC
-  "-DUSE_GTEST_TEST=1" )
+  USE_GTEST_TEST=1 )
 
 if(ENABLE_VALGRIND)
   # |base::TestSuite| tries to kill test process
@@ -282,7 +282,8 @@ target_link_libraries(${test_main_perftest} PUBLIC
 
 target_compile_definitions( ${test_main_perftest} PUBLIC
   USE_GTEST_TEST=1
-  GTEST_PERF_SUITE=1)
+  GTEST_PERF_SUITE=1
+  PERF_TEST=1)
 
 if(ENABLE_VALGRIND)
   # |base::TestSuite| tries to kill test process
@@ -556,10 +557,10 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-activity_analyzer_unittest
     "${BASE_SOURCES_PATH}debug/activity_analyzer_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  if(TARGET_LINUX)
+  if(TARGET_LINUX OR TARGET_ANDROID)
     tests_add_executable(${ROOT_PROJECT_NAME}-proc_maps_linux_unittest
       "${BASE_SOURCES_PATH}debug/proc_maps_linux_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
-  endif(TARGET_LINUX)
+  endif()
 
   tests_add_executable(${ROOT_PROJECT_NAME}-alias_unittest
     "${BASE_SOURCES_PATH}debug/alias_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -567,11 +568,15 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   tests_add_executable(${ROOT_PROJECT_NAME}-stack_trace_unittest
     "${BASE_SOURCES_PATH}debug/stack_trace_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  # FIXME
-  # This library is used by ElfReaderTest to test reading elf files.
-  #"MALLOC_WRAPPER_LIB=\"${shlib_prefix}malloc_wrapper${shlib_extension}\"",
-  #tests_add_executable(${ROOT_PROJECT_NAME}-elf_reader_unittest
-  #  "${BASE_SOURCES_PATH}debug/elf_reader_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  if(TARGET_LINUX OR TARGET_ANDROID)
+    # FIXME
+    # This library is used by ElfReaderTest to test reading elf files.
+    #"MALLOC_WRAPPER_LIB=\"${shlib_prefix}malloc_wrapper${shlib_extension}\"",
+    # tests_add_executable(${ROOT_PROJECT_NAME}-elf_reader_unittest
+    #   "${BASE_SOURCES_PATH}debug/elf_reader_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+    # tests_add_executable(${ROOT_PROJECT_NAME}-test_elf_image_builder
+    #   "${BASE_SOURCES_PATH}debug/test_elf_image_builder.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  endif()
 
   tests_add_executable(${ROOT_PROJECT_NAME}-activity_tracker_unittest
     "${BASE_SOURCES_PATH}debug/activity_tracker_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -1049,9 +1054,10 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   #tests_add_executable(${ROOT_PROJECT_NAME}-malloc_zone_functions_mac_unittest
   #  "${BASE_SOURCES_PATH}allocator/malloc_zone_functions_mac_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  # TODO
-  #tests_add_executable(${ROOT_PROJECT_NAME}-winheap_stubs_win_unittest
-  #  "${BASE_SOURCES_PATH}allocator/winheap_stubs_win_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  if(USE_ALLOC_SHIM AND TARGET_WINDOWS)
+    tests_add_executable(${ROOT_PROJECT_NAME}-winheap_stubs_win_unittest
+      "${BASE_SOURCES_PATH}allocator/winheap_stubs_win_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  endif()
 
   if(USE_ALLOC_SHIM)
     tests_add_executable(${ROOT_PROJECT_NAME}-allocator_shim_unittest
@@ -1083,6 +1089,9 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   if(USE_ALLOC_SHIM)
     tests_add_executable(${ROOT_PROJECT_NAME}-module_cache_unittest
       "${BASE_SOURCES_PATH}sampling_heap_profiler/module_cache_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+    tests_add_executable(${ROOT_PROJECT_NAME}-allocator_shim_default_dispatch_to_partition_alloc_unittest
+      "${BASE_SOURCES_PATH}allocator/allocator_shim_default_dispatch_to_partition_alloc_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
     tests_add_executable(${ROOT_PROJECT_NAME}-sampling_heap_profiler_unittest
       "${BASE_SOURCES_PATH}sampling_heap_profiler/sampling_heap_profiler_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
@@ -1450,11 +1459,18 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   #tests_add_executable(${ROOT_PROJECT_NAME}-file_descriptor_watcher_posix_unittest
   #  "${BASE_SOURCES_PATH}files/file_descriptor_watcher_posix_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
+  if (TARGET_WINDOWS)
+    tests_add_executable(${ROOT_PROJECT_NAME}-os_validation_win_unittest
+      "${BASE_SOURCES_PATH}files/os_validation_win_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  endif()
+
   tests_add_executable(${ROOT_PROJECT_NAME}-file_path_watcher_unittest
     "${BASE_SOURCES_PATH}files/file_path_watcher_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
 
-  tests_add_executable(${ROOT_PROJECT_NAME}-file_locking_unittest
-    "${BASE_SOURCES_PATH}files/file_locking_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  if (NOT TARGET_IOS)
+    tests_add_executable(${ROOT_PROJECT_NAME}-file_locking_unittest
+      "${BASE_SOURCES_PATH}files/file_locking_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  endif()
 
   # TODO
   #tests_add_executable(${ROOT_PROJECT_NAME}-dir_reader_posix_unittest

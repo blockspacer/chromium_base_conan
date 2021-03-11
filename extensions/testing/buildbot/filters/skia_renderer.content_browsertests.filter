@@ -1,0 +1,4 @@
+All/AuraWindowVideoCaptureDeviceBrowserTestP.*
+CaptureScreenshotTest.*
+SnapshotBrowserTest.*
+All/WebContentsVideoCaptureDeviceBrowserTestP.*

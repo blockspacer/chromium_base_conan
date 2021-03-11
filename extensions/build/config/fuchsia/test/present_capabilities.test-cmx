@@ -1,0 +1,14 @@
+{
+  "facets": {
+    "fuchsia.test": {
+      "system-services": [
+        "fuchsia.ui.policy.Presenter"
+      ]
+    }
+  },
+  "sandbox": {
+    "services": [
+      "fuchsia.ui.policy.Presenter"
+    ]
+  }
+}

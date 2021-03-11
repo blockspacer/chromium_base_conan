@@ -41,8 +41,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
     options = {
         "shared": [True, False],
         "debug": [True, False],
+        "enable_protoc_autoinstall": [True, False],
         "enable_sanitizers": [True, False],
-        "enable_cobalt": [True, False],
         "use_alloc_shim": [True, False],
         "use_deb_alloc": [True, False],
         "use_test_support": [True, False],
@@ -57,8 +57,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
     default_options = (
         "shared=False",
         "debug=False",
+        "enable_protoc_autoinstall=True",
         "enable_sanitizers=False",
-        "enable_cobalt=False",
         "enable_ubsan=False",
         "enable_asan=False",
         "enable_msan=False",
@@ -91,7 +91,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
                        "scripts/*", "tools/*", "codegen/*", "assets/*",
                        "docs/*", "licenses/*", "patches/*", "resources/*",
                        "submodules/*", "thirdparty/*", "third-party/*",
-                       "third_party/*", "base/*", "cobalt/*", "starboard/*")
+                       "third_party/*", "base/*", "extensions/*", "starboard/*")
 
     settings = "os", "compiler", "build_type", "arch"
 
@@ -231,9 +231,14 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.requires("chromium_modp_b64/master@conan/stable", private=False)
         self.requires("chromium_compact_enc_det/master@conan/stable")
 
-        if self.options.enable_cobalt:
-          self.requires("cobalt_starboard_headers_only/master@conan/stable")
-          self.requires("cobalt_starboard/master@conan/stable")
+        if self.options.enable_protoc_autoinstall:
+            # TODO: https://github.com/gaeus/conan-grpc
+            #self.requires("protobuf/3.6.1@bincrafters/stable")
+            #self.requires("grpc_conan/v1.26.x@conan/stable")
+            #self.requires("openssl/OpenSSL_1_1_1-stable@conan/stable")
+            #self.requires("zlib/v1.2.11@conan/stable")
+            #self.requires("c-ares/cares-1_15_0@conan/stable")
+            self.requires("protobuf/v3.9.1@conan/stable")
 
     def _configure_cmake(self):
         cmake = CMake(self)
@@ -242,6 +247,9 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         if self.options.shared:
             cmake.definitions["BUILD_SHARED_LIBS"] = "ON"
+
+        cmake.definitions["protobuf_VERBOSE"] = True
+        cmake.definitions["protobuf_MODULE_COMPATIBLE"] = True
 
         cmake.definitions["ENABLE_VALGRIND"] = 'ON'
         if not self.options.enable_valgrind:
@@ -266,8 +274,6 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.add_cmake_option(cmake, "ENABLE_TESTS", self._is_tests_enabled())
 
         self.add_cmake_option(cmake, "ENABLE_SANITIZERS", self.options.enable_sanitizers)
-
-        self.add_cmake_option(cmake, "ENABLE_COBALT", self.options.enable_cobalt)
 
         self.add_cmake_option(cmake, "ENABLE_WEB_PTHREADS", self.options.enable_web_pthreads)
 

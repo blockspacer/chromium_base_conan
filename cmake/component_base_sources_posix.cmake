@@ -80,5 +80,29 @@ if(NOT TARGET_EMSCRIPTEN)
   )
 endif()
 
-list(TRANSFORM COMPONENT_BASE_SOURCES_POSIX_UNPROCESSED PREPEND ${BASE_SOURCES_PATH})
+if(NOT TARGET_ANDROID AND NOT TARGET_MACOS)
+  list(APPEND COMPONENT_BASE_SOURCES_POSIX_UNPROCESSED
+    "memory/platform_shared_memory_region_posix.cc"
+  )
+endif()
+
+if(NOT TARGET_APPLE)
+  list(APPEND COMPONENT_BASE_SOURCES_POSIX_UNPROCESSED
+    "time/time_conversion_posix.cc"
+    "time/time_exploded_posix.cc"
+    "time/time_now_posix.cc"
+  )
+  # if (is_posix && !is_apple && !is_nacl)
+  list(APPEND COMPONENT_BASE_SOURCES_POSIX_UNPROCESSED
+    "posix/can_lower_nice_to.cc"
+    "posix/can_lower_nice_to.h"
+  )
+endif()
+
+if(NOT TARGET_ANDROID AND NOT TARGET_APPLE)
+  list(APPEND COMPONENT_BASE_SOURCES_POSIX_UNPROCESSED
+    "power_monitor/power_monitor_device_source_stub.cc"
+  )
+endif()
+
 list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_POSIX_UNPROCESSED})

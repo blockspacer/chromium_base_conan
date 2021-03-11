@@ -79,6 +79,8 @@ gn gen out/config --args='is_debug=false is_official_build=true' --ide=json
 
 Parse json to generate cmake vars, see as example https://github.com/google/skia/blob/375e1f6a6486a1e423f61d221bc39d81a2aaf6a0/gn/gn_to_cmake.py
 
+See `extensions/README.md`
+
 ## EXTRA FEATURES
 
 - ported to CMake

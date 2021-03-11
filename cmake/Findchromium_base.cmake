@@ -13,8 +13,6 @@ find_package(chromium_xdg_mime QUIET)
 find_package(chromium_libevent QUIET)
 find_package(chromium_modp_b64 QUIET)
 find_package(chromium_compact_enc_det QUIET)
-find_package(cobalt_starboard_headers_only QUIET)
-find_package(cobalt_starboard QUIET)
 find_package(Threads QUIET)
 
 # see use_test_support option in base
