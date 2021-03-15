@@ -1,0 +1,2281 @@
+
+Å
+)protos/perfetto/trace/ftrace/binder.protoperfetto.protos"–
+BinderTransactionFtraceEvent
+debug_id (RdebugId
+target_node (R
+targetNode
+to_proc (RtoProc
+	to_thread (RtoThread
+reply (Rreply
+code (Rcode
+flags (Rflags"A
+$BinderTransactionReceivedFtraceEvent
+debug_id (RdebugId"£
+BinderSetPriorityFtraceEvent
+proc (Rproc
+thread (Rthread
+old_prio (RoldPrio
+new_prio (RnewPrio!
+desired_prio (RdesiredPrio")
+BinderLockFtraceEvent
+tag (	Rtag"+
+BinderLockedFtraceEvent
+tag (	Rtag"+
+BinderUnlockFtraceEvent
+tag (	Rtag"Å
+$BinderTransactionAllocBufFtraceEvent
+	data_size (RdataSize
+debug_id (RdebugId!
+offsets_size (RoffsetsSize
+ï
+(protos/perfetto/trace/ftrace/block.protoperfetto.protos"∞
+BlockRqIssueFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+bytes (Rbytes
+rwbs (	Rrwbs
+comm (	Rcomm
+cmd (	Rcmd"ç
+BlockBioBackmergeFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+rwbs (	Rrwbs
+comm (	Rcomm"ä
+BlockBioBounceFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+rwbs (	Rrwbs
+comm (	Rcomm"é
+BlockBioCompleteFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+error (Rerror
+rwbs (	Rrwbs"é
+BlockBioFrontmergeFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+rwbs (	Rrwbs
+comm (	Rcomm"â
+BlockBioQueueFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+rwbs (	Rrwbs
+comm (	Rcomm"≠
+BlockBioRemapFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+old_dev (RoldDev
+
+old_sector (R	oldSector
+rwbs (	Rrwbs"[
+BlockDirtyBufferFtraceEvent
+dev (Rdev
+sector (Rsector
+size (Rsize"Ü
+BlockGetrqFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+rwbs (	Rrwbs
+comm (	Rcomm"*
+BlockPlugFtraceEvent
+comm (	Rcomm"û
+BlockRqAbortFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+errors (Rerrors
+rwbs (	Rrwbs
+cmd (	Rcmd"°
+BlockRqCompleteFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+errors (Rerrors
+rwbs (	Rrwbs
+cmd (	Rcmd"±
+BlockRqInsertFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+bytes (Rbytes
+rwbs (	Rrwbs
+comm (	Rcomm
+cmd (	Rcmd"≈
+BlockRqRemapFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+old_dev (RoldDev
+
+old_sector (R	oldSector
+nr_bios (RnrBios
+rwbs (	Rrwbs"†
+BlockRqRequeueFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+errors (Rerrors
+rwbs (	Rrwbs
+cmd (	Rcmd"à
+BlockSleeprqFtraceEvent
+dev (Rdev
+sector (Rsector
+	nr_sector (RnrSector
+rwbs (	Rrwbs
+comm (	Rcomm"à
+BlockSplitFtraceEvent
+dev (Rdev
+sector (Rsector
+
+new_sector (R	newSector
+rwbs (	Rrwbs
+comm (	Rcomm"[
+BlockTouchBufferFtraceEvent
+dev (Rdev
+sector (Rsector
+size (Rsize"A
+BlockUnplugFtraceEvent
+nr_rq (RnrRq
+comm (	Rcomm
+À
+)protos/perfetto/trace/ftrace/cgroup.protoperfetto.protos"ã
+CgroupAttachTaskFtraceEvent
+dst_root (RdstRoot
+dst_id (RdstId
+pid (Rpid
+comm (	Rcomm
+cname (	Rcname"R
+CgroupMkdirFtraceEvent
+root (Rroot
+id (Rid
+cname (	Rcname"[
+CgroupRemountFtraceEvent
+root (Rroot
+ss_mask (RssMask
+name (	Rname"R
+CgroupRmdirFtraceEvent
+root (Rroot
+id (Rid
+cname (	Rcname"é
+CgroupTransferTasksFtraceEvent
+dst_root (RdstRoot
+dst_id (RdstId
+pid (Rpid
+comm (	Rcomm
+cname (	Rcname"_
+CgroupDestroyRootFtraceEvent
+root (Rroot
+ss_mask (RssMask
+name (	Rname"T
+CgroupReleaseFtraceEvent
+root (Rroot
+id (Rid
+cname (	Rcname"S
+CgroupRenameFtraceEvent
+root (Rroot
+id (Rid
+cname (	Rcname"]
+CgroupSetupRootFtraceEvent
+root (Rroot
+ss_mask (RssMask
+name (	Rname
+”
+&protos/perfetto/trace/ftrace/clk.protoperfetto.protos"*
+ClkEnableFtraceEvent
+name (	Rname"+
+ClkDisableFtraceEvent
+name (	Rname"?
+ClkSetRateFtraceEvent
+name (	Rname
+rate (Rrate
+ë
+-protos/perfetto/trace/ftrace/compaction.protoperfetto.protos"®
+MmCompactionBeginFtraceEvent
+
+zone_start (R	zoneStart
+migrate_pfn (R
+migratePfn
+free_pfn (RfreePfn
+zone_end (RzoneEnd
+sync (Rsync"∆
+&MmCompactionDeferCompactionFtraceEvent
+nid (Rnid
+idx (Ridx
+order (Rorder
+
+considered (R
+considered
+defer_shift (R
+deferShift!
+order_failed (RorderFailed"ø
+MmCompactionDeferredFtraceEvent
+nid (Rnid
+idx (Ridx
+order (Rorder
+
+considered (R
+considered
+defer_shift (R
+deferShift!
+order_failed (RorderFailed"¡
+!MmCompactionDeferResetFtraceEvent
+nid (Rnid
+idx (Ridx
+order (Rorder
+
+considered (R
+considered
+defer_shift (R
+deferShift!
+order_failed (RorderFailed"æ
+MmCompactionEndFtraceEvent
+
+zone_start (R	zoneStart
+migrate_pfn (R
+migratePfn
+free_pfn (RfreePfn
+zone_end (RzoneEnd
+sync (Rsync
+status (Rstatus"m
+MmCompactionFinishedFtraceEvent
+nid (Rnid
+idx (Ridx
+order (Rorder
+ret (Rret"ô
+'MmCompactionIsolateFreepagesFtraceEvent
+	start_pfn (RstartPfn
+end_pfn (RendPfn
+
+nr_scanned (R	nrScanned
+nr_taken (RnrTaken"ú
+*MmCompactionIsolateMigratepagesFtraceEvent
+	start_pfn (RstartPfn
+end_pfn (RendPfn
+
+nr_scanned (R	nrScanned
+nr_taken (RnrTaken"9
+%MmCompactionKcompactdSleepFtraceEvent
+nid (Rnid"s
+$MmCompactionKcompactdWakeFtraceEvent
+nid (Rnid
+order (Rorder#
+classzone_idx (RclasszoneIdx"c
+#MmCompactionMigratepagesFtraceEvent
+nr_migrated (R
+nrMigrated
+	nr_failed (RnrFailed"m
+MmCompactionSuitableFtraceEvent
+nid (Rnid
+idx (Ridx
+order (Rorder
+ret (Rret"o
+(MmCompactionTryToCompactPagesFtraceEvent
+order (Rorder
+gfp_mask (RgfpMask
+mode (Rmode"u
+&MmCompactionWakeupKcompactdFtraceEvent
+nid (Rnid
+order (Rorder#
+classzone_idx (RclasszoneIdx
+€
+(protos/perfetto/trace/ftrace/cpuhp.protoperfetto.protos"b
+CpuhpExitFtraceEvent
+cpu (Rcpu
+idx (Ridx
+ret (Rret
+state (Rstate"j
+CpuhpMultiEnterFtraceEvent
+cpu (Rcpu
+fun (Rfun
+idx (Ridx
+target (Rtarget"e
+CpuhpEnterFtraceEvent
+cpu (Rcpu
+fun (Rfun
+idx (Ridx
+target (Rtarget"g
+CpuhpLatencyFtraceEvent
+cpu (Rcpu
+ret (Rret
+state (Rstate
+time (Rtime
+Ï
+&protos/perfetto/trace/ftrace/dpu.protoperfetto.protos"∞
+DpuTracingMarkWriteFtraceEvent
+pid (Rpid
+
+trace_name (	R	traceName
+trace_begin (R
+traceBegin
+name (	Rname
+type (Rtype
+value (Rvalue
+πm
+'protos/perfetto/trace/ftrace/ext4.protoperfetto.protos"{
+Ext4DaWriteBeginFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+flags (Rflags"{
+Ext4DaWriteEndFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+copied (Rcopied"v
+Ext4SyncFileEnterFtraceEvent
+dev (Rdev
+ino (Rino
+parent (Rparent
+datasync (Rdatasync"S
+Ext4SyncFileExitFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"Ñ
+Ext4AllocDaBlocksFtraceEvent
+dev (Rdev
+ino (Rino
+data_blocks (R
+dataBlocks
+meta_blocks (R
+metaBlocks"ã
+Ext4AllocateBlocksFtraceEvent
+dev (Rdev
+ino (Rino
+block (Rblock
+len (Rlen
+logical (Rlogical
+lleft (Rlleft
+lright (Rlright
+goal (Rgoal
+pleft	 (Rpleft
+pright
+ (Rpright
+flags (Rflags"h
+Ext4AllocateInodeFtraceEvent
+dev (Rdev
+ino (Rino
+dir (Rdir
+mode (Rmode"d
+#Ext4BeginOrderedTruncateFtraceEvent
+dev (Rdev
+ino (Rino
+new_size (RnewSize"l
+Ext4CollapseRangeFtraceEvent
+dev (Rdev
+ino (Rino
+offset (Roffset
+len (Rlen"≠
+Ext4DaReleaseSpaceFtraceEvent
+dev (Rdev
+ino (Rino
+i_blocks (RiBlocks!
+freed_blocks (RfreedBlocks0
+reserved_data_blocks (RreservedDataBlocks0
+reserved_meta_blocks (RreservedMetaBlocks2
+allocated_meta_blocks (RallocatedMetaBlocks
+mode (Rmode"Û
+Ext4DaReserveSpaceFtraceEvent
+dev (Rdev
+ino (Rino
+i_blocks (RiBlocks0
+reserved_data_blocks (RreservedDataBlocks0
+reserved_meta_blocks (RreservedMetaBlocks
+mode (Rmode
+	md_needed (RmdNeeded"“
+#Ext4DaUpdateReserveSpaceFtraceEvent
+dev (Rdev
+ino (Rino
+i_blocks (RiBlocks
+used_blocks (R
+usedBlocks0
+reserved_data_blocks (RreservedDataBlocks0
+reserved_meta_blocks (RreservedMetaBlocks2
+allocated_meta_blocks (RallocatedMetaBlocks
+quota_claim (R
+quotaClaim
+mode	 (Rmode"®
+Ext4DaWritePagesFtraceEvent
+dev (Rdev
+ino (Rino
+
+first_page (R	firstPage
+nr_to_write (R	nrToWrite
+	sync_mode (RsyncMode
+	b_blocknr (RbBlocknr
+b_size (RbSize
+b_state (RbState
+io_done	 (RioDone#
+pages_written
+ (RpagesWritten"É
+!Ext4DaWritePagesExtentFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+flags (Rflags"v
+Ext4DirectIOEnterFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+rw (Rrw"á
+Ext4DirectIOExitFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+rw (Rrw
+ret (Rret"X
+Ext4DiscardBlocksFtraceEvent
+dev (Rdev
+blk (Rblk
+count (Rcount"J
+$Ext4DiscardPreallocationsFtraceEvent
+dev (Rdev
+ino (Rino"R
+Ext4DropInodeFtraceEvent
+dev (Rdev
+ino (Rino
+drop (Rdrop"î
+Ext4EsCacheExtentFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+pblk (Rpblk
+status (Rstatus"f
+,Ext4EsFindDelayedExtentRangeEnterFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk"£
++Ext4EsFindDelayedExtentRangeExitFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+pblk (Rpblk
+status (Rstatus"ï
+Ext4EsInsertExtentFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+pblk (Rpblk
+status (Rstatus"\
+"Ext4EsLookupExtentEnterFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk"Ø
+!Ext4EsLookupExtentExitFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+pblk (Rpblk
+status (Rstatus
+found (Rfound"i
+Ext4EsRemoveExtentFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen"û
+Ext4EsShrinkFtraceEvent
+dev (Rdev
+	nr_shrunk (RnrShrunk
+	scan_time (RscanTime
+
+nr_skipped (R	nrSkipped
+retried (Rretried"k
+Ext4EsShrinkCountFtraceEvent
+dev (Rdev
+
+nr_to_scan (RnrToScan
+	cache_cnt (RcacheCnt"o
+ Ext4EsShrinkScanEnterFtraceEvent
+dev (Rdev
+
+nr_to_scan (RnrToScan
+	cache_cnt (RcacheCnt"m
+Ext4EsShrinkScanExitFtraceEvent
+dev (Rdev
+	nr_shrunk (RnrShrunk
+	cache_cnt (RcacheCnt"U
+Ext4EvictInodeFtraceEvent
+dev (Rdev
+ino (Rino
+nlink (Rnlink"¿
++Ext4ExtConvertToInitializedEnterFtraceEvent
+dev (Rdev
+ino (Rino
+m_lblk (RmLblk
+m_len (RmLen
+u_lblk (RuLblk
+u_len (RuLen
+u_pblk (RuPblk"Ü
+.Ext4ExtConvertToInitializedFastpathFtraceEvent
+dev (Rdev
+ino (Rino
+m_lblk (RmLblk
+m_len (RmLen
+u_lblk (RuLblk
+u_len (RuLen
+u_pblk (RuPblk
+i_lblk (RiLblk
+i_len	 (RiLen
+i_pblk
+ (RiPblk"‘
+(Ext4ExtHandleUnwrittenExtentsFtraceEvent
+dev (Rdev
+ino (Rino
+flags (Rflags
+lblk (Rlblk
+pblk (Rpblk
+len (Rlen
+	allocated (R	allocated
+newblk (Rnewblk"e
+Ext4ExtInCacheFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+ret (Rret"j
+Ext4ExtLoadExtentFtraceEvent
+dev (Rdev
+ino (Rino
+pblk (Rpblk
+lblk (Rlblk"Ç
+ Ext4ExtMapBlocksEnterFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+flags (Rflags"ø
+Ext4ExtMapBlocksExitFtraceEvent
+dev (Rdev
+ino (Rino
+flags (Rflags
+pblk (Rpblk
+lblk (Rlblk
+len (Rlen
+mflags (Rmflags
+ret (Rret"~
+Ext4ExtPutInCacheFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+start (Rstart"Å
+Ext4ExtRemoveSpaceFtraceEvent
+dev (Rdev
+ino (Rino
+start (Rstart
+end (Rend
+depth (Rdepth"æ
+!Ext4ExtRemoveSpaceDoneFtraceEvent
+dev (Rdev
+ino (Rino
+start (Rstart
+end (Rend
+depth (Rdepth
+partial (Rpartial
+
+eh_entries (R	ehEntries"Q
+Ext4ExtRmIdxFtraceEvent
+dev (Rdev
+ino (Rino
+pblk (Rpblk"∑
+Ext4ExtRmLeafFtraceEvent
+dev (Rdev
+ino (Rino
+partial (Rpartial
+start (Rstart
+ee_lblk (ReeLblk
+ee_pblk (ReePblk
+ee_len (ReeLen"|
+Ext4ExtShowExtentFtraceEvent
+dev (Rdev
+ino (Rino
+pblk (Rpblk
+lblk (Rlblk
+len (Rlen"ì
+Ext4FallocateEnterFtraceEvent
+dev (Rdev
+ino (Rino
+offset (Roffset
+len (Rlen
+mode (Rmode
+pos (Rpos"~
+Ext4FallocateExitFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+blocks (Rblocks
+ret (Rret"∑
+ Ext4FindDelallocRangeFtraceEvent
+dev (Rdev
+ino (Rino
+from (Rfrom
+to (Rto
+reverse (Rreverse
+found (Rfound
+	found_blk (RfoundBlk"Ü
+Ext4ForgetFtraceEvent
+dev (Rdev
+ino (Rino
+block (Rblock
+is_metadata (R
+isMetadata
+mode (Rmode"ï
+Ext4FreeBlocksFtraceEvent
+dev (Rdev
+ino (Rino
+block (Rblock
+count (Rcount
+flags (Rflags
+mode (Rmode"é
+Ext4FreeInodeFtraceEvent
+dev (Rdev
+ino (Rino
+uid (Ruid
+gid (Rgid
+blocks (Rblocks
+mode (Rmode"ü
+)Ext4GetImpliedClusterAllocExitFtraceEvent
+dev (Rdev
+flags (Rflags
+lblk (Rlblk
+pblk (Rpblk
+len (Rlen
+ret (Rret"r
+&Ext4GetReservedClusterAllocFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen"Ç
+ Ext4IndMapBlocksEnterFtraceEvent
+dev (Rdev
+ino (Rino
+lblk (Rlblk
+len (Rlen
+flags (Rflags"ø
+Ext4IndMapBlocksExitFtraceEvent
+dev (Rdev
+ino (Rino
+flags (Rflags
+pblk (Rpblk
+lblk (Rlblk
+len (Rlen
+mflags (Rmflags
+ret (Rret"j
+Ext4InsertRangeFtraceEvent
+dev (Rdev
+ino (Rino
+offset (Roffset
+len (Rlen"â
+Ext4InvalidatepageFtraceEvent
+dev (Rdev
+ino (Rino
+index (Rindex
+offset (Roffset
+length (Rlength"ê
+Ext4JournalStartFtraceEvent
+dev (Rdev
+ip (Rip
+blocks (Rblocks
+
+rsv_blocks (R	rsvBlocks
+nblocks (Rnblocks"_
+#Ext4JournalStartReservedFtraceEvent
+dev (Rdev
+ip (Rip
+blocks (Rblocks"ì
+'Ext4JournalledInvalidatepageFtraceEvent
+dev (Rdev
+ino (Rino
+index (Rindex
+offset (Roffset
+length (Rlength"É
+!Ext4JournalledWriteEndFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+copied (Rcopied">
+Ext4LoadInodeFtraceEvent
+dev (Rdev
+ino (Rino"H
+Ext4LoadInodeBitmapFtraceEvent
+dev (Rdev
+group (Rgroup"S
+Ext4MarkInodeDirtyFtraceEvent
+dev (Rdev
+ino (Rino
+ip (Rip"E
+Ext4MbBitmapLoadFtraceEvent
+dev (Rdev
+group (Rgroup"J
+ Ext4MbBuddyBitmapLoadFtraceEvent
+dev (Rdev
+group (Rgroup"R
+&Ext4MbDiscardPreallocationsFtraceEvent
+dev (Rdev
+needed (Rneeded"í
+Ext4MbNewGroupPaFtraceEvent
+dev (Rdev
+ino (Rino
+	pa_pstart (RpaPstart
+	pa_lstart (RpaLstart
+pa_len (RpaLen"í
+Ext4MbNewInodePaFtraceEvent
+dev (Rdev
+ino (Rino
+	pa_pstart (RpaPstart
+	pa_lstart (RpaLstart
+pa_len (RpaLen"g
+Ext4MbReleaseGroupPaFtraceEvent
+dev (Rdev
+	pa_pstart (RpaPstart
+pa_len (RpaLen"q
+Ext4MbReleaseInodePaFtraceEvent
+dev (Rdev
+ino (Rino
+block (Rblock
+count (Rcount"√
+Ext4MballocAllocFtraceEvent
+dev (Rdev
+ino (Rino!
+orig_logical (RorigLogical
+
+orig_start (R	origStart
+
+orig_group (R	origGroup
+orig_len (RorigLen!
+goal_logical (RgoalLogical
+
+goal_start (R	goalStart
+
+goal_group	 (R	goalGroup
+goal_len
+ (RgoalLen%
+result_logical (RresultLogical!
+result_start (RresultStart!
+result_group (RresultGroup
+
+result_len (R	resultLen
+found (Rfound
+groups (Rgroups
+buddy (Rbuddy
+flags (Rflags
+tail (Rtail
+cr (Rcr"®
+Ext4MballocDiscardFtraceEvent
+dev (Rdev
+ino (Rino!
+result_start (RresultStart!
+result_group (RresultGroup
+
+result_len (R	resultLen"•
+Ext4MballocFreeFtraceEvent
+dev (Rdev
+ino (Rino!
+result_start (RresultStart!
+result_group (RresultGroup
+
+result_len (R	resultLen"Ã
+Ext4MballocPreallocFtraceEvent
+dev (Rdev
+ino (Rino!
+orig_logical (RorigLogical
+
+orig_start (R	origStart
+
+orig_group (R	origGroup
+orig_len (RorigLen%
+result_logical (RresultLogical!
+result_start (RresultStart!
+result_group	 (RresultGroup
+
+result_len
+ (R	resultLen"ú
+#Ext4OtherInodeUpdateTimeFtraceEvent
+dev (Rdev
+ino (Rino
+orig_ino (RorigIno
+uid (Ruid
+gid (Rgid
+mode (Rmode"|
+Ext4PunchHoleFtraceEvent
+dev (Rdev
+ino (Rino
+offset (Roffset
+len (Rlen
+mode (Rmode"L
+"Ext4ReadBlockBitmapLoadFtraceEvent
+dev (Rdev
+group (Rgroup"S
+Ext4ReadpageFtraceEvent
+dev (Rdev
+ino (Rino
+index (Rindex"V
+Ext4ReleasepageFtraceEvent
+dev (Rdev
+ino (Rino
+index (Rindex"»
+Ext4RemoveBlocksFtraceEvent
+dev (Rdev
+ino (Rino
+from (Rfrom
+to (Rto
+partial (Rpartial
+ee_pblk (ReePblk
+ee_lblk (ReeLblk
+ee_len (ReeLen"Ù
+Ext4RequestBlocksFtraceEvent
+dev (Rdev
+ino (Rino
+len (Rlen
+logical (Rlogical
+lleft (Rlleft
+lright (Rlright
+goal (Rgoal
+pleft (Rpleft
+pright	 (Rpright
+flags
+ (Rflags"U
+Ext4RequestInodeFtraceEvent
+dev (Rdev
+dir (Rdir
+mode (Rmode"=
+Ext4SyncFsFtraceEvent
+dev (Rdev
+wait (Rwait"î
+Ext4TrimAllFreeFtraceEvent
+	dev_major (RdevMajor
+	dev_minor (RdevMinor
+group (Rgroup
+start (Rstart
+len (Rlen"ì
+Ext4TrimExtentFtraceEvent
+	dev_major (RdevMajor
+	dev_minor (RdevMinor
+group (Rgroup
+start (Rstart
+len (Rlen"Z
+Ext4TruncateEnterFtraceEvent
+dev (Rdev
+ino (Rino
+blocks (Rblocks"Y
+Ext4TruncateExitFtraceEvent
+dev (Rdev
+ino (Rino
+blocks (Rblocks"l
+Ext4UnlinkEnterFtraceEvent
+dev (Rdev
+ino (Rino
+parent (Rparent
+size (Rsize"Q
+Ext4UnlinkExitFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"y
+Ext4WriteBeginFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+flags (Rflags"y
+Ext4WriteEndFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+copied (Rcopied"T
+Ext4WritepageFtraceEvent
+dev (Rdev
+ino (Rino
+index (Rindex"Ã
+Ext4WritepagesFtraceEvent
+dev (Rdev
+ino (Rino
+nr_to_write (R	nrToWrite#
+pages_skipped (RpagesSkipped
+range_start (R
+rangeStart
+	range_end (RrangeEnd'
+writeback_index (RwritebackIndex
+	sync_mode (RsyncMode
+for_kupdate	 (R
+forKupdate!
+range_cyclic
+ (RrangeCyclic"Á
+Ext4WritepagesResultFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret#
+pages_written (RpagesWritten#
+pages_skipped (RpagesSkipped'
+writeback_index (RwritebackIndex
+	sync_mode (RsyncMode"|
+Ext4ZeroRangeFtraceEvent
+dev (Rdev
+ino (Rino
+offset (Roffset
+len (Rlen
+mode (Rmode
+±!
+'protos/perfetto/trace/ftrace/f2fs.protoperfetto.protos"Ñ
+F2fsDoSubmitBioFtraceEvent
+dev (Rdev
+btype (Rbtype
+sync (Rsync
+sector (Rsector
+size (Rsize"¡
+F2fsEvictInodeFtraceEvent
+dev (Rdev
+ino (Rino
+pino (Rpino
+mode (Rmode
+size (Rsize
+nlink (Rnlink
+blocks (Rblocks
+advise (Radvise"∫
+F2fsFallocateFtraceEvent
+dev (Rdev
+ino (Rino
+mode (Rmode
+offset (Roffset
+len (Rlen
+size (Rsize
+blocks (Rblocks
+ret (Rret"ü
+F2fsGetDataBlockFtraceEvent
+dev (Rdev
+ino (Rino
+iblock (Riblock
+bh_start (RbhStart
+bh_size (RbhSize
+ret (Rret"ë
+F2fsGetVictimFtraceEvent
+dev (Rdev
+type (Rtype
+gc_type (RgcType
+
+alloc_mode (R	allocMode
+gc_mode (RgcMode
+victim (Rvictim
+ofs_unit (RofsUnit
+
+pre_victim (R	preVictim
+prefree	 (Rprefree
+free
+ (Rfree"ª
+F2fsIgetFtraceEvent
+dev (Rdev
+ino (Rino
+pino (Rpino
+mode (Rmode
+size (Rsize
+nlink (Rnlink
+blocks (Rblocks
+advise (Radvise"O
+F2fsIgetExitFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"O
+F2fsNewInodeFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"Å
+F2fsReadpageFtraceEvent
+dev (Rdev
+ino (Rino
+index (Rindex
+blkaddr (Rblkaddr
+type (Rtype"d
+F2fsReserveNewBlockFtraceEvent
+dev (Rdev
+nid (Rnid
+ofs_in_node (R	ofsInNode"ì
+F2fsSetPageDirtyFtraceEvent
+dev (Rdev
+ino (Rino
+type (Rtype
+dir (Rdir
+index (Rindex
+dirty (Rdirty"Ñ
+F2fsSubmitWritePageFtraceEvent
+dev (Rdev
+ino (Rino
+type (Rtype
+index (Rindex
+block (Rblock"ƒ
+F2fsSyncFileEnterFtraceEvent
+dev (Rdev
+ino (Rino
+pino (Rpino
+mode (Rmode
+size (Rsize
+nlink (Rnlink
+blocks (Rblocks
+advise (Radvise"à
+F2fsSyncFileExitFtraceEvent
+dev (Rdev
+ino (Rino
+need_cp (RneedCp
+datasync (Rdatasync
+ret (Rret"S
+F2fsSyncFsFtraceEvent
+dev (Rdev
+dirty (Rdirty
+wait (Rwait"ø
+F2fsTruncateFtraceEvent
+dev (Rdev
+ino (Rino
+pino (Rpino
+mode (Rmode
+size (Rsize
+nlink (Rnlink
+blocks (Rblocks
+advise (Radvise"à
+"F2fsTruncateBlocksEnterFtraceEvent
+dev (Rdev
+ino (Rino
+size (Rsize
+blocks (Rblocks
+from (Rfrom"Y
+!F2fsTruncateBlocksExitFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"Ñ
+&F2fsTruncateDataBlocksRangeFtraceEvent
+dev (Rdev
+ino (Rino
+nid (Rnid
+ofs (Rofs
+free (Rfree"ç
+'F2fsTruncateInodeBlocksEnterFtraceEvent
+dev (Rdev
+ino (Rino
+size (Rsize
+blocks (Rblocks
+from (Rfrom"^
+&F2fsTruncateInodeBlocksExitFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"n
+F2fsTruncateNodeFtraceEvent
+dev (Rdev
+ino (Rino
+nid (Rnid
+blk_addr (RblkAddr"t
+!F2fsTruncateNodesEnterFtraceEvent
+dev (Rdev
+ino (Rino
+nid (Rnid
+blk_addr (RblkAddr"X
+ F2fsTruncateNodesExitFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"É
+#F2fsTruncatePartialNodesFtraceEvent
+dev (Rdev
+ino (Rino
+nid (Rnid
+depth (Rdepth
+err (Rerr"Ä
+F2fsUnlinkEnterFtraceEvent
+dev (Rdev
+ino (Rino
+size (Rsize
+blocks (Rblocks
+name (	Rname"Q
+F2fsUnlinkExitFtraceEvent
+dev (Rdev
+ino (Rino
+ret (Rret"î
+F2fsVmPageMkwriteFtraceEvent
+dev (Rdev
+ino (Rino
+type (Rtype
+dir (Rdir
+index (Rindex
+dirty (Rdirty"y
+F2fsWriteBeginFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+flags (Rflags"a
+F2fsWriteCheckpointFtraceEvent
+dev (Rdev
+	is_umount (RisUmount
+msg (	Rmsg"y
+F2fsWriteEndFtraceEvent
+dev (Rdev
+ino (Rino
+pos (Rpos
+len (Rlen
+copied (Rcopied
+ß
+*protos/perfetto/trace/ftrace/fastrpc.protoperfetto.protos"h
+FastrpcDmaStatFtraceEvent
+cid (Rcid
+len (Rlen'
+total_allocated (RtotalAllocated
+ª
+(protos/perfetto/trace/ftrace/fence.protoperfetto.protos"z
+FenceInitFtraceEvent
+context (Rcontext
+driver (	Rdriver
+seqno (Rseqno
+timeline (	Rtimeline"}
+FenceDestroyFtraceEvent
+context (Rcontext
+driver (	Rdriver
+seqno (Rseqno
+timeline (	Rtimeline"Ç
+FenceEnableSignalFtraceEvent
+context (Rcontext
+driver (	Rdriver
+seqno (Rseqno
+timeline (	Rtimeline"~
+FenceSignaledFtraceEvent
+context (Rcontext
+driver (	Rdriver
+seqno (Rseqno
+timeline (	Rtimeline
+‹
+*protos/perfetto/trace/ftrace/filemap.protoperfetto.protos"ä
+"MmFilemapAddToPageCacheFtraceEvent
+pfn (Rpfn
+i_ino (RiIno
+index (Rindex
+s_dev (RsDev
+page (Rpage"è
+'MmFilemapDeleteFromPageCacheFtraceEvent
+pfn (Rpfn
+i_ino (RiIno
+index (Rindex
+s_dev (RsDev
+page (Rpage
+r
+)protos/perfetto/trace/ftrace/ftrace.protoperfetto.protos"4
+PrintFtraceEvent
+ip (Rip
+buf (	Rbuf
+´
+&protos/perfetto/trace/ftrace/g2d.protoperfetto.protos"p
+G2dTracingMarkWriteFtraceEvent
+pid (Rpid
+name (	Rname
+type (Rtype
+value (Rvalue
+î
+*protos/perfetto/trace/ftrace/gpu_mem.protoperfetto.protos"U
+GpuMemTotalFtraceEvent
+gpu_id (RgpuId
+pid (Rpid
+size (Rsize
+ï
+
+&protos/perfetto/trace/ftrace/i2c.protoperfetto.protos"Ü
+I2cReadFtraceEvent
+
+adapter_nr (R	adapterNr
+msg_nr (RmsgNr
+addr (Raddr
+flags (Rflags
+len (Rlen"ô
+I2cWriteFtraceEvent
+
+adapter_nr (R	adapterNr
+msg_nr (RmsgNr
+addr (Raddr
+flags (Rflags
+len (Rlen
+buf (Rbuf"`
+I2cResultFtraceEvent
+
+adapter_nr (R	adapterNr
+nr_msgs (RnrMsgs
+ret (Rret"ô
+I2cReplyFtraceEvent
+
+adapter_nr (R	adapterNr
+msg_nr (RmsgNr
+addr (Raddr
+flags (Rflags
+len (Rlen
+buf (Rbuf"ï
+SmbusReadFtraceEvent
+
+adapter_nr (R	adapterNr
+flags (Rflags
+addr (Raddr
+command (Rcommand
+protocol (Rprotocol"®
+SmbusWriteFtraceEvent
+
+adapter_nr (R	adapterNr
+addr (Raddr
+flags (Rflags
+command (Rcommand
+len (Rlen
+protocol (Rprotocol"»
+SmbusResultFtraceEvent
+
+adapter_nr (R	adapterNr
+addr (Raddr
+flags (Rflags
+
+read_write (R	readWrite
+command (Rcommand
+res (Rres
+protocol (Rprotocol"®
+SmbusReplyFtraceEvent
+
+adapter_nr (R	adapterNr
+addr (Raddr
+flags (Rflags
+command (Rcommand
+len (Rlen
+protocol (Rprotocol
+ß
+&protos/perfetto/trace/ftrace/ion.protoperfetto.protos"l
+IonStatFtraceEvent
+	buffer_id (RbufferId
+len (Rlen'
+total_allocated (RtotalAllocated
+Ê
+&protos/perfetto/trace/ftrace/ipi.protoperfetto.protos"-
+IpiEntryFtraceEvent
+reason (	Rreason",
+IpiExitFtraceEvent
+reason (	Rreason"N
+IpiRaiseFtraceEvent
+target_cpus (R
+targetCpus
+reason (	Rreason
+ﬁ
+&protos/perfetto/trace/ftrace/irq.protoperfetto.protos"+
+SoftirqEntryFtraceEvent
+vec (Rvec"*
+SoftirqExitFtraceEvent
+vec (Rvec"+
+SoftirqRaiseFtraceEvent
+vec (Rvec"\
+IrqHandlerEntryFtraceEvent
+irq (Rirq
+name (	Rname
+handler (Rhandler"?
+IrqHandlerExitFtraceEvent
+irq (Rirq
+ret (Rret
+ÿ'
+'protos/perfetto/trace/ftrace/kmem.protoperfetto.protos"R
+AllocPagesIommuEndFtraceEvent
+	gfp_flags (RgfpFlags
+order (Rorder"S
+AllocPagesIommuFailFtraceEvent
+	gfp_flags (RgfpFlags
+order (Rorder"T
+AllocPagesIommuStartFtraceEvent
+	gfp_flags (RgfpFlags
+order (Rorder"P
+AllocPagesSysEndFtraceEvent
+	gfp_flags (RgfpFlags
+order (Rorder"Q
+AllocPagesSysFailFtraceEvent
+	gfp_flags (RgfpFlags
+order (Rorder"R
+AllocPagesSysStartFtraceEvent
+	gfp_flags (RgfpFlags
+order (Rorder":
+"DmaAllocContiguousRetryFtraceEvent
+tries (Rtries"k
+IommuMapRangeFtraceEvent
+
+chunk_size (R	chunkSize
+len (Rlen
+pa (Rpa
+va (Rva"
+"IommuSecPtblMapRangeEndFtraceEvent
+len (Rlen
+num (Rnum
+pa (Rpa
+sec_id (RsecId
+va (Rva"Å
+$IommuSecPtblMapRangeStartFtraceEvent
+len (Rlen
+num (Rnum
+pa (Rpa
+sec_id (RsecId
+va (Rva"ò
+IonAllocBufferEndFtraceEvent
+client_name (	R
+clientName
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen
+mask (Rmask"Ø
+IonAllocBufferFailFtraceEvent
+client_name (	R
+clientName
+error (Rerror
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen
+mask (Rmask"≥
+!IonAllocBufferFallbackFtraceEvent
+client_name (	R
+clientName
+error (Rerror
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen
+mask (Rmask"ö
+IonAllocBufferStartFtraceEvent
+client_name (	R
+clientName
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen
+mask (Rmask"2
+IonCpAllocRetryFtraceEvent
+tries (Rtries"|
+IonCpSecureBufferEndFtraceEvent
+align (Ralign
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen"~
+!IonCpSecureBufferStartFtraceEvent
+align (Ralign
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen"-
+IonPrefetchingFtraceEvent
+len (Rlen"w
+#IonSecureCmaAddToPoolEndFtraceEvent
+is_prefetch (R
+isPrefetch
+len (Rlen
+
+pool_total (R	poolTotal"y
+%IonSecureCmaAddToPoolStartFtraceEvent
+is_prefetch (R
+isPrefetch
+len (Rlen
+
+pool_total (R	poolTotal"
+"IonSecureCmaAllocateEndFtraceEvent
+align (Ralign
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen"Å
+$IonSecureCmaAllocateStartFtraceEvent
+align (Ralign
+flags (Rflags
+	heap_name (	RheapName
+len (Rlen"l
+$IonSecureCmaShrinkPoolEndFtraceEvent!
+drained_size (RdrainedSize!
+skipped_size (RskippedSize"n
+&IonSecureCmaShrinkPoolStartFtraceEvent!
+drained_size (RdrainedSize!
+skipped_size (RskippedSize"A
+KfreeFtraceEvent
+	call_site (RcallSite
+ptr (Rptr"û
+KmallocFtraceEvent
+bytes_alloc (R
+bytesAlloc
+	bytes_req (RbytesReq
+	call_site (RcallSite
+	gfp_flags (RgfpFlags
+ptr (Rptr"∂
+KmallocNodeFtraceEvent
+bytes_alloc (R
+bytesAlloc
+	bytes_req (RbytesReq
+	call_site (RcallSite
+	gfp_flags (RgfpFlags
+node (Rnode
+ptr (Rptr"•
+KmemCacheAllocFtraceEvent
+bytes_alloc (R
+bytesAlloc
+	bytes_req (RbytesReq
+	call_site (RcallSite
+	gfp_flags (RgfpFlags
+ptr (Rptr"Ω
+KmemCacheAllocNodeFtraceEvent
+bytes_alloc (R
+bytesAlloc
+	bytes_req (RbytesReq
+	call_site (RcallSite
+	gfp_flags (RgfpFlags
+node (Rnode
+ptr (Rptr"I
+KmemCacheFreeFtraceEvent
+	call_site (RcallSite
+ptr (Rptr"0
+MigratePagesEndFtraceEvent
+mode (Rmode"2
+MigratePagesStartFtraceEvent
+mode (Rmode"/
+MigrateRetryFtraceEvent
+tries (Rtries"ì
+MmPageAllocFtraceEvent
+	gfp_flags (RgfpFlags 
+migratetype (Rmigratetype
+order (Rorder
+page (Rpage
+pfn (Rpfn"ò
+MmPageAllocExtfragFtraceEvent+
+alloc_migratetype (RallocMigratetype
+alloc_order (R
+allocOrder1
+fallback_migratetype (RfallbackMigratetype%
+fallback_order (RfallbackOrder
+page (Rpage)
+change_ownership (RchangeOwnership
+pfn (Rpfn"Ä
+ MmPageAllocZoneLockedFtraceEvent 
+migratetype (Rmigratetype
+order (Rorder
+page (Rpage
+pfn (Rpfn"S
+MmPageFreeFtraceEvent
+order (Rorder
+page (Rpage
+pfn (Rpfn"X
+MmPageFreeBatchedFtraceEvent
+cold (Rcold
+page (Rpage
+pfn (Rpfn"z
+MmPagePcpuDrainFtraceEvent 
+migratetype (Rmigratetype
+order (Rorder
+page (Rpage
+pfn (Rpfn"i
+RssStatFtraceEvent
+member (Rmember
+size (Rsize
+curr (Rcurr
+mm_id (RmmId"r
+IonHeapShrinkFtraceEvent
+	heap_name (	RheapName
+len (Rlen'
+total_allocated (RtotalAllocated"p
+IonHeapGrowFtraceEvent
+	heap_name (	RheapName
+len (Rlen'
+total_allocated (RtotalAllocated"B
+IonBufferCreateFtraceEvent
+addr (Raddr
+len (Rlen"C
+IonBufferDestroyFtraceEvent
+addr (Raddr
+len (Rlen
+Ï
+2protos/perfetto/trace/ftrace/lowmemorykiller.protoperfetto.protos"§
+LowmemoryKillFtraceEvent
+comm (	Rcomm
+pid (Rpid%
+pagecache_size (RpagecacheSize'
+pagecache_limit (RpagecacheLimit
+free (Rfree
+≠
+'protos/perfetto/trace/ftrace/mali.protoperfetto.protos"q
+MaliTracingMarkWriteFtraceEvent
+name (	Rname
+pid (Rpid
+type (Rtype
+value (Rvalue
+é
+'protos/perfetto/trace/ftrace/mdss.protoperfetto.protos"T
+MdpCmdKickoffFtraceEvent
+ctl_num (RctlNum
+kickoff_cnt (R
+kickoffCnt"|
+MdpCommitFtraceEvent
+num (Rnum
+play_cnt (RplayCnt
+clk_rate (RclkRate
+	bandwidth (R	bandwidth"y
+MdpPerfSetOtFtraceEvent
+pnum (Rpnum
+xin_id (RxinId
+rd_lim (RrdLim
+
+is_vbif_rt (RisVbifRt"Û
+MdpSsppChangeFtraceEvent
+num (Rnum
+play_cnt (RplayCnt
+mixer (Rmixer
+stage (Rstage
+flags (Rflags
+format (Rformat
+img_w (RimgW
+img_h (RimgH
+src_x	 (RsrcX
+src_y
+ (RsrcY
+src_w (RsrcW
+src_h (RsrcH
+dst_x (RdstX
+dst_y (RdstY
+dst_w (RdstW
+dst_h (RdstH"o
+TracingMarkWriteFtraceEvent
+pid (Rpid
+
+trace_name (	R	traceName
+trace_begin (R
+traceBegin"Ö
+MdpCmdPingpongDoneFtraceEvent
+ctl_num (RctlNum
+intf_num (RintfNum
+pp_num (RppNum
+koff_cnt (RkoffCnt"Á
+MdpCompareBwFtraceEvent
+new_ab (RnewAb
+new_ib (RnewIb
+new_wb (RnewWb
+old_ab (RoldAb
+old_ib (RoldIb
+old_wb (RoldWb%
+params_changed (RparamsChanged
+	update_bw (RupdateBw"ñ
+MdpPerfSetPanicLutsFtraceEvent
+pnum (Rpnum
+fmt (Rfmt
+mode (Rmode
+	panic_lut (RpanicLut
+
+robust_lut (R	robustLut"
+MdpSsppSetFtraceEvent
+num (Rnum
+play_cnt (RplayCnt
+mixer (Rmixer
+stage (Rstage
+flags (Rflags
+format (Rformat
+img_w (RimgW
+img_h (RimgH
+src_x	 (RsrcX
+src_y
+ (RsrcY
+src_w (RsrcW
+src_h (RsrcH
+dst_x (RdstX
+dst_y (RdstY
+dst_w (RdstW
+dst_h (RdstH"R
+MdpCmdReadptrDoneFtraceEvent
+ctl_num (RctlNum
+koff_cnt (RkoffCnt"a
+MdpMisrCrcFtraceEvent
+block_id (RblockId
+	vsync_cnt (RvsyncCnt
+crc (Rcrc"§
+MdpPerfSetQosLutsFtraceEvent
+pnum (Rpnum
+fmt (Rfmt
+intf (Rintf
+rot (Rrot
+fl (Rfl
+lut (Rlut
+linear (Rlinear"g
+MdpTraceCounterFtraceEvent
+pid (Rpid!
+counter_name (	RcounterName
+value (Rvalue"5
+MdpCmdReleaseBwFtraceEvent
+ctl_num (RctlNum"8
+MdpMixerUpdateFtraceEvent
+	mixer_num (RmixerNum"›
+MdpPerfSetWmLevelsFtraceEvent
+pnum (Rpnum
+	use_space (RuseSpace%
+priority_bytes (RpriorityBytes
+wm0 (Rwm0
+wm1 (Rwm1
+wm2 (Rwm2
+mb_cnt (RmbCnt
+mb_size (RmbSize"]
+MdpVideoUnderrunDoneFtraceEvent
+ctl_num (RctlNum!
+underrun_cnt (RunderrunCnt"Y
+MdpCmdWaitPingpongFtraceEvent
+ctl_num (RctlNum
+kickoff_cnt (R
+kickoffCnt"•
+MdpPerfPrefillCalcFtraceEvent
+pnum (Rpnum
+latency_buf (R
+latencyBuf
+ot (Rot
+y_buf (RyBuf
+y_scaler (RyScaler
+pp_lines (RppLines
+pp_bytes (RppBytes
+post_sc (RpostSc
+	fbc_bytes	 (RfbcBytes#
+prefill_bytes
+ (RprefillBytes"k
+MdpPerfUpdateBusFtraceEvent
+client (Rclient
+ab_quota (RabQuota
+ib_quota (RibQuota"7
+RotatorBwAoAsContextFtraceEvent
+state (Rstate
+∂
++protos/perfetto/trace/ftrace/mm_event.protoperfetto.protos"v
+MmEventRecordFtraceEvent
+avg_lat (RavgLat
+count (Rcount
+max_lat (RmaxLat
+type (Rtype
+Œ
+&protos/perfetto/trace/ftrace/oom.protoperfetto.protos"h
+OomScoreAdjUpdateFtraceEvent
+comm (	Rcomm"
+oom_score_adj (RoomScoreAdj
+pid (Rpid")
+MarkVictimFtraceEvent
+pid (Rpid
+Î
+(protos/perfetto/trace/ftrace/power.protoperfetto.protos"F
+CpuFrequencyFtraceEvent
+state (Rstate
+cpu_id (RcpuId"l
+CpuFrequencyLimitsFtraceEvent
+min_freq (RminFreq
+max_freq (RmaxFreq
+cpu_id (RcpuId"A
+CpuIdleFtraceEvent
+state (Rstate
+cpu_id (RcpuId"Y
+ClockEnableFtraceEvent
+name (	Rname
+state (Rstate
+cpu_id (RcpuId"Z
+ClockDisableFtraceEvent
+name (	Rname
+state (Rstate
+cpu_id (RcpuId"Z
+ClockSetRateFtraceEvent
+name (	Rname
+state (Rstate
+cpu_id (RcpuId"Z
+SuspendResumeFtraceEvent
+action (	Raction
+val (Rval
+start (Rstart"F
+GpuFrequencyFtraceEvent
+gpu_id (RgpuId
+state (Rstate
+°
+/protos/perfetto/trace/ftrace/raw_syscalls.protoperfetto.protos"%
+SysEnterFtraceEvent
+id (Rid"6
+SysExitFtraceEvent
+id (Rid
+ret (Rret
+˙
+,protos/perfetto/trace/ftrace/regulator.protoperfetto.protos"1
+RegulatorDisableFtraceEvent
+name (	Rname"9
+#RegulatorDisableCompleteFtraceEvent
+name (	Rname"0
+RegulatorEnableFtraceEvent
+name (	Rname"8
+"RegulatorEnableCompleteFtraceEvent
+name (	Rname"5
+RegulatorEnableDelayFtraceEvent
+name (	Rname"X
+RegulatorSetVoltageFtraceEvent
+name (	Rname
+min (Rmin
+max (Rmax"N
+&RegulatorSetVoltageCompleteFtraceEvent
+name (	Rname
+val (Rval
+Ö
+(protos/perfetto/trace/ftrace/sched.protoperfetto.protos"·
+SchedSwitchFtraceEvent
+	prev_comm (	RprevComm
+prev_pid (RprevPid
+	prev_prio (RprevPrio
+
+prev_state (R	prevState
+	next_comm (	RnextComm
+next_pid (RnextPid
+	next_prio (RnextPrio"ã
+SchedWakeupFtraceEvent
+comm (	Rcomm
+pid (Rpid
+prio (Rprio
+success (Rsuccess
+
+target_cpu (R	targetCpu"b
+SchedBlockedReasonFtraceEvent
+pid (Rpid
+caller (Rcaller
+io_wait (RioWait"m
+SchedCpuHotplugFtraceEvent!
+affected_cpu (RaffectedCpu
+error (Rerror
+status (Rstatus"ã
+SchedWakingFtraceEvent
+comm (	Rcomm
+pid (Rpid
+prio (Rprio
+success (Rsuccess
+
+target_cpu (R	targetCpu"é
+SchedWakeupNewFtraceEvent
+comm (	Rcomm
+pid (Rpid
+prio (Rprio
+success (Rsuccess
+
+target_cpu (R	targetCpu"d
+SchedProcessExecFtraceEvent
+filename (	Rfilename
+pid (Rpid
+old_pid (RoldPid"k
+SchedProcessExitFtraceEvent
+comm (	Rcomm
+pid (Rpid
+tgid (Rtgid
+prio (Rprio"ô
+SchedProcessForkFtraceEvent
+parent_comm (	R
+parentComm
+
+parent_pid (R	parentPid
+
+child_comm (	R	childComm
+	child_pid (RchildPid"W
+SchedProcessFreeFtraceEvent
+comm (	Rcomm
+pid (Rpid
+prio (Rprio"C
+SchedProcessHangFtraceEvent
+comm (	Rcomm
+pid (Rpid"W
+SchedProcessWaitFtraceEvent
+comm (	Rcomm
+pid (Rpid
+prio (Rprio
+ß
+&protos/perfetto/trace/ftrace/scm.protoperfetto.protos"S
+ScmCallStartFtraceEvent
+arginfo (Rarginfo
+x0 (Rx0
+x5 (Rx5"
+ScmCallEndFtraceEvent
+„
+&protos/perfetto/trace/ftrace/sde.protoperfetto.protos"ß
+SdeTracingMarkWriteFtraceEvent
+pid (Rpid
+
+trace_name (	R	traceName
+
+trace_type (R	traceType
+value (Rvalue
+trace_begin (R
+traceBegin
+±
+)protos/perfetto/trace/ftrace/signal.protoperfetto.protos"[
+SignalDeliverFtraceEvent
+code (Rcode
+sa_flags (RsaFlags
+sig (Rsig"ï
+SignalGenerateFtraceEvent
+code (Rcode
+comm (	Rcomm
+group (Rgroup
+pid (Rpid
+result (Rresult
+sig (Rsig
+ü
+'protos/perfetto/trace/ftrace/sync.protoperfetto.protos"E
+SyncPtFtraceEvent
+timeline (	Rtimeline
+value (	Rvalue"C
+SyncTimelineFtraceEvent
+name (	Rname
+value (	Rvalue"W
+SyncWaitFtraceEvent
+name (	Rname
+status (Rstatus
+begin (Rbegin
+°
++protos/perfetto/trace/ftrace/systrace.protoperfetto.protos"a
+ZeroFtraceEvent
+flag (Rflag
+name (	Rname
+pid (Rpid
+value (Rvalue
+ƒ
+'protos/perfetto/trace/ftrace/task.protoperfetto.protos"É
+TaskNewtaskFtraceEvent
+pid (Rpid
+comm (	Rcomm
+clone_flags (R
+cloneFlags"
+oom_score_adj (RoomScoreAdj"Å
+TaskRenameFtraceEvent
+pid (Rpid
+oldcomm (	Roldcomm
+newcomm (	Rnewcomm"
+oom_score_adj (RoomScoreAdj
+à
+*protos/perfetto/trace/ftrace/thermal.protoperfetto.protos"É
+ThermalTemperatureFtraceEvent
+id (Rid
+temp (Rtemp
+	temp_prev (RtempPrev!
+thermal_zone (	RthermalZone"C
+CdevUpdateFtraceEvent
+target (Rtarget
+type (	Rtype
+Ñ
+)protos/perfetto/trace/ftrace/vmscan.protoperfetto.protos"
+%MmVmscanDirectReclaimBeginFtraceEvent
+order (Rorder#
+may_writepage (RmayWritepage
+	gfp_flags (RgfpFlags"H
+#MmVmscanDirectReclaimEndFtraceEvent!
+nr_reclaimed (RnrReclaimed"G
+MmVmscanKswapdWakeFtraceEvent
+nid (Rnid
+order (Rorder"2
+MmVmscanKswapdSleepFtraceEvent
+nid (Rnid
+ú
+,protos/perfetto/trace/ftrace/workqueue.protoperfetto.protos"6
+ WorkqueueActivateWorkFtraceEvent
+work (Rwork"4
+WorkqueueExecuteEndFtraceEvent
+work (Rwork"R
+ WorkqueueExecuteStartFtraceEvent
+work (Rwork
+function (Rfunction"ò
+WorkqueueQueueWorkFtraceEvent
+work (Rwork
+function (Rfunction
+	workqueue (R	workqueue
+req_cpu (RreqCpu
+cpu (Rcpu
+∫
+*protos/perfetto/trace/ftrace/generic.protoperfetto.protos"˙
+GenericFtraceEvent
+
+event_name (	R	eventName?
+field (2).perfetto.protos.GenericFtraceEvent.FieldRfieldÉ
+Field
+name (	Rname
+	str_value (	H RstrValue
+	int_value (H RintValue
+
+uint_value (H R	uintValueB
+value
+≈Ü
+/protos/perfetto/trace/ftrace/ftrace_event.protoperfetto.protos)protos/perfetto/trace/ftrace/binder.proto(protos/perfetto/trace/ftrace/block.proto)protos/perfetto/trace/ftrace/cgroup.proto&protos/perfetto/trace/ftrace/clk.proto-protos/perfetto/trace/ftrace/compaction.proto(protos/perfetto/trace/ftrace/cpuhp.proto&protos/perfetto/trace/ftrace/dpu.proto'protos/perfetto/trace/ftrace/ext4.proto'protos/perfetto/trace/ftrace/f2fs.proto*protos/perfetto/trace/ftrace/fastrpc.proto(protos/perfetto/trace/ftrace/fence.proto*protos/perfetto/trace/ftrace/filemap.proto)protos/perfetto/trace/ftrace/ftrace.proto&protos/perfetto/trace/ftrace/g2d.proto*protos/perfetto/trace/ftrace/gpu_mem.proto&protos/perfetto/trace/ftrace/i2c.proto&protos/perfetto/trace/ftrace/ion.proto&protos/perfetto/trace/ftrace/ipi.proto&protos/perfetto/trace/ftrace/irq.proto'protos/perfetto/trace/ftrace/kmem.proto2protos/perfetto/trace/ftrace/lowmemorykiller.proto'protos/perfetto/trace/ftrace/mali.proto'protos/perfetto/trace/ftrace/mdss.proto+protos/perfetto/trace/ftrace/mm_event.proto&protos/perfetto/trace/ftrace/oom.proto(protos/perfetto/trace/ftrace/power.proto/protos/perfetto/trace/ftrace/raw_syscalls.proto,protos/perfetto/trace/ftrace/regulator.proto(protos/perfetto/trace/ftrace/sched.proto&protos/perfetto/trace/ftrace/scm.proto&protos/perfetto/trace/ftrace/sde.proto)protos/perfetto/trace/ftrace/signal.proto'protos/perfetto/trace/ftrace/sync.proto+protos/perfetto/trace/ftrace/systrace.proto'protos/perfetto/trace/ftrace/task.proto*protos/perfetto/trace/ftrace/thermal.proto)protos/perfetto/trace/ftrace/vmscan.proto,protos/perfetto/trace/ftrace/workqueue.proto*protos/perfetto/trace/ftrace/generic.proto"Å˘
+FtraceEvent
+	timestamp (R	timestamp
+pid (Rpid9
+print (2!.perfetto.protos.PrintFtraceEventH RprintL
+sched_switch (2'.perfetto.protos.SchedSwitchFtraceEventH RschedSwitchO
+cpu_frequency (2(.perfetto.protos.CpuFrequencyFtraceEventH RcpuFrequencyb
+cpu_frequency_limits (2..perfetto.protos.CpuFrequencyLimitsFtraceEventH RcpuFrequencyLimits@
+cpu_idle (2#.perfetto.protos.CpuIdleFtraceEventH RcpuIdleL
+clock_enable (2'.perfetto.protos.ClockEnableFtraceEventH RclockEnableO
+clock_disable (2(.perfetto.protos.ClockDisableFtraceEventH RclockDisableP
+clock_set_rate (2(.perfetto.protos.ClockSetRateFtraceEventH RclockSetRateL
+sched_wakeup (2'.perfetto.protos.SchedWakeupFtraceEventH RschedWakeupb
+sched_blocked_reason (2..perfetto.protos.SchedBlockedReasonFtraceEventH RschedBlockedReasonY
+sched_cpu_hotplug (2+.perfetto.protos.SchedCpuHotplugFtraceEventH RschedCpuHotplugL
+sched_waking (2'.perfetto.protos.SchedWakingFtraceEventH RschedWakingC
+	ipi_entry (2$.perfetto.protos.IpiEntryFtraceEventH RipiEntry@
+ipi_exit (2#.perfetto.protos.IpiExitFtraceEventH RipiExitC
+	ipi_raise (2$.perfetto.protos.IpiRaiseFtraceEventH RipiRaiseO
+softirq_entry (2(.perfetto.protos.SoftirqEntryFtraceEventH RsoftirqEntryL
+softirq_exit (2'.perfetto.protos.SoftirqExitFtraceEventH RsoftirqExitO
+softirq_raise (2(.perfetto.protos.SoftirqRaiseFtraceEventH RsoftirqRaise@
+i2c_read (2#.perfetto.protos.I2cReadFtraceEventH Ri2cReadC
+	i2c_write (2$.perfetto.protos.I2cWriteFtraceEventH Ri2cWriteF
+
+i2c_result (2%.perfetto.protos.I2cResultFtraceEventH R	i2cResultC
+	i2c_reply (2$.perfetto.protos.I2cReplyFtraceEventH Ri2cReplyF
+
+smbus_read (2%.perfetto.protos.SmbusReadFtraceEventH R	smbusReadI
+smbus_write  (2&.perfetto.protos.SmbusWriteFtraceEventH R
+smbusWriteL
+smbus_result! (2'.perfetto.protos.SmbusResultFtraceEventH RsmbusResultI
+smbus_reply" (2&.perfetto.protos.SmbusReplyFtraceEventH R
+smbusReplyR
+lowmemory_kill# (2).perfetto.protos.LowmemoryKillFtraceEventH RlowmemoryKillY
+irq_handler_entry$ (2+.perfetto.protos.IrqHandlerEntryFtraceEventH RirqHandlerEntryV
+irq_handler_exit% (2*.perfetto.protos.IrqHandlerExitFtraceEventH RirqHandlerExit=
+sync_pt& (2".perfetto.protos.SyncPtFtraceEventH RsyncPtO
+sync_timeline' (2(.perfetto.protos.SyncTimelineFtraceEventH RsyncTimelineC
+	sync_wait( (2$.perfetto.protos.SyncWaitFtraceEventH RsyncWait]
+ext4_da_write_begin) (2,.perfetto.protos.Ext4DaWriteBeginFtraceEventH Rext4DaWriteBeginW
+ext4_da_write_end* (2*.perfetto.protos.Ext4DaWriteEndFtraceEventH Rext4DaWriteEnd`
+ext4_sync_file_enter+ (2-.perfetto.protos.Ext4SyncFileEnterFtraceEventH Rext4SyncFileEnter]
+ext4_sync_file_exit, (2,.perfetto.protos.Ext4SyncFileExitFtraceEventH Rext4SyncFileExitP
+block_rq_issue- (2(.perfetto.protos.BlockRqIssueFtraceEventH RblockRqIssue|
+mm_vmscan_direct_reclaim_begin. (26.perfetto.protos.MmVmscanDirectReclaimBeginFtraceEventH RmmVmscanDirectReclaimBeginv
+mm_vmscan_direct_reclaim_end/ (24.perfetto.protos.MmVmscanDirectReclaimEndFtraceEventH RmmVmscanDirectReclaimEndc
+mm_vmscan_kswapd_wake0 (2..perfetto.protos.MmVmscanKswapdWakeFtraceEventH RmmVmscanKswapdWakef
+mm_vmscan_kswapd_sleep1 (2/.perfetto.protos.MmVmscanKswapdSleepFtraceEventH RmmVmscanKswapdSleep^
+binder_transaction2 (2-.perfetto.protos.BinderTransactionFtraceEventH RbinderTransactionw
+binder_transaction_received3 (25.perfetto.protos.BinderTransactionReceivedFtraceEventH RbinderTransactionReceived_
+binder_set_priority4 (2-.perfetto.protos.BinderSetPriorityFtraceEventH RbinderSetPriorityI
+binder_lock5 (2&.perfetto.protos.BinderLockFtraceEventH R
+binderLockO
+binder_locked6 (2(.perfetto.protos.BinderLockedFtraceEventH RbinderLockedO
+binder_unlock7 (2(.perfetto.protos.BinderUnlockFtraceEventH RbinderUnlockk
+workqueue_activate_work8 (21.perfetto.protos.WorkqueueActivateWorkFtraceEventH RworkqueueActivateWorke
+workqueue_execute_end9 (2/.perfetto.protos.WorkqueueExecuteEndFtraceEventH RworkqueueExecuteEndk
+workqueue_execute_start: (21.perfetto.protos.WorkqueueExecuteStartFtraceEventH RworkqueueExecuteStartb
+workqueue_queue_work; (2..perfetto.protos.WorkqueueQueueWorkFtraceEventH RworkqueueQueueWork[
+regulator_disable< (2,.perfetto.protos.RegulatorDisableFtraceEventH RregulatorDisablet
+regulator_disable_complete= (24.perfetto.protos.RegulatorDisableCompleteFtraceEventH RregulatorDisableCompleteX
+regulator_enable> (2+.perfetto.protos.RegulatorEnableFtraceEventH RregulatorEnableq
+regulator_enable_complete? (23.perfetto.protos.RegulatorEnableCompleteFtraceEventH RregulatorEnableCompleteh
+regulator_enable_delay@ (20.perfetto.protos.RegulatorEnableDelayFtraceEventH RregulatorEnableDelaye
+regulator_set_voltageA (2/.perfetto.protos.RegulatorSetVoltageFtraceEventH RregulatorSetVoltage~
+regulator_set_voltage_completeB (27.perfetto.protos.RegulatorSetVoltageCompleteFtraceEventH RregulatorSetVoltageComplete\
+cgroup_attach_taskC (2,.perfetto.protos.CgroupAttachTaskFtraceEventH RcgroupAttachTaskL
+cgroup_mkdirD (2'.perfetto.protos.CgroupMkdirFtraceEventH RcgroupMkdirR
+cgroup_remountE (2).perfetto.protos.CgroupRemountFtraceEventH RcgroupRemountL
+cgroup_rmdirF (2'.perfetto.protos.CgroupRmdirFtraceEventH RcgroupRmdire
+cgroup_transfer_tasksG (2/.perfetto.protos.CgroupTransferTasksFtraceEventH RcgroupTransferTasks_
+cgroup_destroy_rootH (2-.perfetto.protos.CgroupDestroyRootFtraceEventH RcgroupDestroyRootR
+cgroup_releaseI (2).perfetto.protos.CgroupReleaseFtraceEventH RcgroupReleaseO
+cgroup_renameJ (2(.perfetto.protos.CgroupRenameFtraceEventH RcgroupRenameY
+cgroup_setup_rootK (2+.perfetto.protos.CgroupSetupRootFtraceEventH RcgroupSetupRootS
+mdp_cmd_kickoffL (2).perfetto.protos.MdpCmdKickoffFtraceEventH RmdpCmdKickoffF
+
+mdp_commitM (2%.perfetto.protos.MdpCommitFtraceEventH R	mdpCommitQ
+mdp_perf_set_otN (2(.perfetto.protos.MdpPerfSetOtFtraceEventH RmdpPerfSetOtS
+mdp_sspp_changeO (2).perfetto.protos.MdpSsppChangeFtraceEventH RmdpSsppChange\
+tracing_mark_writeP (2,.perfetto.protos.TracingMarkWriteFtraceEventH RtracingMarkWritec
+mdp_cmd_pingpong_doneQ (2..perfetto.protos.MdpCmdPingpongDoneFtraceEventH RmdpCmdPingpongDoneP
+mdp_compare_bwR (2(.perfetto.protos.MdpCompareBwFtraceEventH RmdpCompareBwg
+mdp_perf_set_panic_lutsS (2/.perfetto.protos.MdpPerfSetPanicLutsFtraceEventH RmdpPerfSetPanicLutsJ
+mdp_sspp_setT (2&.perfetto.protos.MdpSsppSetFtraceEventH R
+mdpSsppSet`
+mdp_cmd_readptr_doneU (2-.perfetto.protos.MdpCmdReadptrDoneFtraceEventH RmdpCmdReadptrDoneJ
+mdp_misr_crcV (2&.perfetto.protos.MdpMisrCrcFtraceEventH R
+mdpMisrCrca
+mdp_perf_set_qos_lutsW (2-.perfetto.protos.MdpPerfSetQosLutsFtraceEventH RmdpPerfSetQosLutsY
+mdp_trace_counterX (2+.perfetto.protos.MdpTraceCounterFtraceEventH RmdpTraceCounterZ
+mdp_cmd_release_bwY (2+.perfetto.protos.MdpCmdReleaseBwFtraceEventH RmdpCmdReleaseBwV
+mdp_mixer_updateZ (2*.perfetto.protos.MdpMixerUpdateFtraceEventH RmdpMixerUpdated
+mdp_perf_set_wm_levels[ (2..perfetto.protos.MdpPerfSetWmLevelsFtraceEventH RmdpPerfSetWmLevelsi
+mdp_video_underrun_done\ (20.perfetto.protos.MdpVideoUnderrunDoneFtraceEventH RmdpVideoUnderrunDonec
+mdp_cmd_wait_pingpong] (2..perfetto.protos.MdpCmdWaitPingpongFtraceEventH RmdpCmdWaitPingpongc
+mdp_perf_prefill_calc^ (2..perfetto.protos.MdpPerfPrefillCalcFtraceEventH RmdpPerfPrefillCalc]
+mdp_perf_update_bus_ (2,.perfetto.protos.MdpPerfUpdateBusFtraceEventH RmdpPerfUpdateBusj
+rotator_bw_ao_as_context` (20.perfetto.protos.RotatorBwAoAsContextFtraceEventH RrotatorBwAoAsContextt
+mm_filemap_add_to_page_cachea (23.perfetto.protos.MmFilemapAddToPageCacheFtraceEventH RmmFilemapAddToPageCacheÉ
+!mm_filemap_delete_from_page_cacheb (28.perfetto.protos.MmFilemapDeleteFromPageCacheFtraceEventH RmmFilemapDeleteFromPageCache_
+mm_compaction_beginc (2-.perfetto.protos.MmCompactionBeginFtraceEventH RmmCompactionBegin~
+mm_compaction_defer_compactiond (27.perfetto.protos.MmCompactionDeferCompactionFtraceEventH RmmCompactionDeferCompactionh
+mm_compaction_deferrede (20.perfetto.protos.MmCompactionDeferredFtraceEventH RmmCompactionDeferredo
+mm_compaction_defer_resetf (22.perfetto.protos.MmCompactionDeferResetFtraceEventH RmmCompactionDeferResetY
+mm_compaction_endg (2+.perfetto.protos.MmCompactionEndFtraceEventH RmmCompactionEndh
+mm_compaction_finishedh (20.perfetto.protos.MmCompactionFinishedFtraceEventH RmmCompactionFinishedÅ
+mm_compaction_isolate_freepagesi (28.perfetto.protos.MmCompactionIsolateFreepagesFtraceEventH RmmCompactionIsolateFreepagesä
+"mm_compaction_isolate_migratepagesj (2;.perfetto.protos.MmCompactionIsolateMigratepagesFtraceEventH RmmCompactionIsolateMigratepages{
+mm_compaction_kcompactd_sleepk (26.perfetto.protos.MmCompactionKcompactdSleepFtraceEventH RmmCompactionKcompactdSleepx
+mm_compaction_kcompactd_wakel (25.perfetto.protos.MmCompactionKcompactdWakeFtraceEventH RmmCompactionKcompactdWaket
+mm_compaction_migratepagesm (24.perfetto.protos.MmCompactionMigratepagesFtraceEventH RmmCompactionMigratepagesh
+mm_compaction_suitablen (20.perfetto.protos.MmCompactionSuitableFtraceEventH RmmCompactionSuitableÜ
+"mm_compaction_try_to_compact_pageso (29.perfetto.protos.MmCompactionTryToCompactPagesFtraceEventH RmmCompactionTryToCompactPages~
+mm_compaction_wakeup_kcompactdp (27.perfetto.protos.MmCompactionWakeupKcompactdFtraceEventH RmmCompactionWakeupKcompactdR
+suspend_resumeq (2).perfetto.protos.SuspendResumeFtraceEventH RsuspendResumeV
+sched_wakeup_newr (2*.perfetto.protos.SchedWakeupNewFtraceEventH RschedWakeupNew_
+block_bio_backmerges (2-.perfetto.protos.BlockBioBackmergeFtraceEventH RblockBioBackmergeV
+block_bio_bouncet (2*.perfetto.protos.BlockBioBounceFtraceEventH RblockBioBounce\
+block_bio_completeu (2,.perfetto.protos.BlockBioCompleteFtraceEventH RblockBioCompleteb
+block_bio_frontmergev (2..perfetto.protos.BlockBioFrontmergeFtraceEventH RblockBioFrontmergeS
+block_bio_queuew (2).perfetto.protos.BlockBioQueueFtraceEventH RblockBioQueueS
+block_bio_remapx (2).perfetto.protos.BlockBioRemapFtraceEventH RblockBioRemap\
+block_dirty_buffery (2,.perfetto.protos.BlockDirtyBufferFtraceEventH RblockDirtyBufferI
+block_getrqz (2&.perfetto.protos.BlockGetrqFtraceEventH R
+blockGetrqF
+
+block_plug{ (2%.perfetto.protos.BlockPlugFtraceEventH R	blockPlugP
+block_rq_abort| (2(.perfetto.protos.BlockRqAbortFtraceEventH RblockRqAbortY
+block_rq_complete} (2+.perfetto.protos.BlockRqCompleteFtraceEventH RblockRqCompleteS
+block_rq_insert~ (2).perfetto.protos.BlockRqInsertFtraceEventH RblockRqInsertQ
+block_rq_remapÄ (2(.perfetto.protos.BlockRqRemapFtraceEventH RblockRqRemapW
+block_rq_requeueÅ (2*.perfetto.protos.BlockRqRequeueFtraceEventH RblockRqRequeueP
+block_sleeprqÇ (2(.perfetto.protos.BlockSleeprqFtraceEventH RblockSleeprqJ
+block_splitÉ (2&.perfetto.protos.BlockSplitFtraceEventH R
+blockSplit]
+block_touch_bufferÑ (2,.perfetto.protos.BlockTouchBufferFtraceEventH RblockTouchBufferM
+block_unplugÖ (2'.perfetto.protos.BlockUnplugFtraceEventH RblockUnpluga
+ext4_alloc_da_blocksÜ (2-.perfetto.protos.Ext4AllocDaBlocksFtraceEventH Rext4AllocDaBlocksc
+ext4_allocate_blocksá (2..perfetto.protos.Ext4AllocateBlocksFtraceEventH Rext4AllocateBlocks`
+ext4_allocate_inodeà (2-.perfetto.protos.Ext4AllocateInodeFtraceEventH Rext4AllocateInodev
+ext4_begin_ordered_truncateâ (24.perfetto.protos.Ext4BeginOrderedTruncateFtraceEventH Rext4BeginOrderedTruncate`
+ext4_collapse_rangeä (2-.perfetto.protos.Ext4CollapseRangeFtraceEventH Rext4CollapseRanged
+ext4_da_release_spaceã (2..perfetto.protos.Ext4DaReleaseSpaceFtraceEventH Rext4DaReleaseSpaced
+ext4_da_reserve_spaceå (2..perfetto.protos.Ext4DaReserveSpaceFtraceEventH Rext4DaReserveSpacew
+ext4_da_update_reserve_spaceç (24.perfetto.protos.Ext4DaUpdateReserveSpaceFtraceEventH Rext4DaUpdateReserveSpace^
+ext4_da_write_pagesé (2,.perfetto.protos.Ext4DaWritePagesFtraceEventH Rext4DaWritePagesq
+ext4_da_write_pages_extentè (22.perfetto.protos.Ext4DaWritePagesExtentFtraceEventH Rext4DaWritePagesExtenta
+ext4_direct_IO_enterê (2-.perfetto.protos.Ext4DirectIOEnterFtraceEventH Rext4DirectIOEnter^
+ext4_direct_IO_exitë (2,.perfetto.protos.Ext4DirectIOExitFtraceEventH Rext4DirectIOExit`
+ext4_discard_blocksí (2-.perfetto.protos.Ext4DiscardBlocksFtraceEventH Rext4DiscardBlocksx
+ext4_discard_preallocationsì (25.perfetto.protos.Ext4DiscardPreallocationsFtraceEventH Rext4DiscardPreallocationsT
+ext4_drop_inodeî (2).perfetto.protos.Ext4DropInodeFtraceEventH Rext4DropInodea
+ext4_es_cache_extentï (2-.perfetto.protos.Ext4EsCacheExtentFtraceEventH Rext4EsCacheExtentî
+'ext4_es_find_delayed_extent_range_enterñ (2=.perfetto.protos.Ext4EsFindDelayedExtentRangeEnterFtraceEventH R!ext4EsFindDelayedExtentRangeEnterë
+&ext4_es_find_delayed_extent_range_exitó (2<.perfetto.protos.Ext4EsFindDelayedExtentRangeExitFtraceEventH R ext4EsFindDelayedExtentRangeExitd
+ext4_es_insert_extentò (2..perfetto.protos.Ext4EsInsertExtentFtraceEventH Rext4EsInsertExtentt
+ext4_es_lookup_extent_enterô (23.perfetto.protos.Ext4EsLookupExtentEnterFtraceEventH Rext4EsLookupExtentEnterq
+ext4_es_lookup_extent_exitö (22.perfetto.protos.Ext4EsLookupExtentExitFtraceEventH Rext4EsLookupExtentExitd
+ext4_es_remove_extentõ (2..perfetto.protos.Ext4EsRemoveExtentFtraceEventH Rext4EsRemoveExtentQ
+ext4_es_shrinkú (2(.perfetto.protos.Ext4EsShrinkFtraceEventH Rext4EsShrinka
+ext4_es_shrink_countù (2-.perfetto.protos.Ext4EsShrinkCountFtraceEventH Rext4EsShrinkCountn
+ext4_es_shrink_scan_enterû (21.perfetto.protos.Ext4EsShrinkScanEnterFtraceEventH Rext4EsShrinkScanEnterk
+ext4_es_shrink_scan_exitü (20.perfetto.protos.Ext4EsShrinkScanExitFtraceEventH Rext4EsShrinkScanExitW
+ext4_evict_inode† (2*.perfetto.protos.Ext4EvictInodeFtraceEventH Rext4EvictInodeê
+%ext4_ext_convert_to_initialized_enter° (2<.perfetto.protos.Ext4ExtConvertToInitializedEnterFtraceEventH R ext4ExtConvertToInitializedEnterô
+(ext4_ext_convert_to_initialized_fastpath¢ (2?.perfetto.protos.Ext4ExtConvertToInitializedFastpathFtraceEventH R#ext4ExtConvertToInitializedFastpathÜ
+!ext4_ext_handle_unwritten_extents£ (29.perfetto.protos.Ext4ExtHandleUnwrittenExtentsFtraceEventH Rext4ExtHandleUnwrittenExtentsX
+ext4_ext_in_cache§ (2*.perfetto.protos.Ext4ExtInCacheFtraceEventH Rext4ExtInCachea
+ext4_ext_load_extent• (2-.perfetto.protos.Ext4ExtLoadExtentFtraceEventH Rext4ExtLoadExtentn
+ext4_ext_map_blocks_enter¶ (21.perfetto.protos.Ext4ExtMapBlocksEnterFtraceEventH Rext4ExtMapBlocksEnterk
+ext4_ext_map_blocks_exitß (20.perfetto.protos.Ext4ExtMapBlocksExitFtraceEventH Rext4ExtMapBlocksExitb
+ext4_ext_put_in_cache® (2-.perfetto.protos.Ext4ExtPutInCacheFtraceEventH Rext4ExtPutInCached
+ext4_ext_remove_space© (2..perfetto.protos.Ext4ExtRemoveSpaceFtraceEventH Rext4ExtRemoveSpaceq
+ext4_ext_remove_space_done™ (22.perfetto.protos.Ext4ExtRemoveSpaceDoneFtraceEventH Rext4ExtRemoveSpaceDoneR
+ext4_ext_rm_idx´ (2(.perfetto.protos.Ext4ExtRmIdxFtraceEventH Rext4ExtRmIdxU
+ext4_ext_rm_leaf¨ (2).perfetto.protos.Ext4ExtRmLeafFtraceEventH Rext4ExtRmLeafa
+ext4_ext_show_extent≠ (2-.perfetto.protos.Ext4ExtShowExtentFtraceEventH Rext4ExtShowExtentc
+ext4_fallocate_enterÆ (2..perfetto.protos.Ext4FallocateEnterFtraceEventH Rext4FallocateEnter`
+ext4_fallocate_exitØ (2-.perfetto.protos.Ext4FallocateExitFtraceEventH Rext4FallocateExitm
+ext4_find_delalloc_range∞ (21.perfetto.protos.Ext4FindDelallocRangeFtraceEventH Rext4FindDelallocRangeJ
+ext4_forget± (2&.perfetto.protos.Ext4ForgetFtraceEventH R
+ext4ForgetW
+ext4_free_blocks≤ (2*.perfetto.protos.Ext4FreeBlocksFtraceEventH Rext4FreeBlocksT
+ext4_free_inode≥ (2).perfetto.protos.Ext4FreeInodeFtraceEventH Rext4FreeInodeä
+#ext4_get_implied_cluster_alloc_exit¥ (2:.perfetto.protos.Ext4GetImpliedClusterAllocExitFtraceEventH Rext4GetImpliedClusterAllocExitÄ
+ext4_get_reserved_cluster_allocµ (27.perfetto.protos.Ext4GetReservedClusterAllocFtraceEventH Rext4GetReservedClusterAllocn
+ext4_ind_map_blocks_enter∂ (21.perfetto.protos.Ext4IndMapBlocksEnterFtraceEventH Rext4IndMapBlocksEnterk
+ext4_ind_map_blocks_exit∑ (20.perfetto.protos.Ext4IndMapBlocksExitFtraceEventH Rext4IndMapBlocksExitZ
+ext4_insert_range∏ (2+.perfetto.protos.Ext4InsertRangeFtraceEventH Rext4InsertRangeb
+ext4_invalidatepageπ (2..perfetto.protos.Ext4InvalidatepageFtraceEventH Rext4Invalidatepage]
+ext4_journal_start∫ (2,.perfetto.protos.Ext4JournalStartFtraceEventH Rext4JournalStartv
+ext4_journal_start_reservedª (24.perfetto.protos.Ext4JournalStartReservedFtraceEventH Rext4JournalStartReservedÅ
+ext4_journalled_invalidatepageº (28.perfetto.protos.Ext4JournalledInvalidatepageFtraceEventH Rext4JournalledInvalidatepagep
+ext4_journalled_write_endΩ (22.perfetto.protos.Ext4JournalledWriteEndFtraceEventH Rext4JournalledWriteEndT
+ext4_load_inodeæ (2).perfetto.protos.Ext4LoadInodeFtraceEventH Rext4LoadInodeg
+ext4_load_inode_bitmapø (2/.perfetto.protos.Ext4LoadInodeBitmapFtraceEventH Rext4LoadInodeBitmapd
+ext4_mark_inode_dirty¿ (2..perfetto.protos.Ext4MarkInodeDirtyFtraceEventH Rext4MarkInodeDirty^
+ext4_mb_bitmap_load¡ (2,.perfetto.protos.Ext4MbBitmapLoadFtraceEventH Rext4MbBitmapLoadn
+ext4_mb_buddy_bitmap_load¬ (21.perfetto.protos.Ext4MbBuddyBitmapLoadFtraceEventH Rext4MbBuddyBitmapLoad
+ext4_mb_discard_preallocations√ (27.perfetto.protos.Ext4MbDiscardPreallocationsFtraceEventH Rext4MbDiscardPreallocations_
+ext4_mb_new_group_paƒ (2,.perfetto.protos.Ext4MbNewGroupPaFtraceEventH Rext4MbNewGroupPa_
+ext4_mb_new_inode_pa≈ (2,.perfetto.protos.Ext4MbNewInodePaFtraceEventH Rext4MbNewInodePak
+ext4_mb_release_group_pa∆ (20.perfetto.protos.Ext4MbReleaseGroupPaFtraceEventH Rext4MbReleaseGroupPak
+ext4_mb_release_inode_pa« (20.perfetto.protos.Ext4MbReleaseInodePaFtraceEventH Rext4MbReleaseInodePa]
+ext4_mballoc_alloc» (2,.perfetto.protos.Ext4MballocAllocFtraceEventH Rext4MballocAllocc
+ext4_mballoc_discard… (2..perfetto.protos.Ext4MballocDiscardFtraceEventH Rext4MballocDiscardZ
+ext4_mballoc_free  (2+.perfetto.protos.Ext4MballocFreeFtraceEventH Rext4MballocFreef
+ext4_mballoc_preallocÀ (2/.perfetto.protos.Ext4MballocPreallocFtraceEventH Rext4MballocPreallocw
+ext4_other_inode_update_timeÃ (24.perfetto.protos.Ext4OtherInodeUpdateTimeFtraceEventH Rext4OtherInodeUpdateTimeT
+ext4_punch_holeÕ (2).perfetto.protos.Ext4PunchHoleFtraceEventH Rext4PunchHolet
+ext4_read_block_bitmap_loadŒ (23.perfetto.protos.Ext4ReadBlockBitmapLoadFtraceEventH Rext4ReadBlockBitmapLoadP
+ext4_readpageœ (2(.perfetto.protos.Ext4ReadpageFtraceEventH Rext4ReadpageY
+ext4_releasepage– (2+.perfetto.protos.Ext4ReleasepageFtraceEventH Rext4Releasepage]
+ext4_remove_blocks— (2,.perfetto.protos.Ext4RemoveBlocksFtraceEventH Rext4RemoveBlocks`
+ext4_request_blocks“ (2-.perfetto.protos.Ext4RequestBlocksFtraceEventH Rext4RequestBlocks]
+ext4_request_inode” (2,.perfetto.protos.Ext4RequestInodeFtraceEventH Rext4RequestInodeK
+ext4_sync_fs‘ (2&.perfetto.protos.Ext4SyncFsFtraceEventH R
+ext4SyncFs[
+ext4_trim_all_free’ (2+.perfetto.protos.Ext4TrimAllFreeFtraceEventH Rext4TrimAllFreeW
+ext4_trim_extent÷ (2*.perfetto.protos.Ext4TrimExtentFtraceEventH Rext4TrimExtent`
+ext4_truncate_enter◊ (2-.perfetto.protos.Ext4TruncateEnterFtraceEventH Rext4TruncateEnter]
+ext4_truncate_exitÿ (2,.perfetto.protos.Ext4TruncateExitFtraceEventH Rext4TruncateExitZ
+ext4_unlink_enterŸ (2+.perfetto.protos.Ext4UnlinkEnterFtraceEventH Rext4UnlinkEnterW
+ext4_unlink_exit⁄ (2*.perfetto.protos.Ext4UnlinkExitFtraceEventH Rext4UnlinkExitW
+ext4_write_begin€ (2*.perfetto.protos.Ext4WriteBeginFtraceEventH Rext4WriteBeginQ
+ext4_write_endÊ (2(.perfetto.protos.Ext4WriteEndFtraceEventH Rext4WriteEndS
+ext4_writepageÁ (2).perfetto.protos.Ext4WritepageFtraceEventH Rext4WritepageV
+ext4_writepagesË (2*.perfetto.protos.Ext4WritepagesFtraceEventH Rext4Writepagesi
+ext4_writepages_resultÈ (20.perfetto.protos.Ext4WritepagesResultFtraceEventH Rext4WritepagesResultT
+ext4_zero_rangeÍ (2).perfetto.protos.Ext4ZeroRangeFtraceEventH Rext4ZeroRangeM
+task_newtaskÎ (2'.perfetto.protos.TaskNewtaskFtraceEventH RtaskNewtaskJ
+task_renameÏ (2&.perfetto.protos.TaskRenameFtraceEventH R
+taskRename]
+sched_process_execÌ (2,.perfetto.protos.SchedProcessExecFtraceEventH RschedProcessExec]
+sched_process_exitÓ (2,.perfetto.protos.SchedProcessExitFtraceEventH RschedProcessExit]
+sched_process_forkÔ (2,.perfetto.protos.SchedProcessForkFtraceEventH RschedProcessFork]
+sched_process_free (2,.perfetto.protos.SchedProcessFreeFtraceEventH RschedProcessFree]
+sched_process_hangÒ (2,.perfetto.protos.SchedProcessHangFtraceEventH RschedProcessHang]
+sched_process_waitÚ (2,.perfetto.protos.SchedProcessWaitFtraceEventH RschedProcessWait[
+f2fs_do_submit_bioÛ (2+.perfetto.protos.F2fsDoSubmitBioFtraceEventH Rf2fsDoSubmitBioW
+f2fs_evict_inodeÙ (2*.perfetto.protos.F2fsEvictInodeFtraceEventH Rf2fsEvictInodeS
+f2fs_fallocateı (2).perfetto.protos.F2fsFallocateFtraceEventH Rf2fsFallocate^
+f2fs_get_data_blockˆ (2,.perfetto.protos.F2fsGetDataBlockFtraceEventH Rf2fsGetDataBlockT
+f2fs_get_victim˜ (2).perfetto.protos.F2fsGetVictimFtraceEventH Rf2fsGetVictimD
+	f2fs_iget¯ (2$.perfetto.protos.F2fsIgetFtraceEventH Rf2fsIgetQ
+f2fs_iget_exit˘ (2(.perfetto.protos.F2fsIgetExitFtraceEventH Rf2fsIgetExitQ
+f2fs_new_inode˙ (2(.perfetto.protos.F2fsNewInodeFtraceEventH Rf2fsNewInodeP
+f2fs_readpage˚ (2(.perfetto.protos.F2fsReadpageFtraceEventH Rf2fsReadpageg
+f2fs_reserve_new_block¸ (2/.perfetto.protos.F2fsReserveNewBlockFtraceEventH Rf2fsReserveNewBlock^
+f2fs_set_page_dirty˝ (2,.perfetto.protos.F2fsSetPageDirtyFtraceEventH Rf2fsSetPageDirtyg
+f2fs_submit_write_page˛ (2/.perfetto.protos.F2fsSubmitWritePageFtraceEventH Rf2fsSubmitWritePagea
+f2fs_sync_file_enterˇ (2-.perfetto.protos.F2fsSyncFileEnterFtraceEventH Rf2fsSyncFileEnter^
+f2fs_sync_file_exitÄ (2,.perfetto.protos.F2fsSyncFileExitFtraceEventH Rf2fsSyncFileExitK
+f2fs_sync_fsÅ (2&.perfetto.protos.F2fsSyncFsFtraceEventH R
+f2fsSyncFsP
+f2fs_truncateÇ (2(.perfetto.protos.F2fsTruncateFtraceEventH Rf2fsTruncates
+f2fs_truncate_blocks_enterÉ (23.perfetto.protos.F2fsTruncateBlocksEnterFtraceEventH Rf2fsTruncateBlocksEnterp
+f2fs_truncate_blocks_exitÑ (22.perfetto.protos.F2fsTruncateBlocksExitFtraceEventH Rf2fsTruncateBlocksExitÄ
+f2fs_truncate_data_blocks_rangeÖ (27.perfetto.protos.F2fsTruncateDataBlocksRangeFtraceEventH Rf2fsTruncateDataBlocksRangeÉ
+ f2fs_truncate_inode_blocks_enterÜ (28.perfetto.protos.F2fsTruncateInodeBlocksEnterFtraceEventH Rf2fsTruncateInodeBlocksEnterÄ
+f2fs_truncate_inode_blocks_exitá (27.perfetto.protos.F2fsTruncateInodeBlocksExitFtraceEventH Rf2fsTruncateInodeBlocksExit]
+f2fs_truncate_nodeà (2,.perfetto.protos.F2fsTruncateNodeFtraceEventH Rf2fsTruncateNodep
+f2fs_truncate_nodes_enterâ (22.perfetto.protos.F2fsTruncateNodesEnterFtraceEventH Rf2fsTruncateNodesEnterm
+f2fs_truncate_nodes_exitä (21.perfetto.protos.F2fsTruncateNodesExitFtraceEventH Rf2fsTruncateNodesExitv
+f2fs_truncate_partial_nodesã (24.perfetto.protos.F2fsTruncatePartialNodesFtraceEventH Rf2fsTruncatePartialNodesZ
+f2fs_unlink_enterå (2+.perfetto.protos.F2fsUnlinkEnterFtraceEventH Rf2fsUnlinkEnterW
+f2fs_unlink_exitç (2*.perfetto.protos.F2fsUnlinkExitFtraceEventH Rf2fsUnlinkExita
+f2fs_vm_page_mkwriteé (2-.perfetto.protos.F2fsVmPageMkwriteFtraceEventH Rf2fsVmPageMkwriteW
+f2fs_write_beginè (2*.perfetto.protos.F2fsWriteBeginFtraceEventH Rf2fsWriteBeginf
+f2fs_write_checkpointê (2/.perfetto.protos.F2fsWriteCheckpointFtraceEventH Rf2fsWriteCheckpointQ
+f2fs_write_endë (2(.perfetto.protos.F2fsWriteEndFtraceEventH Rf2fsWriteEndd
+alloc_pages_iommu_endí (2..perfetto.protos.AllocPagesIommuEndFtraceEventH RallocPagesIommuEndg
+alloc_pages_iommu_failì (2/.perfetto.protos.AllocPagesIommuFailFtraceEventH RallocPagesIommuFailj
+alloc_pages_iommu_startî (20.perfetto.protos.AllocPagesIommuStartFtraceEventH RallocPagesIommuStart^
+alloc_pages_sys_endï (2,.perfetto.protos.AllocPagesSysEndFtraceEventH RallocPagesSysEnda
+alloc_pages_sys_failñ (2-.perfetto.protos.AllocPagesSysFailFtraceEventH RallocPagesSysFaild
+alloc_pages_sys_startó (2..perfetto.protos.AllocPagesSysStartFtraceEventH RallocPagesSysStarts
+dma_alloc_contiguous_retryò (23.perfetto.protos.DmaAllocContiguousRetryFtraceEventH RdmaAllocContiguousRetryT
+iommu_map_rangeô (2).perfetto.protos.IommuMapRangeFtraceEventH RiommuMapRangeu
+iommu_sec_ptbl_map_range_endö (23.perfetto.protos.IommuSecPtblMapRangeEndFtraceEventH RiommuSecPtblMapRangeEnd{
+iommu_sec_ptbl_map_range_startõ (25.perfetto.protos.IommuSecPtblMapRangeStartFtraceEventH RiommuSecPtblMapRangeStarta
+ion_alloc_buffer_endú (2-.perfetto.protos.IonAllocBufferEndFtraceEventH RionAllocBufferEndd
+ion_alloc_buffer_failù (2..perfetto.protos.IonAllocBufferFailFtraceEventH RionAllocBufferFailp
+ion_alloc_buffer_fallbackû (22.perfetto.protos.IonAllocBufferFallbackFtraceEventH RionAllocBufferFallbackg
+ion_alloc_buffer_startü (2/.perfetto.protos.IonAllocBufferStartFtraceEventH RionAllocBufferStart[
+ion_cp_alloc_retry† (2+.perfetto.protos.IonCpAllocRetryFtraceEventH RionCpAllocRetryk
+ion_cp_secure_buffer_end° (20.perfetto.protos.IonCpSecureBufferEndFtraceEventH RionCpSecureBufferEndq
+ion_cp_secure_buffer_start¢ (22.perfetto.protos.IonCpSecureBufferStartFtraceEventH RionCpSecureBufferStartV
+ion_prefetching£ (2*.perfetto.protos.IonPrefetchingFtraceEventH RionPrefetchingy
+ion_secure_cma_add_to_pool_end§ (24.perfetto.protos.IonSecureCmaAddToPoolEndFtraceEventH RionSecureCmaAddToPoolEnd
+ ion_secure_cma_add_to_pool_start• (26.perfetto.protos.IonSecureCmaAddToPoolStartFtraceEventH RionSecureCmaAddToPoolStartt
+ion_secure_cma_allocate_end¶ (23.perfetto.protos.IonSecureCmaAllocateEndFtraceEventH RionSecureCmaAllocateEndz
+ion_secure_cma_allocate_startß (25.perfetto.protos.IonSecureCmaAllocateStartFtraceEventH RionSecureCmaAllocateStart{
+ion_secure_cma_shrink_pool_end® (25.perfetto.protos.IonSecureCmaShrinkPoolEndFtraceEventH RionSecureCmaShrinkPoolEndÅ
+ ion_secure_cma_shrink_pool_start© (27.perfetto.protos.IonSecureCmaShrinkPoolStartFtraceEventH RionSecureCmaShrinkPoolStart:
+kfree™ (2!.perfetto.protos.KfreeFtraceEventH Rkfree@
+kmalloc´ (2#.perfetto.protos.KmallocFtraceEventH RkmallocM
+kmalloc_node¨ (2'.perfetto.protos.KmallocNodeFtraceEventH RkmallocNodeW
+kmem_cache_alloc≠ (2*.perfetto.protos.KmemCacheAllocFtraceEventH RkmemCacheAllocd
+kmem_cache_alloc_nodeÆ (2..perfetto.protos.KmemCacheAllocNodeFtraceEventH RkmemCacheAllocNodeT
+kmem_cache_freeØ (2).perfetto.protos.KmemCacheFreeFtraceEventH RkmemCacheFreeZ
+migrate_pages_end∞ (2+.perfetto.protos.MigratePagesEndFtraceEventH RmigratePagesEnd`
+migrate_pages_start± (2-.perfetto.protos.MigratePagesStartFtraceEventH RmigratePagesStartP
+migrate_retry≤ (2(.perfetto.protos.MigrateRetryFtraceEventH RmigrateRetryN
+mm_page_alloc≥ (2'.perfetto.protos.MmPageAllocFtraceEventH RmmPageAllocd
+mm_page_alloc_extfrag¥ (2..perfetto.protos.MmPageAllocExtfragFtraceEventH RmmPageAllocExtfragn
+mm_page_alloc_zone_lockedµ (21.perfetto.protos.MmPageAllocZoneLockedFtraceEventH RmmPageAllocZoneLockedK
+mm_page_free∂ (2&.perfetto.protos.MmPageFreeFtraceEventH R
+mmPageFreea
+mm_page_free_batched∑ (2-.perfetto.protos.MmPageFreeBatchedFtraceEventH RmmPageFreeBatched[
+mm_page_pcpu_drain∏ (2+.perfetto.protos.MmPagePcpuDrainFtraceEventH RmmPagePcpuDrainA
+rss_statπ (2#.perfetto.protos.RssStatFtraceEventH RrssStatT
+ion_heap_shrink∫ (2).perfetto.protos.IonHeapShrinkFtraceEventH RionHeapShrinkN
+ion_heap_growª (2'.perfetto.protos.IonHeapGrowFtraceEventH RionHeapGrowG
+
+fence_initº (2%.perfetto.protos.FenceInitFtraceEventH R	fenceInitP
+fence_destroyΩ (2(.perfetto.protos.FenceDestroyFtraceEventH RfenceDestroy`
+fence_enable_signalæ (2-.perfetto.protos.FenceEnableSignalFtraceEventH RfenceEnableSignalS
+fence_signaledø (2).perfetto.protos.FenceSignaledFtraceEventH RfenceSignaledG
+
+clk_enable¿ (2%.perfetto.protos.ClkEnableFtraceEventH R	clkEnableJ
+clk_disable¡ (2&.perfetto.protos.ClkDisableFtraceEventH R
+clkDisableK
+clk_set_rate¬ (2&.perfetto.protos.ClkSetRateFtraceEventH R
+clkSetRatey
+binder_transaction_alloc_buf√ (25.perfetto.protos.BinderTransactionAllocBufFtraceEventH RbinderTransactionAllocBufS
+signal_deliverƒ (2).perfetto.protos.SignalDeliverFtraceEventH RsignalDeliverV
+signal_generate≈ (2*.perfetto.protos.SignalGenerateFtraceEventH RsignalGeneratea
+oom_score_adj_update∆ (2-.perfetto.protos.OomScoreAdjUpdateFtraceEventH RoomScoreAdjUpdate@
+generic« (2#.perfetto.protos.GenericFtraceEventH RgenericT
+mm_event_record» (2).perfetto.protos.MmEventRecordFtraceEventH RmmEventRecordD
+	sys_enter… (2$.perfetto.protos.SysEnterFtraceEventH RsysEnterA
+sys_exit  (2#.perfetto.protos.SysExitFtraceEventH RsysExit7
+zeroÀ (2 .perfetto.protos.ZeroFtraceEventH RzeroP
+gpu_frequencyÃ (2(.perfetto.protos.GpuFrequencyFtraceEventH RgpuFrequencyg
+sde_tracing_mark_writeÕ (2/.perfetto.protos.SdeTracingMarkWriteFtraceEventH RsdeTracingMarkWriteJ
+mark_victimŒ (2&.perfetto.protos.MarkVictimFtraceEventH R
+markVictimA
+ion_statœ (2#.perfetto.protos.IonStatFtraceEventH RionStatZ
+ion_buffer_create– (2+.perfetto.protos.IonBufferCreateFtraceEventH RionBufferCreate]
+ion_buffer_destroy— (2,.perfetto.protos.IonBufferDestroyFtraceEventH RionBufferDestroyQ
+scm_call_start“ (2(.perfetto.protos.ScmCallStartFtraceEventH RscmCallStartK
+scm_call_end” (2&.perfetto.protos.ScmCallEndFtraceEventH R
+scmCallEndN
+gpu_mem_total‘ (2'.perfetto.protos.GpuMemTotalFtraceEventH RgpuMemTotalb
+thermal_temperature’ (2..perfetto.protos.ThermalTemperatureFtraceEventH RthermalTemperatureJ
+cdev_update÷ (2&.perfetto.protos.CdevUpdateFtraceEventH R
+cdevUpdateG
+
+cpuhp_exit◊ (2%.perfetto.protos.CpuhpExitFtraceEventH R	cpuhpExitZ
+cpuhp_multi_enterÿ (2+.perfetto.protos.CpuhpMultiEnterFtraceEventH RcpuhpMultiEnterJ
+cpuhp_enterŸ (2&.perfetto.protos.CpuhpEnterFtraceEventH R
+cpuhpEnterP
+cpuhp_latency⁄ (2(.perfetto.protos.CpuhpLatencyFtraceEventH RcpuhpLatencyW
+fastrpc_dma_stat€ (2*.perfetto.protos.FastrpcDmaStatFtraceEventH RfastrpcDmaStatg
+dpu_tracing_mark_write‹ (2/.perfetto.protos.DpuTracingMarkWriteFtraceEventH RdpuTracingMarkWriteg
+g2d_tracing_mark_write› (2/.perfetto.protos.G2dTracingMarkWriteFtraceEventH Rg2dTracingMarkWritej
+mali_tracing_mark_writeﬁ (20.perfetto.protos.MaliTracingMarkWriteFtraceEventH RmaliTracingMarkWriteB
+event
+ 
+6protos/perfetto/trace/ftrace/ftrace_event_bundle.protoperfetto.protos/protos/perfetto/trace/ftrace/ftrace_event.proto"Õ
+FtraceEventBundle
+cpu (Rcpu2
+event (2.perfetto.protos.FtraceEventRevent
+lost_events (R
+lostEventsT
+compact_sched (2/.perfetto.protos.FtraceEventBundle.CompactSchedRcompactSched˙
+CompactSched!
+intern_table (	RinternTable-
+switch_timestamp (BRswitchTimestamp.
+switch_prev_state (BRswitchPrevState*
+switch_next_pid (BRswitchNextPid,
+switch_next_prio (BRswitchNextPrio7
+switch_next_comm_index (BRswitchNextCommIndex-
+waking_timestamp (BRwakingTimestamp!
+
+waking_pid (BR	wakingPid.
+waking_target_cpu	 (BRwakingTargetCpu#
+waking_prio
+ (BR
+wakingPrio.
+waking_comm_index (BRwakingCommIndex

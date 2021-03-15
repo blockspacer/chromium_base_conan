@@ -138,7 +138,24 @@ if(cmake_build_type_tolower MATCHES "debug")
   set(ENABLE_LOG_ERROR_NOT_REACHED "(0)")
   set(EXPENSIVE_DCHECKS_ARE_ON "(1)")
 endif()
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tracing_buildflags.cmake)
+
+configure_file_if_changed(
+  INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/profiler_buildflags.h.inc
+  OUTPUT ${BASE_SOURCES_PATH}profiler/profiler_buildflags.h
+  TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/profiler_buildflags.tmp)
+
+configure_file_if_changed(
+  INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/branding_buildflags.h.inc
+  OUTPUT ${EXTENSIONS_PATH}/build/branding_buildflags.h
+  TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/branding_buildflags.tmp)
+
+configure_file_if_changed(
+  INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/chromecast_buildflags.h.inc
+  OUTPUT ${EXTENSIONS_PATH}/build/chromecast_buildflags.h
+  TMP_FILE ${CMAKE_CURRENT_BINARY_DIR}/chromecast_buildflags.tmp)
+
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/chromeos_buildflags.h.inc
   OUTPUT ${EXTENSIONS_PATH}/build/chromeos_buildflags.h

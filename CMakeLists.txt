@@ -314,6 +314,14 @@ endif()
 
 add_library(${STATIC_LIB_NAME}-test-includes INTERFACE)
 
+macro(add_absolute_include_dir TARGET VISIBILITY NEW_ELEM)
+  target_include_directories(${TARGET} ${VISIBILITY}
+    ${NEW_ELEM}
+  )
+  target_include_directories( ${STATIC_LIB_NAME}-test-includes SYSTEM INTERFACE
+    ${NEW_ELEM} )
+endmacro(add_absolute_include_dir)
+
 # $<INSTALL_INTERFACE:...> is exported using install(EXPORT)
 # $<BUILD_INTERFACE:...> is exported using export(), or when the target is used by another target in the same buildsystem
 macro(add_relative_include_dir TARGET VISIBILITY_BUILD VISIBILITY_INSTALL NEW_ELEM)
@@ -329,7 +337,102 @@ if(TARGET_LINUX)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/detect_atomic32_support.cmake)
 endif(TARGET_LINUX)
 
+# generate_pbzero(
+#   OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}
+#   INPUT_FILES ${CMAKE_CURRENT_SOURCE_DIR}/proto/chrome_track_event.proto
+#   INCLUDE_PROTO_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/proto
+#   APPEND_GENERATED_FILES_TO_LIST MY_PROJECT_GENERATED_FILES
+#   VERBOSE TRUE
+# )
+function(generate_pbzero)
+  # see https://cliutils.gitlab.io/modern-cmake/chapters/basics/functions.html
+  #set(options ) # empty
+  set(oneValueArgs VERBOSE OUT_DIR APPEND_GENERATED_FILES_TO_LIST)
+  set(multiValueArgs INPUT_FILES INCLUDE_PROTO_PATHS)
+  #
+  cmake_parse_arguments(
+    ARGUMENTS # prefix of output variables
+    "${options}" # list of names of the boolean arguments (only defined ones will be true)
+    "${oneValueArgs}" # list of names of mono-valued arguments
+    "${multiValueArgs}" # list of names of multi-valued arguments (output variables are lists)
+    ${ARGN} # arguments of the function to parse, here we take the all original ones
+  )
+  #
+  set(OUT_DIR ${ARGUMENTS_OUT_DIR})
+  set(INPUT_FILES ${ARGUMENTS_INPUT_FILES})
+  set(INCLUDE_PROTO_PATHS ${ARGUMENTS_INCLUDE_PROTO_PATHS})
+  set(APPEND_GENERATED_FILES_TO_LIST ${ARGUMENTS_APPEND_GENERATED_FILES_TO_LIST})
+  #
+  if(${ARGUMENTS_VERBOSE})
+    message(STATUS "PERFETTO_protozero_plugin_BIN=${PERFETTO_protozero_plugin_BIN}")
+    message(STATUS "PERFETTO_PROTOC_BIN=${PERFETTO_PROTOC_BIN}")
+    message(STATUS "PERFETTO_SDK_DIR=${PERFETTO_SDK_DIR}")
+    message(STATUS "PERFETTO_GEN_DIR=${PERFETTO_GEN_DIR}")
+    message(STATUS "PERFETTO_PROTOS_DIR=${PERFETTO_PROTOS_DIR}")
+  endif()
+  #
+  set(all_protoc_generated_files)
+  #
+  foreach(FILEPATH ${INPUT_FILES})
+    get_filename_component(FILENAME_WITHOUT_EXT ${FILEPATH} NAME_WE)
+    set(protoc_generated_files
+      ${OUT_DIR}/${FILENAME_WITHOUT_EXT}.pbzero.h
+      ${OUT_DIR}/${FILENAME_WITHOUT_EXT}.pbzero.cc
+    )
+    # Set GENERATED properties of your generated source file.
+    # So cmake won't complain about missing source file.
+    set_source_files_properties(
+      ${protoc_generated_files}
+      PROPERTIES GENERATED 1)
+    #
+    list(APPEND all_protoc_generated_files ${protoc_generated_files})
+    #
+    set(FULL_PROTOC_CMD
+      ${PERFETTO_PROTOC_BIN}
+      "-I${PERFETTO_PROTOS_DIR}"
+      $<$<BOOL:${INCLUDE_PROTO_PATHS}>:-I$<JOIN:${INCLUDE_PROTO_PATHS}, -I>>
+      "--proto_path=${PERFETTO_PROTOS_DIR}"
+      "--plugin_out=wrapper_namespace=pbzero:${OUT_DIR}"
+      "--plugin=protoc-gen-plugin=${PERFETTO_protozero_plugin_BIN}"
+      "${FILEPATH}"
+    )
+    #
+    add_custom_command(
+      OUTPUT ${protoc_generated_files}
+      COMMAND
+        "${CMAKE_COMMAND}"
+        -E
+        echo
+        "executing command: ${FULL_PROTOC_CMD}"
+      COMMAND
+        "${FULL_PROTOC_CMD}"
+      # code generator COMMAND will only be launched
+      # if some of DEPENDS files were changed.
+      DEPENDS
+        ${FILEPATH}
+      # NOTE: uses COMMAND_EXPAND_LISTS
+      # to support generator expressions
+      # see https://cmake.org/cmake/help/v3.13/command/add_custom_target.html
+      COMMAND_EXPAND_LISTS
+      COMMENT "running ${PERFETTO_PROTOC_BIN}"
+      VERBATIM # to support \t for example
+    )
+  endforeach()
+  #
+  set(${APPEND_GENERATED_FILES_TO_LIST} ${all_protoc_generated_files} PARENT_SCOPE)
+endfunction(generate_pbzero)
+
+generate_pbzero(
+  OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos/
+  INPUT_FILES ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos/chrome_track_event.proto
+  INCLUDE_PROTO_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos
+  APPEND_GENERATED_FILES_TO_LIST ${STATIC_LIB_NAME}_GENERATED_FILES
+  VERBOSE TRUE
+)
+
 add_library(${STATIC_LIB_NAME} STATIC
+  ${PERFETTO_SDK_DIR}/perfetto.cc
+  ${${STATIC_LIB_NAME}_GENERATED_FILES}
   ${BASE_SOURCES}
 )
 
@@ -449,10 +552,20 @@ target_link_libraries(${STATIC_LIB_NAME} PRIVATE
   ${CMAKE_DL_LIBS} # https://cmake.org/cmake/help/v3.13/variable/CMAKE_DL_LIBS.html
 )
 
+find_package(Threads)
+
 list(APPEND USED_3DPARTY_LIBS
   ${CUSTOM_ICU_LIB}
   CONAN_PKG::abseil
+  ${CMAKE_THREAD_LIBS_INIT}
+  CONAN_PKG::perfetto
 )
+
+if(TARGET_LINUX)
+  list(APPEND USED_3DPARTY_LIBS
+    CONAN_PKG::linux-syscall-support
+  )
+endif()
 
 if(NOT DEFINED build_util_LIB)
   message(FATAL_ERROR "NOT DEFINED: build_util_LIB")
@@ -547,6 +660,15 @@ if(NOT ALLOCATOR_TCMALLOC)
   )
 endif(NOT ALLOCATOR_TCMALLOC)
 
+# path to perfetto_build_flags.h
+add_absolute_include_dir(${STATIC_LIB_NAME} PUBLIC "${PERFETTO_GEN_DIR}/build_config")
+
+# path to protos/perfetto/trace/track_event/track_event.pbzero.h
+add_absolute_include_dir(${STATIC_LIB_NAME} PUBLIC "${PERFETTO_GEN_DIR}")
+
+# path to perfetto.h
+add_absolute_include_dir(${STATIC_LIB_NAME} PUBLIC "${PERFETTO_SDK_DIR}")
+
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "")
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "extensions")
 
@@ -570,13 +692,6 @@ elseif(TARGET_WINDOWS)
     COM_INIT_CHECK_HOOK_DISABLED=1
   )
 endif()
-
-target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
-  # was #include "testing/gtest/include/gtest/gtest.h"
-  GTEST_HEADER_INCLUDE="gtest/gtest.h"
-  # was #include "testing/gmock/include/gmock/gmock.h"
-  GMOCK_HEADER_INCLUDE="gmock/gmock.h"
-)
 
 target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
   ${BASE_DEFINES}

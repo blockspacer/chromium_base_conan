@@ -14,6 +14,8 @@ find_package(chromium_libevent QUIET)
 find_package(chromium_modp_b64 QUIET)
 find_package(chromium_compact_enc_det QUIET)
 find_package(Threads QUIET)
+find_package(abseil QUIET)
+find_package(perfetto QUIET)
 
 # see use_test_support option in base
 find_package(chromium_libxml QUIET)

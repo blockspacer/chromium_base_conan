@@ -140,6 +140,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             self.options["chromium_dynamic_annotations"].enable_ubsan = True
             self.options["chromium_modp_b64"].enable_ubsan = True
             self.options["chromium_compact_enc_det"].enable_ubsan = True
+            self.options["abseil"].enable_ubsan = True
+            self.options["perfetto"].is_ubsan = True
 
         if self.options.enable_asan:
             if self._is_tests_enabled():
@@ -155,6 +157,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             self.options["chromium_dynamic_annotations"].enable_asan = True
             self.options["chromium_modp_b64"].enable_asan = True
             self.options["chromium_compact_enc_det"].enable_asan = True
+            self.options["abseil"].enable_asan = True
+            self.options["perfetto"].is_asan = True
 
         if self.options.enable_msan:
             if self._is_tests_enabled():
@@ -170,6 +174,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             self.options["chromium_dynamic_annotations"].enable_msan = True
             self.options["chromium_modp_b64"].enable_msan = True
             self.options["chromium_compact_enc_det"].enable_msan = True
+            self.options["abseil"].enable_msan = True
+            self.options["perfetto"].is_msan = True
 
         if self.options.enable_tsan:
             if self._is_tests_enabled():
@@ -185,12 +191,15 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             self.options["chromium_dynamic_annotations"].enable_tsan = True
             self.options["chromium_modp_b64"].enable_tsan = True
             self.options["chromium_compact_enc_det"].enable_tsan = True
+            self.options["abseil"].enable_tsan = True
+            self.options["perfetto"].is_tsan = True
 
     def build_requirements(self):
         self.build_requires("cmake_platform_detection/master@conan/stable")
         self.build_requires("cmake_build_options/master@conan/stable")
         self.build_requires("cmake_helper_utils/master@conan/stable")
         self.build_requires("abseil/lts_2020_09_23@conan/stable")
+        # see https://chromium.googlesource.com/linux-syscall-support/+archive/29f7c7e018f4ce706a709f0b0afbf8bacf869480.tar.gz
 
         if self.options.enable_tsan \
             or self.options.enable_msan \
@@ -209,11 +218,12 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.requires("chromium_build_util/master@conan/stable")
 
         if self._is_tests_enabled() or self.options.use_test_support:
-            self.requires("chromium_libxml/master@conan/stable")
-            self.requires("conan_gtest/release-1.10.0@conan/stable")
+            self.requires("chromium_libxml/b73d9be6d6d07a37371854a766eee67e683e3d59@conan/stable")
+            self.requires("conan_gtest/stable@conan/stable")
             self.requires("benchmark/v1.5.2@dev/stable")
 
         if self.settings.os == "Linux":
+            self.requires("linux-syscall-support/cci.20200813")
             self.requires("chromium_libevent/master@conan/stable")
             self.requires("chromium_xdg_user_dirs/master@conan/stable")
             self.requires("chromium_xdg_mime/master@conan/stable")
@@ -231,6 +241,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.requires("chromium_modp_b64/master@conan/stable", private=False)
         self.requires("chromium_compact_enc_det/master@conan/stable")
 
+        self.requires("perfetto/v13.0@conan/stable")
+
         if self.options.enable_protoc_autoinstall:
             # TODO: https://github.com/gaeus/conan-grpc
             #self.requires("protobuf/3.6.1@bincrafters/stable")
@@ -247,6 +259,21 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         if self.options.shared:
             cmake.definitions["BUILD_SHARED_LIBS"] = "ON"
+
+        self.output.info("PERFETTO_SDK_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_SDK_DIR))
+        cmake.definitions['PERFETTO_SDK_DIR'] = self.deps_env_info['perfetto'].PERFETTO_SDK_DIR
+
+        self.output.info("PERFETTO_GEN_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_GEN_DIR))
+        cmake.definitions['PERFETTO_GEN_DIR'] = self.deps_env_info['perfetto'].PERFETTO_GEN_DIR
+
+        self.output.info("PERFETTO_protozero_plugin_BIN={}".format(self.deps_env_info['perfetto'].PERFETTO_protozero_plugin_BIN))
+        cmake.definitions['PERFETTO_protozero_plugin_BIN'] = self.deps_env_info['perfetto'].PERFETTO_protozero_plugin_BIN
+
+        self.output.info("PERFETTO_PROTOC_BIN={}".format(self.deps_env_info['perfetto'].PERFETTO_PROTOC_BIN))
+        cmake.definitions['PERFETTO_PROTOC_BIN'] = self.deps_env_info['perfetto'].PERFETTO_PROTOC_BIN
+
+        self.output.info("PERFETTO_PROTOS_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_PROTOS_DIR))
+        cmake.definitions['PERFETTO_PROTOS_DIR'] = self.deps_env_info['perfetto'].PERFETTO_PROTOS_DIR
 
         cmake.definitions["protobuf_VERBOSE"] = True
         cmake.definitions["protobuf_MODULE_COMPATIBLE"] = True

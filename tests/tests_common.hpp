@@ -23,11 +23,3 @@ using namespace ::Catch::Matchers;
 #if defined(USE_GTEST_TEST) && defined(USE_CATCH_TEST)
 #error "can't use both GTEST and CATCH at the same time"
 #endif // USE_GTEST_TEST && USE_CATCH_TEST
-
-#if !defined(GTEST_HEADER_INCLUDE)
-#define GTEST_HEADER_INCLUDE "gtest/gtest.h"
-#endif // GTEST_HEADER_INCLUDE
-
-#if !defined(GTEST_HEADER_INCLUDE)
-#define GMOCK_HEADER_INCLUDE "gmock/gmock.h"
-#endif // GTEST_HEADER_INCLUDE

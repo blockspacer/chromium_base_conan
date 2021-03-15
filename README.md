@@ -119,21 +119,25 @@ GIT_SSL_NO_VERIFY=true \
   -s cling_conan:build_type=Release \
   -s llvm_tools:build_type=Release \
   --profile clang \
+  -e chromium_base:enable_tests=True \
+  -e abseil:enable_llvm_tools=True \
+  -o perfetto:is_hermetic_clang=False \
   -e flextool:enable_tests=True \
   -e flextool:enable_llvm_tools=True
 
-cmake -E time cmake .. \
-  -DCMAKE_C_COMPILER=clang-10 \
-  -DCMAKE_CXX_COMPILER=clang++-10 \
-  -DCMAKE_VERBOSE_MAKEFILE=FALSE \
-  -DENABLE_TESTS=FALSE \
-  -DBASE_NEED_GEN_BUILD_DATE=FALSE \
-  -DENABLE_DOCTEST=OFF \
-  -DBUILD_SHARED_LIBS=FALSE \
-  -DCONAN_AUTO_INSTALL=OFF \
-  -DCMAKE_BUILD_TYPE=Debug
+(rm CMakeCache.txt || true)
 
-cmake -E time cmake --build . -- -j8
+cmake -E time \
+  conan build .. --build-folder=.
+
+cmake -E time \
+  conan package --build-folder=. ..
+
+cmake -E time \
+  conan export-pkg .. conan/stable --settings build_type=Debug --force --profile clang
+
+cmake -E time \
+  conan test ../test_package chromium_base/master@conan/stable --settings build_type=Debug --profile clang
 ```
 
 ## HOW TO BUILD FROM SOURCE
@@ -155,6 +159,7 @@ CONAN_REVISIONS_ENABLED=1 \
         -e chromium_base:enable_tests=True \
         -o chromium_base:use_alloc_shim=True \
         -o chromium_tcmalloc:use_alloc_shim=True \
+        -o perfetto:is_hermetic_clang=False \
         -o openssl:shared=True
 
 # clean build cache
@@ -185,7 +190,9 @@ CONAN_REVISIONS_ENABLED=1 \
         -o chromium_base:enable_tsan=True \
         -e chromium_base:enable_llvm_tools=True \
         -o chromium_base:use_alloc_shim=False \
-        -o chromium_tcmalloc:use_alloc_shim=False \
+        -o abseil:enable_tsan=True \
+        -e abseil:enable_llvm_tools=True \
+        -o perfetto:is_hermetic_clang=False \
         -o openssl:shared=True
 
 # clean build cache

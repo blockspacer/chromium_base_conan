@@ -102,6 +102,27 @@ if(TARGET_ANDOID)
   #}
 endif()
 
+if (NOT USE_GLIB)
+  remove_from_list(
+    CHECK_EXISTS TRUE
+    INPUT ${COMPONENT_BASE_SOURCES}
+    OUTPUT COMPONENT_BASE_SOURCES
+    ITEMS
+    "message_loop/message_pump_glib.cc"
+    "message_loop/message_pump_glib.h")
+endif()
+
+if (NOT USE_NACL)
+  remove_from_list(
+    CHECK_EXISTS TRUE
+    INPUT ${COMPONENT_BASE_SOURCES}
+    OUTPUT COMPONENT_BASE_SOURCES
+    ITEMS
+    "os_compat_nacl.cc"
+    "os_compat_nacl.h"
+    "rand_util_nacl.cc")
+endif()
+
 if (USE_PERFETTO_CLIENT_LIBRARY)
   remove_from_list(
     CHECK_EXISTS TRUE
@@ -110,3 +131,5 @@ if (USE_PERFETTO_CLIENT_LIBRARY)
     ITEMS
     "trace_event/builtin_categories.cc")
 endif()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/specific_sources_filter.cmake)

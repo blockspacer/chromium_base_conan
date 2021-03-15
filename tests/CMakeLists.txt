@@ -481,8 +481,11 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
   #tests_add_executable(${ROOT_PROJECT_NAME}-message_loop_io_posix_unittest
   #  "${BASE_SOURCES_PATH}message_loop/message_loop_io_posix_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
   #
-  #tests_add_executable(${ROOT_PROJECT_NAME}-message_pump_glib_unittest
-  #  "${BASE_SOURCES_PATH}message_loop/message_pump_glib_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+
+  if(USE_GLIB)
+    tests_add_executable(${ROOT_PROJECT_NAME}-message_pump_glib_unittest
+      "${BASE_SOURCES_PATH}message_loop/message_pump_glib_unittest.cc" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  endif()
 
   # TODO: ThreadSanitizer: data race
   # in ScheduleWorkTest.ThreadTimeToIOFromTwoThreads

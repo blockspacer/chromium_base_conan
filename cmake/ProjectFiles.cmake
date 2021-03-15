@@ -41,11 +41,16 @@ if(USE_ALLOC_SHIM)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_allocator_shim.cmake)
 endif()
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_filter.cmake)
+if(NOT USE_NACL AND BASE_USE_PARTITION_ALLOCATOR)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_partition_allocator.cmake)
+endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/lib_test_config.cmake)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/lib_test_support.cmake)
+
+# NOTE: *filter.cmake must be LAST included file
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_filter.cmake)
 
 list(TRANSFORM COMPONENT_BASE_SOURCES PREPEND ${BASE_SOURCES_PATH})
 list(APPEND BASE_SOURCES ${COMPONENT_BASE_SOURCES})
