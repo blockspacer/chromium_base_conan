@@ -25,6 +25,7 @@
 #include "base/strings/string_piece.h"
 #include "base/task/common/task_annotator.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
@@ -62,8 +63,8 @@ typedef HANDLE FileHandle;
 #include <mach/mach_time.h>
 #include <mach-o/dyld.h>
 
-#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
-#if defined(OS_NACL)
+#elif defined(OS_POSIX) || defined(OS_FUCHSIA) || defined(OS_EMSCRIPTEN)
+#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
 #include <sys/time.h>  // timespec doesn't seem to be in <time.h>
 #endif
 #include <time.h>
@@ -200,6 +201,13 @@ LogMessageHandlerFunction log_message_handler = nullptr;
 uint64_t TickCount() {
 #if defined(OS_WIN)
   return GetTickCount();
+#elif defined(OS_EMSCRIPTEN)
+  // this goes above x86-specific code because old versions of Emscripten
+  // define __x86_64__, although they have nothing to do with it.
+  /// \note The result is not an absolute time,
+  /// and is only meaningful in comparison to other calls to this function (!!!)
+  // emscripten_get_now() returns a wallclock time as a float in milliseconds (1e-3).
+  return static_cast<int64_t>(emscripten_get_now() * 1e+6);
 #elif defined(OS_FUCHSIA)
   return zx_clock_get_monotonic() /
          static_cast<zx_time_t>(base::Time::kNanosecondsPerMicrosecond);
@@ -223,7 +231,7 @@ uint64_t TickCount() {
 void DeleteFilePath(const PathString& log_name) {
 #if defined(OS_WIN)
   DeleteFile(log_name.c_str());
-#elif defined(OS_NACL)
+#elif defined(OS_NACL) || defined(OS_EMSCRIPTEN)
   // Do nothing; unlink() isn't supported on NaCl.
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
   unlink(log_name.c_str());
@@ -244,7 +252,7 @@ PathString GetDefaultLogFile() {
     log_name.erase(last_backslash + 1);
   log_name += FILE_PATH_LITERAL("debug.log");
   return log_name;
-#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
+#elif defined(OS_POSIX) || defined(OS_FUCHSIA) || defined(OS_EMSCRIPTEN)
   // On other platforms we just use the current directory.
   return PathString("debug.log");
 #endif
@@ -361,7 +369,7 @@ BASE_EXPORT logging::LogSeverity LOGGING_DCHECK = LOGGING_INFO;
 std::ostream* g_swallow_stream;
 
 bool BaseInitLoggingImpl(const LoggingSettings& settings) {
-#if defined(OS_NACL)
+#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
   // Can log only to the system debug log and stderr.
   CHECK_EQ(settings.logging_dest & ~(LOG_TO_SYSTEM_DEBUG_LOG | LOG_TO_STDERR),
            0u);
@@ -553,35 +561,54 @@ LogMessage::LogMessage(const char* file, int line, LogSeverity severity)
 LogMessage::LogMessage(const char* file, int line, const char* condition)
     : severity_(LOGGING_FATAL), file_(file), line_(line) {
   Init(file, line);
-  stream_ << "Check failed: " << condition << ". ";
+  logStream_ << "Check failed: " << condition << ". ";
 }
 
 LogMessage::~LogMessage() {
-  size_t stack_start = stream_.tellp();
+  size_t stack_start = logStream_.tellp();
 #if !defined(OFFICIAL_BUILD) && !defined(OS_NACL) && !defined(__UCLIBC__) && \
-    !defined(OS_AIX)
+    !defined(OS_AIX) && !defined(OS_EMSCRIPTEN)
   if (severity_ == LOGGING_FATAL && !base::debug::BeingDebugged()) {
     // Include a stack trace on a fatal, unless a debugger is attached.
     base::debug::StackTrace stack_trace;
-    stream_ << std::endl;  // Newline to separate from log message.
-    stack_trace.OutputToStream(&stream_);
+    logStream_ << std::endl;  // Newline to separate from log message.
+    stack_trace.OutputToStream(&logStream_);
     base::debug::TaskTrace task_trace;
     if (!task_trace.empty())
-      task_trace.OutputToStream(&stream_);
+      task_trace.OutputToStream(&logStream_);
 
     // Include the IPC context, if any.
     // TODO(chrisha): Integrate with symbolization once those tools exist!
     const auto* task = base::TaskAnnotator::CurrentTaskForThread();
     if (task && task->ipc_hash) {
-      stream_ << "IPC message handler context: "
+      logStream_ << "IPC message handler context: "
               << base::StringPrintf("0x%08X", task->ipc_hash) << std::endl;
     }
   }
 #endif
-  stream_ << std::endl;
-  std::string str_newline(stream_.str());
+
+  if(logStream_.needEndl())
+  {
+    logStream_ << std::endl;
+  }
+
+  std::string str_newline(logStream_.str());
+
+  if(!logStream_.needFormat())
+  {
+    // Remove prefix that looks similar to:
+    // [25583:25583:1113/185640.856387:39412343570:INFO:main.cc(375)]
+    str_newline
+      = str_newline.substr(message_start_, str_newline.size());
+  }
+
   TRACE_LOG_MESSAGE(
       file_, base::StringPiece(str_newline).substr(message_start_), line_);
+
+#if defined(OS_EMSCRIPTEN)
+  /// \todo find better way to log on WASM
+  printf("LOG: %s\n", str_newline.c_str());
+#endif
 
   // Give any log message handler first dibs on the message.
   if (log_message_handler &&
@@ -873,7 +900,7 @@ LogMessage::~LogMessage() {
       if (!base::debug::BeingDebugged()) {
         // Displaying a dialog is unnecessary when debugging and can complicate
         // debugging.
-        DisplayDebugMessageInDialog(stream_.str());
+        DisplayDebugMessageInDialog(logStream_.str());
       }
 #endif
       // Crash the process to generate a dump.
@@ -905,18 +932,18 @@ void LogMessage::Init(const char* file, int line) {
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   {
     // TODO(darin): It might be nice if the columns were fixed width.
-    stream_ << '[';
+    logStream_ << '[';
     if (g_log_prefix)
-      stream_ << g_log_prefix << ':';
+      logStream_ << g_log_prefix << ':';
     if (g_log_process_id)
-      stream_ << base::GetUniqueIdForProcess() << ':';
+      logStream_ << base::GetUniqueIdForProcess() << ':';
     if (g_log_thread_id)
-      stream_ << base::PlatformThread::CurrentId() << ':';
+      logStream_ << base::PlatformThread::CurrentId() << ':';
     if (g_log_timestamp) {
 #if defined(OS_WIN)
       SYSTEMTIME local_time;
       GetLocalTime(&local_time);
-      stream_ << std::setfill('0')
+      logStream_ << std::setfill('0')
               << std::setw(2) << local_time.wMonth
               << std::setw(2) << local_time.wDay
               << '/'
@@ -933,7 +960,7 @@ void LogMessage::Init(const char* file, int line) {
       struct tm local_time;
       localtime_r(&t, &local_time);
       struct tm* tm_time = &local_time;
-      stream_ << std::setfill('0')
+      logStream_ << std::setfill('0')
               << std::setw(2) << 1 + tm_time->tm_mon
               << std::setw(2) << tm_time->tm_mday
               << '/'
@@ -948,15 +975,15 @@ void LogMessage::Init(const char* file, int line) {
 #endif
     }
     if (g_log_tickcount)
-      stream_ << TickCount() << ':';
+      logStream_ << TickCount() << ':';
     if (severity_ >= 0) {
-      stream_ << log_severity_name(severity_);
+      logStream_ << log_severity_name(severity_);
     } else {
-      stream_ << "VERBOSE" << -severity_;
+      logStream_ << "VERBOSE" << -severity_;
     }
-    stream_ << ":" << filename << "(" << line << ")] ";
+    logStream_ << ":" << filename << "(" << line << ")] ";
   }
-  message_start_ = stream_.str().length();
+  message_start_ = logStream_.str().length();
 }
 
 #if defined(OS_WIN)

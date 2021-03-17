@@ -10,6 +10,8 @@
 #include "base/strings/string_piece.h"
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
+#include "base/test/scoped_locale.h"
+
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace util {
@@ -71,6 +73,10 @@ TEST(ValuesUtilTest, InvalidInt64Values) {
 }
 
 TEST(ValuesUtilTest, FilePath) {
+#if !defined(SYSTEM_NATIVE_UTF8) && (defined(OS_LINUX) || defined(OS_CHROMEOS))
+  base::ScopedLocale locale("en_US.UTF-8");
+#endif
+
   // Ω is U+03A9 GREEK CAPITAL LETTER OMEGA, a non-ASCII character.
   constexpr base::StringPiece kTestCases[] = {
       "/unix/Ω/path.dat",
@@ -79,7 +85,7 @@ TEST(ValuesUtilTest, FilePath) {
   for (auto test_case : kTestCases) {
     base::FilePath input = base::FilePath::FromUTF8Unsafe(test_case);
     base::Value expected(test_case);
-    SCOPED_TRACE(testing::Message() << "test_case: " << test_case);
+    SCOPED_TRACE(testing::Message() << "test_case: " << test_case << " input: " << input);
 
     EXPECT_EQ(FilePathToValue(input), expected);
     EXPECT_EQ(*ValueToFilePath(&expected), input);

@@ -12,6 +12,7 @@
 #include "base/macros.h"
 #include "base/no_destructor.h"
 #include "base/threading/simple_thread.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -147,6 +148,9 @@ class UseTLSDuringDestructionRunner {
   // contains |key| as well as a pointer to |teardown_works_correctly|.
   static void ThreadLocalDestructor(void* value) {
     TLSState* state = static_cast<TLSState*>(value);
+#if defined(DISABLE_PTHREADS)
+    NOTIMPLEMENTED();
+#endif
     int result = pthread_setspecific(state->key, nullptr);
     ASSERT_EQ(result, 0);
 

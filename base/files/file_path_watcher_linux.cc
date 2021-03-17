@@ -39,6 +39,7 @@
 #include "base/threading/scoped_blocking_call.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -268,6 +269,10 @@ class FilePathWatcherImpl : public FilePathWatcher::PlatformDelegate {
 LazyInstance<InotifyReader>::Leaky g_inotify_reader = LAZY_INSTANCE_INITIALIZER;
 
 void InotifyReaderThreadDelegate::ThreadMain() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
   PlatformThread::SetName("inotify_reader");
 
   // Make sure the file descriptors are good for use with select().

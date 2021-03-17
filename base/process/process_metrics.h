@@ -325,7 +325,7 @@ BASE_EXPORT void IncreaseFdLimitTo(unsigned int max_descriptors);
 
 #if defined(OS_WIN) || defined(OS_APPLE) || defined(OS_LINUX) ||      \
     defined(OS_CHROMEOS) || defined(OS_ANDROID) || defined(OS_AIX) || \
-    defined(OS_FUCHSIA)
+    defined(OS_FUCHSIA) || defined(OS_EMSCRIPTEN)
 // Data about system-wide memory consumption. Values are in KB. Available on
 // Windows, Mac, Linux, Android and Chrome OS.
 //

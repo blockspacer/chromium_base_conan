@@ -1,4 +1,6 @@
-#include "tests_common.hpp"
+#include <catch2/catch.hpp>
+// include catch2 before fakeit
+#include <fakeit.hpp>
 
 #include <chrono>
 #include <cstdlib>
@@ -24,6 +26,10 @@
      namespace fs = boost::filesystem;
 #  endif
 #endif
+
+using namespace ::fakeit;
+using namespace ::Catch;
+using namespace ::Catch::Matchers;
 
 struct SomeInterface {
   virtual int foo(int) = 0;

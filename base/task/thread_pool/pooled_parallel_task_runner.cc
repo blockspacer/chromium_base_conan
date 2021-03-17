@@ -6,6 +6,7 @@
 #include "base/task/thread_pool/pooled_task_runner_delegate.h"
 
 #include "base/task/thread_pool/sequence.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace internal {
@@ -21,6 +22,13 @@ PooledParallelTaskRunner::~PooledParallelTaskRunner() = default;
 bool PooledParallelTaskRunner::PostDelayedTask(const Location& from_here,
                                                OnceClosure closure,
                                                TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  std::move(closure).Run();
+  NOTIMPLEMENTED();
+  // Returns true if the task may be run
+  return true;
+#endif // EMSCRIPTEN
+
   if (!PooledTaskRunnerDelegate::MatchesCurrentDelegate(
           pooled_task_runner_delegate_)) {
     return false;

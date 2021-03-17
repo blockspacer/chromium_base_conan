@@ -11,7 +11,7 @@
 
 #include "base/numerics/safe_conversions.h"
 
-#if !defined(__native_client__) && (defined(__ARMEL__) || defined(__arch64__))
+#if !defined(__native_client__) && !defined(__EMSCRIPTEN__) && (defined(__ARMEL__) || defined(__arch64__))
 #include "base/numerics/safe_math_arm_impl.h"
 #define BASE_HAS_ASSEMBLER_SAFE_MATH (1)
 #else
@@ -71,6 +71,12 @@ struct CheckedAddFastOp {
   static const bool is_supported = true;
   template <typename V>
   __attribute__((always_inline)) static constexpr bool Do(T x, U y, V* result) {
+
+    /// \todo
+    // Emscripten Clang reports that it has the builtins, it may be lowered to an
+    // instruction that is unsupported in asm.js
+    // see https://github.com/endlessm/chromium-browser/blob/master/third_party/pdfium/third_party/base/numerics/safe_math_impl.h#L47
+
     return !__builtin_add_overflow(x, y, result);
   }
 };
@@ -80,6 +86,12 @@ struct CheckedSubFastOp {
   static const bool is_supported = true;
   template <typename V>
   __attribute__((always_inline)) static constexpr bool Do(T x, U y, V* result) {
+
+    /// \todo
+    // Emscripten Clang reports that it has the builtins, it may be lowered to an
+    // instruction that is unsupported in asm.js
+    // see https://github.com/endlessm/chromium-browser/blob/master/third_party/pdfium/third_party/base/numerics/safe_math_impl.h#L47
+
     return !__builtin_sub_overflow(x, y, result);
   }
 };
@@ -103,6 +115,12 @@ struct CheckedMulFastOp {
   __attribute__((always_inline)) static constexpr bool Do(T x, U y, V* result) {
     return CheckedMulFastAsmOp<T, U>::is_supported
                ? CheckedMulFastAsmOp<T, U>::Do(x, y, result)
+
+               /// \todo
+               // Emscripten Clang reports that it has the builtins, it may be lowered to an
+               // instruction that is unsupported in asm.js
+               // see https://github.com/endlessm/chromium-browser/blob/master/third_party/pdfium/third_party/base/numerics/safe_math_impl.h#L47
+
                : !__builtin_mul_overflow(x, y, result);
   }
 };
@@ -141,6 +159,12 @@ struct ClampedNegFastOp {
     // Use this when there is no assembler path available.
     if (!ClampedSubFastAsmOp<T, T>::is_supported) {
       T result;
+
+      /// \todo
+      // Emscripten Clang reports that it has the builtins, it may be lowered to an
+      // instruction that is unsupported in asm.js
+      // see https://github.com/endlessm/chromium-browser/blob/master/third_party/pdfium/third_party/base/numerics/safe_math_impl.h#L47
+
       return !__builtin_sub_overflow(T(0), value, &result)
                  ? result
                  : std::numeric_limits<T>::max();

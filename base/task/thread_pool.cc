@@ -10,6 +10,7 @@
 #include "base/task/thread_pool/thread_pool_impl.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/threading/post_task_and_reply_impl.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -52,6 +53,10 @@ bool ThreadPool::PostTask(const Location& from_here, OnceClosure task) {
 bool ThreadPool::PostDelayedTask(const Location& from_here,
                                  OnceClosure task,
                                  TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
   return ThreadPool::PostDelayedTask(from_here, {}, std::move(task), delay);
 }
 

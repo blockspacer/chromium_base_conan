@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "base/feature_list.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -15,7 +16,12 @@ namespace {
 // Whether thread priorities should be used. When disabled,
 // PlatformThread::SetCurrentThreadPriority() no-ops.
 const Feature kThreadPrioritiesFeature{"ThreadPriorities",
-                                       FEATURE_ENABLED_BY_DEFAULT};
+#if defined(DISABLE_PTHREADS)
+                                       FEATURE_DISABLED_BY_DEFAULT
+#else
+                                       FEATURE_ENABLED_BY_DEFAULT
+#endif // EMSCRIPTEN
+                                       };
 
 // Whether thread priorities should be used.
 //

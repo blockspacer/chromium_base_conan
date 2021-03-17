@@ -16,6 +16,9 @@ find_package(chromium_compact_enc_det QUIET)
 find_package(Threads QUIET)
 find_package(abseil QUIET)
 find_package(perfetto QUIET)
+find_package(double-conversion QUIET)
+find_package(protobuf QUIET)
+find_package(fmt QUIET)
 
 # see use_test_support option in base
 find_package(chromium_libxml QUIET)

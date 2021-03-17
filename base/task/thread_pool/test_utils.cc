@@ -13,6 +13,7 @@
 #include "base/test/bind.h"
 #include "base/threading/scoped_blocking_call_internal.h"
 #include "base/threading/thread_restrictions.h"
+#include "basic/wasm_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
@@ -49,6 +50,11 @@ class MockJobTaskRunner : public TaskRunner {
 bool MockJobTaskRunner::PostDelayedTask(const Location& from_here,
                                         OnceClosure closure,
                                         TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
+
   DCHECK_EQ(delay, TimeDelta());  // Jobs doesn't support delayed tasks.
 
   if (!PooledTaskRunnerDelegate::MatchesCurrentDelegate(

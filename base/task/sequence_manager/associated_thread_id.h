@@ -14,6 +14,7 @@
 #include "base/sequence_checker.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/thread_checker.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace sequence_manager {
@@ -90,6 +91,9 @@ class BASE_EXPORT AssociatedThreadId
   //
   // Attention:: The result might be stale by the time this method returns.
   bool IsBoundToCurrentThread() const {
+#if defined(DISABLE_PTHREADS)
+    return true;
+#endif
     return thread_id_.load(std::memory_order_relaxed) ==
            PlatformThread::CurrentId();
   }

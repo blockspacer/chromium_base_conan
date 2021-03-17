@@ -1531,6 +1531,10 @@ bool TestLauncher::Init(CommandLine* command_line) {
   results_tracker_.AddGlobalTag("OS_NACL");
 #endif
 
+#if defined(OS_EMSCRIPTEN)
+  results_tracker_.AddGlobalTag("OS_EMSCRIPTEN");
+#endif
+
 #if defined(OS_OPENBSD)
   results_tracker_.AddGlobalTag("OS_OPENBSD");
 #endif

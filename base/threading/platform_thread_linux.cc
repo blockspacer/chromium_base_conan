@@ -22,10 +22,11 @@
 #include "base/strings/stringprintf.h"
 #include "base/threading/platform_thread_internal_posix.h"
 #include "base/threading/thread_id_name_manager.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 
-#if !defined(OS_NACL) && !defined(OS_AIX)
+#if !defined(OS_NACL) && !defined(OS_AIX) && !defined(OS_EMSCRIPTEN)
 #include <pthread.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
@@ -59,7 +60,7 @@ int g_scheduler_boost_adj;
 int g_scheduler_limit_adj;
 bool g_scheduler_use_latency_tune_adj;
 
-#if !defined(OS_NACL) && !defined(OS_AIX)
+#if !defined(OS_NACL) && !defined(OS_AIX) && !defined(DISABLE_PTHREADS)
 
 // Defined by linux uclamp ABI of sched_setattr().
 const uint32_t kSchedulerUclampMin = 0;
@@ -130,7 +131,7 @@ int sched_setattr(pid_t pid,
 #endif  // !defined(OS_NACL) && !defined(OS_AIX)
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 const FilePath::CharType kCgroupDirectory[] =
     FILE_PATH_LITERAL("/sys/fs/cgroup");
 
@@ -284,7 +285,7 @@ void SetThreadCgroupsForThreadPriority(PlatformThreadId thread_id,
 namespace internal {
 
 namespace {
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
 const struct sched_param kRealTimePrio = {8};
 #endif
 }  // namespace
@@ -298,7 +299,7 @@ const ThreadPriorityToNiceValuePair kThreadPriorityToNiceValueMap[4] = {
 
 Optional<bool> CanIncreaseCurrentThreadPriorityForPlatform(
     ThreadPriority priority) {
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
   // A non-zero soft-limit on RLIMIT_RTPRIO is required to be allowed to invoke
   // pthread_setschedparam in SetCurrentThreadPriorityForPlatform().
   struct rlimit rlim;
@@ -311,7 +312,7 @@ Optional<bool> CanIncreaseCurrentThreadPriorityForPlatform(
 }
 
 bool SetCurrentThreadPriorityForPlatform(ThreadPriority priority) {
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
   // For legacy schedtune interface
   SetThreadCgroupsForThreadPriority(PlatformThread::CurrentId(), priority);
 
@@ -329,7 +330,7 @@ bool SetCurrentThreadPriorityForPlatform(ThreadPriority priority) {
 }
 
 Optional<ThreadPriority> GetCurrentThreadPriorityForPlatform() {
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
   int maybe_sched_rr = 0;
   struct sched_param maybe_realtime_prio = {0};
   if (pthread_getschedparam(pthread_self(), &maybe_sched_rr,
@@ -348,7 +349,7 @@ Optional<ThreadPriority> GetCurrentThreadPriorityForPlatform() {
 void PlatformThread::SetName(const std::string& name) {
   ThreadIdNameManager::GetInstance()->SetName(name);
 
-#if !defined(OS_NACL) && !defined(OS_AIX)
+#if !defined(OS_NACL) && !defined(OS_AIX) && !defined(DISABLE_PTHREADS)
   // On linux we can get the thread names to show up in the debugger by setting
   // the process name for the LWP.  We don't want to do this for the main
   // thread because that would rename the process, causing tools like killall
@@ -368,7 +369,7 @@ void PlatformThread::SetName(const std::string& name) {
 #endif  //  !defined(OS_NACL) && !defined(OS_AIX)
 }
 
-#if !defined(OS_NACL) && !defined(OS_AIX)
+#if !defined(OS_NACL) && !defined(OS_AIX) && !defined(DISABLE_PTHREADS)
 // static
 void PlatformThread::SetThreadPriority(ProcessId process_id,
                                        PlatformThreadId thread_id,
@@ -436,7 +437,7 @@ void InitThreading() {}
 void TerminateOnThread() {}
 
 size_t GetDefaultThreadStackSize(const pthread_attr_t& attributes) {
-#if !defined(THREAD_SANITIZER)
+#if !defined(THREAD_SANITIZER) || defined(OS_EMSCRIPTEN)
   return 0;
 #else
   // ThreadSanitizer bloats the stack heavily. Evidence has been that the

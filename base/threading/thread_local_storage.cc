@@ -10,6 +10,7 @@
 #include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/synchronization/lock.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 using base::internal::PlatformThreadLocalStorage;
@@ -375,6 +376,11 @@ bool ThreadLocalStorage::HasBeenDestroyed() {
 }
 
 void ThreadLocalStorage::Slot::Initialize(TLSDestructorFunc destructor) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#endif
+
   PlatformThreadLocalStorage::TLSKey key =
       base::subtle::NoBarrier_Load(&g_native_tls_key);
   if (key == PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES ||
@@ -409,6 +415,11 @@ void ThreadLocalStorage::Slot::Initialize(TLSDestructorFunc destructor) {
 }
 
 void ThreadLocalStorage::Slot::Free() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#endif
+
   DCHECK_NE(slot_, kInvalidSlotValue);
   DCHECK_LT(slot_, kThreadLocalStorageSize);
   {
@@ -421,6 +432,11 @@ void ThreadLocalStorage::Slot::Free() {
 }
 
 void* ThreadLocalStorage::Slot::Get() const {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#endif
+
   TlsVectorEntry* tls_data = nullptr;
   const TlsVectorState state = GetTlsVectorStateAndValue(
       base::subtle::NoBarrier_Load(&g_native_tls_key), &tls_data);
@@ -436,6 +452,11 @@ void* ThreadLocalStorage::Slot::Get() const {
 }
 
 void ThreadLocalStorage::Slot::Set(void* value) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#endif
+
   TlsVectorEntry* tls_data = nullptr;
   const TlsVectorState state = GetTlsVectorStateAndValue(
       base::subtle::NoBarrier_Load(&g_native_tls_key), &tls_data);
@@ -452,10 +473,20 @@ void ThreadLocalStorage::Slot::Set(void* value) {
 }
 
 ThreadLocalStorage::Slot::Slot(TLSDestructorFunc destructor) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#endif
+
   Initialize(destructor);
 }
 
 ThreadLocalStorage::Slot::~Slot() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#endif
+
   Free();
 }
 

@@ -38,6 +38,7 @@
 #include "base/time/tick_clock.h"
 #include "base/time/time.h"
 #include "base/time/time_override.h"
+#include "basic/wasm_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if defined(OS_POSIX) || defined(OS_FUCHSIA)
@@ -565,6 +566,10 @@ bool TaskEnvironment::MainThreadIsIdle() const {
 }
 
 void TaskEnvironment::RunUntilIdle() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
   DCHECK_CALLED_ON_VALID_THREAD(main_thread_checker_);
 
   if (threading_mode_ == ThreadingMode::MAIN_THREAD_ONLY) {

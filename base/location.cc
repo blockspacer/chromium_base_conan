@@ -12,6 +12,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -29,7 +30,7 @@ Location::Location(const char* function_name,
       file_name_(file_name),
       line_number_(line_number),
       program_counter_(program_counter) {
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // The program counter should not be null except in a default constructed
   // (empty) Location object. This value is used for identity, so if it doesn't
   // uniquely identify a location, things will break.
@@ -48,7 +49,14 @@ std::string Location::ToString() const {
   return StringPrintf("pc:%p", program_counter_);
 }
 
-#if defined(COMPILER_MSVC)
+#if defined(OS_EMSCRIPTEN) && defined(USE_OFFSET_CONVERTER)
+// __builtin_return_address requires -s USE_OFFSET_CONVERTER=1 to work. (#9073)
+#define RETURN_ADDRESS() \
+  __builtin_extract_return_addr(__builtin_return_address(0))
+#elif defined(OS_EMSCRIPTEN) && !defined(USE_OFFSET_CONVERTER)
+// emscripten_return_address implements the functionality of gcc/clang's __builtin_return_address. (#8617)
+#define RETURN_ADDRESS() emscripten_return_address()
+#elif defined(COMPILER_MSVC)
 #define RETURN_ADDRESS() _ReturnAddress()
 #elif defined(COMPILER_GCC) && !defined(OS_NACL)
 #define RETURN_ADDRESS() \

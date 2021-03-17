@@ -167,7 +167,7 @@ list(APPEND COMPONENT_BASE_SOURCES_WIN_UNPROCESSED
   "time/time_win.cc"
 )
 
-
+# lib PE image
 list(APPEND LIB_PE_IMAGE_UNPROCESSED
   "../no_destructor.h"
   "current_module.h"

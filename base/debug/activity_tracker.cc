@@ -253,7 +253,7 @@ void Activity::FillFrom(Activity* activity,
   activity->activity_type = type;
   activity->data = data;
 
-#if (!defined(OS_NACL) && DCHECK_IS_ON()) || defined(ADDRESS_SANITIZER)
+#if (!defined(OS_NACL) && !defined(OS_EMSCRIPTEN) && DCHECK_IS_ON()) || defined(ADDRESS_SANITIZER)
   // Create a stacktrace from the current location and get the addresses for
   // improved debuggability.
   StackTrace stack_trace;
@@ -1271,7 +1271,7 @@ void GlobalActivityTracker::CreateWithAllocator(
   global_tracker->CreateTrackerForCurrentThread();
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // static
 bool GlobalActivityTracker::CreateWithFile(const FilePath& file_path,
                                            size_t size,
@@ -1777,7 +1777,7 @@ ScopedThreadJoinActivity::ScopedThreadJoinActivity(
           ActivityData::ForThread(*thread),
           /*lock_allowed=*/true) {}
 
-#if !defined(OS_NACL) && !defined(OS_IOS)
+#if !defined(OS_NACL) && !defined(OS_IOS) && !defined(OS_EMSCRIPTEN)
 ScopedProcessWaitActivity::ScopedProcessWaitActivity(
     const void* program_counter,
     const base::Process* process)

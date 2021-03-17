@@ -23,6 +23,8 @@
 #include "base/threading/platform_thread.h"
 #include "build/build_config.h"
 
+#include "basic/macros.h"
+
 namespace base {
 
 class MessagePump;
@@ -59,7 +61,7 @@ class TimeDomain;
 // ownership. The caller is then responsible to ensure a happens-after
 // relationship between the DetachFromSequence() call and the next use of that
 // Thread object (including ~Thread()).
-class BASE_EXPORT Thread : PlatformThread::Delegate {
+class BASE_EXPORT LOCKABLE Thread : PlatformThread::Delegate {
  public:
   class BASE_EXPORT Delegate {
    public:

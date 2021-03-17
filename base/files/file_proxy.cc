@@ -14,6 +14,7 @@
 #include "base/location.h"
 #include "base/task_runner.h"
 #include "base/task_runner_util.h"
+#include "basic/wasm_util.h"
 
 namespace {
 
@@ -28,7 +29,11 @@ class FileHelper {
  public:
   FileHelper(FileProxy* proxy, File file)
       : file_(std::move(file)),
+#if defined(DISABLE_PTHREADS)
+        task_runner_(nullptr),
+#else
         task_runner_(proxy->task_runner()),
+#endif
         proxy_(AsWeakPtr(proxy)) {}
   FileHelper(const FileHelper&) = delete;
   FileHelper& operator=(const FileHelper&) = delete;

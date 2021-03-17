@@ -82,6 +82,8 @@ class BASE_EXPORT BindStateBase
   // Whitelist subclasses that access the destructor of BindStateBase.
   template <typename Functor, typename... BoundArgs>
   friend struct BindState;
+  template <typename CheckerType, typename Functor, typename... BoundArgs>
+  friend struct CheckedBindState;
   friend struct ::base::FakeBindState;
 
   bool IsCancelled() const {

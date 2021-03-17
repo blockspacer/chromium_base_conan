@@ -1,4 +1,7 @@
-﻿# see static_library("test_config") in /test/BUILD.gn
+﻿#
+# See https://source.chromium.org/chromium/chromium/src/+/master:base/test/BUILD.gn
+
+# see static_library("test_config") in /test/BUILD.gn
 list(APPEND LIB_TEST_CONFIG_UNPROCESSED
   "test_switches.cc"
   "test_switches.h"

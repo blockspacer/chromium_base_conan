@@ -13,6 +13,7 @@
 #include "base/threading/scoped_blocking_call.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 #if defined(OS_ANDROID) && __ANDROID_API__ < 21
@@ -76,8 +77,28 @@ void ConditionVariable::Wait() {
 #if DCHECK_IS_ON()
   user_lock_->CheckHeldAndUnmark();
 #endif
+
+#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS) && !defined(HAS_ASYNC)
+  // todo
+  NOTIMPLEMENTED();
+#elif defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS) && defined(HAS_ASYNC)
+  // can`t wait infinitely on main (single) thread
+  const TimeDelta max_wait = TimeDelta::FromMinutes(1);
+  const bool finite_time = !max_wait.is_max();
+  if (finite_time) {
+    // requires emscripten.h
+    HTML5_ASYNC_SLEEP(max_wait.InMilliseconds());
+  } else {
+    P_LOG("WARNING: ConditionVariable::TimedWait infinite SLEEP\n");
+  }
+#elif defined(DISABLE_PTHREADS)
+  // no threading
+  NOTIMPLEMENTED();
+#else
   int rv = pthread_cond_wait(&condition_, user_mutex_);
   DCHECK_EQ(0, rv);
+#endif // DISABLE_PTHREADS
+
 #if DCHECK_IS_ON()
   user_lock_->CheckUnheldAndMark();
 #endif
@@ -99,7 +120,26 @@ void ConditionVariable::TimedWait(const TimeDelta& max_time) {
   user_lock_->CheckHeldAndUnmark();
 #endif
 
-#if defined(OS_APPLE)
+#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)) && !defined(HAS_ASYNC)
+  // no threading
+  int rv = 0;
+  NOTIMPLEMENTED();
+#elif defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS) && defined(HAS_ASYNC)
+  // no threading
+  int rv = 0;
+  Optional<TimeTicks> current_time;
+  const bool finite_time = !max_time.is_max();
+  if (finite_time) {
+    // requires emscripten.h
+    HTML5_ASYNC_SLEEP(max_time.InMilliseconds());
+  } else {
+    P_LOG("WARNING: ConditionVariable::TimedWait infinite SLEEP\n");
+  }
+#elif defined(DISABLE_PTHREADS)
+  // no threading
+  int rv = 0;
+  NOTIMPLEMENTED();
+#elif defined(OS_APPLE)
   int rv = pthread_cond_timedwait_relative_np(
       &condition_, user_mutex_, &relative_time);
 #else

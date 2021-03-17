@@ -142,7 +142,7 @@ class BASE_EXPORT GlobalActivityAnalyzer {
   static std::unique_ptr<GlobalActivityAnalyzer> CreateWithAllocator(
       std::unique_ptr<PersistentMemoryAllocator> allocator);
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // Creates a global analyzer using the contents of a file given in
   // |file_path|.
   static std::unique_ptr<GlobalActivityAnalyzer> CreateWithFile(

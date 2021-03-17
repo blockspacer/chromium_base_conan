@@ -73,8 +73,9 @@
 // We really are using glibc, not uClibc pretending to be glibc.
 #define LIBC_GLIBC 1
 #endif
-#elif defined(_WIN32)
+#elif defined(_WIN32) || defined(WIN32) || defined(_WIN64) || defined(WIN64)
 #define OS_WIN 1
+#define OS_WINDOWS 1
 #elif defined(__Fuchsia__)
 #define OS_FUCHSIA 1
 #elif defined(__FreeBSD__)
@@ -113,7 +114,7 @@
     defined(OS_FREEBSD) || defined(OS_IOS) || defined(OS_LINUX) ||  \
     defined(OS_CHROMEOS) || defined(OS_MAC) || defined(OS_NACL) ||  \
     defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_QNX) || \
-    defined(OS_SOLARIS)
+    defined(OS_SOLARIS) || defined(OS_EMSCRIPTEN)
 #define OS_POSIX 1
 #endif
 
@@ -135,6 +136,10 @@
 #define ARCH_CPU_X86_FAMILY 1
 #define ARCH_CPU_X86_64 1
 #define ARCH_CPU_64_BITS 1
+#define ARCH_CPU_LITTLE_ENDIAN 1
+#elif defined(EMSCRIPTEN) || defined(__EMSCRIPTEN__) || defined(OS_EMSCRIPTEN)
+#define ARCH_CPU_JS 1
+#define ARCH_CPU_32_BITS 1
 #define ARCH_CPU_LITTLE_ENDIAN 1
 #elif defined(_M_IX86) || defined(__i386__)
 #define ARCH_CPU_X86_FAMILY 1
@@ -202,6 +207,10 @@
 #define ARCH_CPU_RISCV_FAMILY 1
 #define ARCH_CPU_RISCV64 1
 #define ARCH_CPU_64_BITS 1
+#define ARCH_CPU_LITTLE_ENDIAN 1
+#elif defined(EMSCRIPTEN) || defined(__EMSCRIPTEN__) || defined(OS_EMSCRIPTEN)
+#define ARCH_CPU_JS 1
+#define ARCH_CPU_32_BITS 1
 #define ARCH_CPU_LITTLE_ENDIAN 1
 #else
 #error Please add support for your architecture in build/build_config.h

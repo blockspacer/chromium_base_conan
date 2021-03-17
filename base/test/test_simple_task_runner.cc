@@ -9,6 +9,7 @@
 #include "base/check.h"
 #include "base/memory/ptr_util.h"
 #include "base/threading/thread_task_runner_handle.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -19,6 +20,11 @@ TestSimpleTaskRunner::~TestSimpleTaskRunner() = default;
 bool TestSimpleTaskRunner::PostDelayedTask(const Location& from_here,
                                            OnceClosure task,
                                            TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
+
   AutoLock auto_lock(lock_);
   pending_tasks_.push_back(TestPendingTask(from_here, std::move(task),
                                            TimeTicks(), delay,

@@ -20,7 +20,7 @@
 
 namespace base {
 
-#if defined(__GLIBC__) || defined(OS_NACL)
+#if defined(__GLIBC__) || defined(OS_NACL) || defined(OS_EMSCRIPTEN)
 #define USE_HISTORICAL_STRERRO_R 1
 #else
 #define USE_HISTORICAL_STRERRO_R 0

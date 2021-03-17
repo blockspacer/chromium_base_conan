@@ -6,6 +6,7 @@
 #define BASE_ALLOCATOR_PARTITION_ALLOCATOR_YIELD_PROCESSOR_H_
 
 #include "build/build_config.h"
+#include "basic/wasm_util.h"
 
 // The YIELD_PROCESSOR macro wraps an architecture specific-instruction that
 // informs the processor we're in a busy wait, so it can handle the branch more
@@ -13,7 +14,9 @@
 // other hyper-thread on this core. See the following for context:
 // https://software.intel.com/en-us/articles/benefitting-power-and-performance-sleep-loops
 
-#if defined(ARCH_CPU_X86_64) || defined(ARCH_CPU_X86)
+#if defined(OS_EMSCRIPTEN)
+#define YIELD_PROCESSOR NOTIMPLEMENTED();
+#elif defined(ARCH_CPU_X86_64) || defined(ARCH_CPU_X86)
 #define YIELD_PROCESSOR __asm__ __volatile__("pause")
 #elif (defined(ARCH_CPU_ARMEL) && __ARM_ARCH >= 6) || defined(ARCH_CPU_ARM64)
 #define YIELD_PROCESSOR __asm__ __volatile__("yield")

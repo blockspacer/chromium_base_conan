@@ -17,7 +17,7 @@
 #include "base/posix/eintr_wrapper.h"
 #include "build/build_config.h"
 
-#if (defined(OS_LINUX) || defined(OS_CHROMEOS)) && !defined(OS_NACL)
+#if (defined(OS_LINUX) || defined(OS_CHROMEOS)) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 #include "third_party/lss/linux_syscall_support.h"
 #elif defined(OS_MAC)
 // TODO(crbug.com/995996): Waiting for this header to appear in the iOS SDK.
@@ -62,7 +62,7 @@ namespace base {
 // (https://chromium-review.googlesource.com/c/chromium/src/+/1545096) and land
 // it or some form of it.
 void RandBytes(void* output, size_t output_length) {
-#if (defined(OS_LINUX) || defined(OS_CHROMEOS)) && !defined(OS_NACL)
+#if (defined(OS_LINUX) || defined(OS_CHROMEOS)) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // We have to call `getrandom` via Linux Syscall Support, rather than through
   // the libc wrapper, because we might not have an up-to-date libc (e.g. on
   // some bots).

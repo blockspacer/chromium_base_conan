@@ -1,4 +1,7 @@
-﻿# see static_library("test_support") in /test/BUILD.gn
+﻿#
+# See https://source.chromium.org/chromium/chromium/src/+/master:base/test/BUILD.gn
+
+# see static_library("test_support") in /test/BUILD.gn
 list(APPEND LIB_TEST_SUPPORT_UNPROCESSED
   "../power_monitor/test/fake_power_monitor_source.cc"
   "../power_monitor/test/fake_power_monitor_source.h"
@@ -260,6 +263,13 @@ if(ENABLE_BASE_TRACING)
   list(APPEND LIB_TEST_SUPPORT_UNPROCESSED
     "trace_to_file.cc"
     "trace_to_file.h"
+  )
+endif()
+
+if(TARGET_LINUX OR TARGET_CHROMEOS)
+  list(APPEND LIB_TEST_SUPPORT_UNPROCESSED
+    "fontconfig_util_linux.cc"
+    "fontconfig_util_linux.h"
   )
 endif()
 

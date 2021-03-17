@@ -1,4 +1,4 @@
-#include "tests_common.hpp"
+#include "testing/gtest/include/gtest/gtest.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -36,6 +36,9 @@
 #include <base/time/time.h>
 #include <base/path_service.h>
 #include <base/files/file_util.h>
+#include "base/notreached.h"
+#include "base/stl_util.h"
+#include "base/logging.h"
 
 #include <third_party/icu/source/common/unicode/unistr.h>
 #include <third_party/icu/source/i18n/unicode/datefmt.h>
@@ -43,7 +46,7 @@
 #include <third_party/icu/source/common/unicode/uloc.h>
 
 static const base::FilePath::CharType kIcuDataFileName[]
-  = FILE_PATH_LITERAL("./resources/icu/optimal/icudt64l.dat");
+  = FILE_PATH_LITERAL("./resources/icu/optimal/icudt68l.dat");
 
 static void initICUi18n(
   const base::FilePath::CharType icuFileName[])

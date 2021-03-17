@@ -78,7 +78,7 @@ class MessagePumpTest : public ::testing::TestWithParam<MessagePumpType> {
 
   void AddPostDoWorkExpectations(
       testing::StrictMock<MockMessagePumpDelegate>& delegate) {
-#if defined(OS_POSIX) && !defined(OS_NACL_SFI)
+#if defined(OS_POSIX) && !defined(OS_NACL_SFI) && !defined(OS_EMSCRIPTEN)
     if ((GetParam() == MessagePumpType::UI &&
          std::is_same<MessagePumpForUI, MessagePumpLibevent>::value) ||
         (GetParam() == MessagePumpType::IO &&

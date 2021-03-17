@@ -12,6 +12,8 @@
 #include "base/sequenced_task_runner_helpers.h"
 #include "base/task_runner.h"
 
+#include "basic/macros.h"
+
 namespace base {
 
 // A SequencedTaskRunner is a subclass of TaskRunner that provides
@@ -96,7 +98,7 @@ namespace base {
 //     has a method Run() that runs each runnable task in FIFO order
 //     that can be called from any thread, but only if another
 //     (non-nested) Run() call isn't already happening.
-class BASE_EXPORT SequencedTaskRunner : public TaskRunner {
+class BASE_EXPORT LOCKABLE SequencedTaskRunner : public TaskRunner {
  public:
   // The two PostNonNestable*Task methods below are like their
   // nestable equivalents in TaskRunner, but they guarantee that the

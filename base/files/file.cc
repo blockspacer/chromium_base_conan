@@ -27,7 +27,7 @@ File::Info::~Info() = default;
 
 File::File() = default;
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 File::File(const FilePath& path, uint32_t flags) : error_details_(FILE_OK) {
   Initialize(path, flags);
 }
@@ -78,7 +78,7 @@ File& File::operator=(File&& other) {
   return *this;
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 void File::Initialize(const FilePath& path, uint32_t flags) {
   if (path.ReferencesParent()) {
 #if defined(OS_WIN)

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/task/sequence_manager/associated_thread_id.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace sequence_manager {
@@ -12,6 +13,10 @@ AssociatedThreadId::AssociatedThreadId() = default;
 AssociatedThreadId::~AssociatedThreadId() = default;
 
 void AssociatedThreadId::BindToCurrentThread() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
   // TODO(altimin): Remove this after MessageLoopImpl is gone and
   // initialisation is simplified.
   auto current_thread_id = PlatformThread::CurrentId();

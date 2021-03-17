@@ -31,9 +31,10 @@
 #include "base/task/thread_pool/thread_group_impl.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/updateable_sequenced_task_runner.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
-#if defined(OS_POSIX) && !defined(OS_NACL_SFI)
+#if defined(OS_POSIX) && !defined(OS_NACL_SFI) && !defined(OS_EMSCRIPTEN)
 #include "base/task/thread_pool/task_tracker_posix.h"
 #endif
 
@@ -52,7 +53,7 @@ class BASE_EXPORT ThreadPoolImpl : public ThreadPoolInstance,
                                    public PooledTaskRunnerDelegate {
  public:
   using TaskTrackerImpl =
-#if defined(OS_POSIX) && !defined(OS_NACL_SFI)
+#if defined(OS_POSIX) && !defined(OS_NACL_SFI) && !defined(OS_EMSCRIPTEN)
       TaskTrackerPosix;
 #else
       TaskTracker;

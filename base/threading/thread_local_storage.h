@@ -10,6 +10,7 @@
 #include "base/atomicops.h"
 #include "base/base_export.h"
 #include "base/macros.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
@@ -73,12 +74,32 @@ class BASE_EXPORT PlatformThreadLocalStorage {
   static void FreeTLS(TLSKey key);
   static void SetTLSValue(TLSKey key, void* value);
   static void* GetTLSValue(TLSKey key) {
-#if defined(OS_WIN)
+#if defined(DISABLE_PTHREADS) || defined(USE_FAKE_THREAD_LS)
+    return GetFakeTLSArray()[key];
+#elif defined(OS_WIN)
     return TlsGetValue(key);
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
     return pthread_getspecific(key);
 #endif
   }
+
+  // see https://github.com/save7502/youkyoung/blob/master/Engine/Source/Runtime/Core/Public/HTML5/HTML5PlatformTLS.h
+  #if defined(DISABLE_PTHREADS) || defined(USE_FAKE_THREAD_LS)
+    /**
+     * In singlethreaded Emscripten builds, returns a
+     * regular array to serve as an emulated TLS storage
+     * (Emscripten does support the pthread API even in
+     * singlethreaded builds, so the same set/getspecific
+     * code below could be used there, but it's faster
+     * to use this this approach and reduces code size
+     * a tiny bit.
+     */
+    static std::map<TLSKey, void*>& GetFakeTLSArray()
+    {
+      static std::map<TLSKey, void*> TLS;
+      return TLS;
+    }
+  #endif
 
   // Each platform (OS implementation) is required to call this method on each
   // terminating thread when the thread is about to terminate.  This method

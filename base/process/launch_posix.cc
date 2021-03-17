@@ -69,7 +69,7 @@ extern char** environ;
 
 namespace base {
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 
 namespace {
 
@@ -89,7 +89,11 @@ void SetEnvironment(char** env) {
 // the previous signal mask.
 sigset_t SetSignalMask(const sigset_t& new_sigmask) {
   sigset_t old_sigmask;
-#if defined(OS_ANDROID)
+
+#if defined(OS_EMSCRIPTEN)
+  ///\todo Emscripten PThread implementation does not support signals
+  NOTIMPLEMENTED();
+#elif defined(OS_ANDROID)
   // POSIX says pthread_sigmask() must be used in multi-threaded processes,
   // but Android's pthread_sigmask() was broken until 4.1:
   // https://code.google.com/p/android/issues/detail?id=15337
@@ -199,7 +203,7 @@ struct ScopedDIRClose {
 // Automatically closes |DIR*|s.
 typedef std::unique_ptr<DIR, ScopedDIRClose> ScopedDIR;
 
-#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_AIX)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_AIX) || defined(OS_EMSCRIPTEN)
 static const char kFDDir[] = "/proc/self/fd";
 #elif defined(OS_SOLARIS)
 static const char kFDDir[] = "/dev/fd";
@@ -214,6 +218,11 @@ static const char kFDDir[] = "/proc/self/fd";
 void CloseSuperfluousFds(const base::InjectiveMultimap& saved_mapping) {
   // DANGER: no calls to malloc or locks are allowed from now on:
   // http://crbug.com/36678
+
+#if defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+  return;
+#endif // OS_EMSCRIPTEN
 
   // Get the maximum number of FDs possible.
   size_t max_fds = GetMaxFds();
@@ -331,6 +340,10 @@ Process LaunchProcess(const std::vector<std::string>& argv,
   } else
 #endif
   {
+#if defined(OS_EMSCRIPTEN)
+    /// \todo wasm: Unsupported architecture for fork
+    NOTIMPLEMENTED();
+#endif // OS_EMSCRIPTEN
     pid = fork();
   }
 
@@ -537,7 +550,12 @@ static bool GetAppOutputInternal(
   if (pipe(pipe_fd) < 0)
     return false;
 
+#if defined(OS_EMSCRIPTEN)
+  /// \todo wasm: Unsupported architecture for fork
+  NOTIMPLEMENTED();
+#endif // OS_EMSCRIPTEN
   pid_t pid = fork();
+
   switch (pid) {
     case -1: {
       // error
@@ -662,7 +680,7 @@ bool GetAppOutputWithExitCode(const CommandLine& cl,
 #endif  // !defined(OS_NACL_NONSFI)
 
 #if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_NACL_NONSFI) || \
-    defined(OS_AIX)
+    defined(OS_AIX) ||  defined(OS_EMSCRIPTEN)
 namespace {
 
 // This function runs on the stack specified on the clone call. It uses longjmp

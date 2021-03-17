@@ -13,7 +13,7 @@ if(TARGET_ANDROID)
     allocator/allocator_shim_override_cpp_symbols.h
     allocator/allocator_shim_override_linker_wrapped_symbols.h
   )
-elseif(TARGET_MACOS OR TARGET_IOS)
+elseif(TARGET_APPLE)
   message(STATUS "Enabled allocator shim for APPLE")
   list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
     allocator/allocator_shim_override_mac_symbols.h
@@ -38,16 +38,16 @@ if(ALLOCATOR_TCMALLOC)
     allocator/allocator_shim_default_dispatch_to_tcmalloc.cc
   )
 elseif(ALLOCATOR_NONE)
-  message(STATUS "Enabled glibc allocator shim")
+  message(STATUS "Enabled none allocator shim")
   if(TARGET_ANDROID)
     list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
       allocator/allocator_shim_default_dispatch_to_linker_wrapped_symbols.cc
     )
-  elseif(TARGET_MACOS OR TARGET_IOS)
+  elseif(TARGET_APPLE)
     list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
       allocator/allocator_shim_default_dispatch_to_mac_zoned_malloc.cc
     )
-  elseif(TARGET_LINUX OR TARGET_EMSCRIPTEN)
+  elseif(TARGET_LINUX OR TARGET_EMSCRIPTEN OR TARGET_CHROMEOS)
     list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
       allocator/allocator_shim_default_dispatch_to_glibc.cc
     )

@@ -5,17 +5,22 @@
 #include <base/base_switches.h>
 #include <base/feature_list.h>
 #include <base/at_exit.h>
-#include <base/message_loop/message_loop.h>
+#include <base/message_loop/message_pump_for_io.h>
+#include <base/run_loop.h>
 #include <base/files/file_path.h>
 #include <base/base_paths.h>
+#include "base/notreached.h"
+#include "base/stl_util.h"
 
+#include <base/trace_event/trace_event.h>
 #include <base/bind.h>
 #include <base/test/launcher/unit_test_launcher.h>
 #include <base/test/test_suite.h>
 #include <base/path_service.h>
 #include <build/build_config.h>
+#include <locale.h>
 
-#include "tests_common.hpp"
+#include "testing/gtest/include/gtest/gtest.h"
 
 #if defined(GTEST_PERF_SUITE)
 #include "base/test/perf_test_suite.h"
@@ -26,7 +31,7 @@ static inline void initI18n()
 {
   base::FilePath exe_path;
   DCHECK(base::PathService::Get(base::DIR_EXE, &exe_path));
-  base::FilePath data_path = exe_path.AppendASCII("./resources/icu/optimal/icudt64l.dat");
+  base::FilePath data_path = exe_path.AppendASCII("./resources/icu/optimal/icudt68l.dat");
   bool icu_initialized = base::i18n::InitializeICUWithPath(data_path);
   DCHECK(icu_initialized);
 }
@@ -96,6 +101,15 @@ static inline void initCommandLine(int argc, char* argv[])
       command_line->HasSwitch(switches::kVModule));
 #endif // NDEBUG
 
+  // Initialize tracing.
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kTraceToConsole)) {
+    base::trace_event::TraceConfig trace_config =
+        tracing::GetConfigForTraceToConsole();
+    base::trace_event::TraceLog::GetInstance()->SetEnabled(
+        trace_config, base::trace_event::TraceLog::RECORDING_MODE);
+  }
+
   /// \todo
   // init allocator https://github.com/aranajhonny/chromium/blob/caf5bcb822f79b8997720e589334266551a50a13/content/app/content_main_runner.cc#L512
   // base::EnableTerminationOnHeapCorruption();
@@ -125,6 +139,9 @@ static inline void initCommandLine(int argc, char* argv[])
 #endif // defined(GTEST_NO_SUITE)
 
 int main(int argc, char* argv[]) {
+  CHECK(setlocale(LC_ALL, "en_US.UTF-8") != nullptr)
+      << "Failed to set locale: " << "en_US.UTF-8";
+
 #if defined(GTEST_NO_SUITE)
   initCommandLine(argc, argv);
 

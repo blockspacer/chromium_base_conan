@@ -693,56 +693,64 @@ list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
   "hash/md5_constexpr.h"
   "hash/md5_constexpr_internal.h"
   "hash/sha1.h"
-  "hash/md5_boringssl.cc"
-  "hash/md5_boringssl.h"
-  "hash/sha1_boringssl.cc"
 )
 
-# if (!is_nacl)
-list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
-  "base_paths.cc"
-  "base_paths.h"
-  "metrics/persistent_histogram_storage.cc"
-  "metrics/persistent_histogram_storage.h"
-)
-#
-# if (!is_nacl)
-if (TARGET_WINDOWS)
+if(USE_NACL)
   list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
-    "base_paths_win.cc"
-    "base_paths_win.h"
+    "hash/md5_nacl.cc"
+    "hash/md5_nacl.h"
+    "hash/sha1.cc"
+  )
+else()
+  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+    "hash/md5_boringssl.cc"
+    "hash/md5_boringssl.h"
+    "hash/sha1_boringssl.cc"
   )
 endif()
-#
-# if (!is_nacl)
-if (TARGET_MACOS)
+
+if(NOT USE_NACL)
   list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
-    "base_paths_mac.h"
-    "base_paths_mac.mm"
+    "base_paths.cc"
+    "base_paths.h"
+    "metrics/persistent_histogram_storage.cc"
+    "metrics/persistent_histogram_storage.h"
   )
-endif()
-#
-if (TARGET_ANDROID)
-  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
-    "base_paths_android.cc"
-    "base_paths_android.h"
-  )
-endif()
-#
-if(TARGET_EMSCRIPTEN OR TARGET_LINUX)
-  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
-    "base_paths_posix.h"
-  )
-endif()
-#
-# if (!is_nacl)
-# if (is_linux || is_chromeos)
-if(TARGET_EMSCRIPTEN OR TARGET_LINUX)
-  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
-    "base_paths_posix.cc"
-    "debug/elf_reader.cc"
-    "debug/elf_reader.h"
-  )
+
+  if (TARGET_WINDOWS)
+    list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+      "base_paths_win.cc"
+      "base_paths_win.h"
+    )
+  endif()
+
+  if (TARGET_MACOS)
+    list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+      "base_paths_mac.h"
+      "base_paths_mac.mm"
+    )
+  endif()
+
+  if (TARGET_ANDROID)
+    list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+      "base_paths_android.cc"
+      "base_paths_android.h"
+    )
+  endif()
+
+  if(TARGET_EMSCRIPTEN OR TARGET_LINUX)
+    list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+      "base_paths_posix.h"
+    )
+  endif()
+
+  if(TARGET_EMSCRIPTEN OR TARGET_LINUX OR TARGET_CHROMEOS)
+    list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+      "base_paths_posix.cc"
+      "debug/elf_reader.cc"
+      "debug/elf_reader.h"
+    )
+  endif()
 endif()
 
 if (USE_LIBEVENT)
@@ -843,6 +851,11 @@ if (ENABLE_BASE_TRACING)
       "trace_event/trace_event_android.cc"
     )
   endif()
+else()
+  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+    "trace_event/trace_event_stub.cc"
+    "trace_event/trace_event_stub.h"
+  )
 endif()
 
 # source_set("base_numerics")
@@ -857,14 +870,6 @@ list(APPEND COMPONENT_BASE_NUMERICS_UNPROCESSED
 )
 list(TRANSFORM COMPONENT_BASE_NUMERICS_UNPROCESSED PREPEND "numerics/")
 list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED ${COMPONENT_BASE_NUMERICS_UNPROCESSED})
-
-# TODO
-#if (!use_glib) {
-#  sources -= [
-#    "message_loop/message_pump_glib.cc"
-#    "message_loop/message_pump_glib.h"
-#  ]
-#}
 
 # TODO
 #if (is_fuchsia) {
@@ -997,5 +1002,13 @@ list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED ${COMPONENT_BASE_NUMERICS_UNPROCE
 #  ]
 
 # Filter resulting COMPONENT_BASE_SOURCES_UNPROCESSED...
+
+if (use_clang_profiling)
+  # Call-sites use this conditional on the CLANG_PROFILING macro, for clarity.
+  list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+    "test/clang_profiling.cc"
+    "test/clang_profiling.h"
+  )
+endif(use_clang_profiling)
 
 list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_UNPROCESSED})

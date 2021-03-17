@@ -6,7 +6,7 @@
 
 #include <errno.h>
 #include <sys/socket.h>
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 #include <sys/un.h>
 #endif
 #include <unistd.h>
@@ -21,7 +21,7 @@
 #include "base/stl_util.h"
 #include "build/build_config.h"
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 #include <sys/uio.h>
 #endif
 
@@ -29,7 +29,7 @@ namespace base {
 
 const size_t UnixDomainSocket::kMaxFileDescriptors = 16;
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 bool CreateSocketPair(ScopedFD* one, ScopedFD* two) {
   int raw_socks[2];
 #if defined(OS_APPLE)
@@ -148,7 +148,7 @@ ssize_t UnixDomainSocket::RecvMsgWithFlags(int fd,
 
   const size_t kControlBufferSize =
       CMSG_SPACE(sizeof(int) * kMaxFileDescriptors)
-#if !defined(OS_NACL_NONSFI) && !defined(OS_APPLE)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_APPLE) && !defined(OS_EMSCRIPTEN)
       // The PNaCl toolchain for Non-SFI binary build and macOS do not support
       // ucred. macOS supports xucred, but this structure is insufficient.
       + CMSG_SPACE(sizeof(struct ucred))
@@ -176,7 +176,7 @@ ssize_t UnixDomainSocket::RecvMsgWithFlags(int fd,
         wire_fds = reinterpret_cast<int*>(CMSG_DATA(cmsg));
         wire_fds_len = payload_len / sizeof(int);
       }
-#if !defined(OS_NACL_NONSFI) && !defined(OS_APPLE)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_APPLE) && !defined(OS_EMSCRIPTEN)
       // The PNaCl toolchain for Non-SFI binary build and macOS do not support
       // SCM_CREDENTIALS.
       if (cmsg->cmsg_level == SOL_SOCKET &&
@@ -226,7 +226,7 @@ ssize_t UnixDomainSocket::RecvMsgWithFlags(int fd,
   return r;
 }
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 // static
 ssize_t UnixDomainSocket::SendRecvMsg(int fd,
                                       uint8_t* reply,

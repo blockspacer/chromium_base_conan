@@ -26,7 +26,7 @@
 
 namespace base {
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 OnceCallback<void(const FilePath&)> GetDeleteFileCallback() {
   return BindOnce(IgnoreResult(&DeleteFile));
 }
@@ -183,7 +183,7 @@ bool ReadStreamToStringWithMaxSize(FILE* stream,
   // chunk size if available.
   constexpr int64_t kDefaultChunkSize = 1 << 16;
   int64_t chunk_size = kDefaultChunkSize - 1;
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
 #if defined(OS_WIN)
   BY_HANDLE_FILE_INFORMATION file_info = {};

@@ -9,10 +9,16 @@
 #include <sys/vfs.h>
 
 #include "base/files/file_path.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
 bool GetFileSystemType(const FilePath& path, FileSystemType* type) {
+#if defined(OS_EMSCRIPTEN)
+  *type = FILE_SYSTEM_MEMORY;
+  return true;
+#endif // OS_EMSCRIPTEN
+
   struct statfs statfs_buf;
   if (statfs(path.value().c_str(), &statfs_buf) < 0) {
     if (errno == ENOENT)

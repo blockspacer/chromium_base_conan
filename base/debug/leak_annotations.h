@@ -6,6 +6,7 @@
 #define BASE_DEBUG_LEAK_ANNOTATIONS_H_
 
 #include "base/macros.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 // This file defines macros which can be used to annotate intentional memory
@@ -19,7 +20,7 @@
 // ANNOTATE_LEAKING_OBJECT_PTR(X): the heap object referenced by pointer X will
 // be annotated as a leak.
 
-#if defined(LEAK_SANITIZER) && !defined(OS_NACL)
+#if defined(LEAK_SANITIZER) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 
 #include <sanitizer/lsan_interface.h>
 

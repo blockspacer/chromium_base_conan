@@ -45,12 +45,31 @@ if(NOT USE_NACL AND BASE_USE_PARTITION_ALLOCATOR)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_partition_allocator.cmake)
 endif()
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_utils.cmake)
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/lib_test_config.cmake)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/lib_test_support.cmake)
 
-# NOTE: *filter.cmake must be LAST included file
+if(TARGET_ANDROID OR TARGET_CHROMEOS_ASH)
+  list(APPEND COMPONENT_BASE_SOURCES
+    "time/time_android.cc"
+  )
+endif()
+
+if(ENABLE_TESTS)
+  list(APPEND COMPONENT_BASE_SOURCES
+    "task/test_task_traits_extension.cc"
+    "task/test_task_traits_extension.h"
+  )
+endif()
+
+# NOTE: *filter.cmake must be LAST included file from `${CMAKE_CURRENT_SOURCE_DIR}/cmake/*`
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_filter.cmake)
 
 list(TRANSFORM COMPONENT_BASE_SOURCES PREPEND ${BASE_SOURCES_PATH})
 list(APPEND BASE_SOURCES ${COMPONENT_BASE_SOURCES})
+
+# NOTE: `${CMAKE_CURRENT_SOURCE_DIR}/extensions/*` must be LAST included file and filtered manually
+include(${CMAKE_CURRENT_SOURCE_DIR}/extensions/testing_sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/extensions/base/third_party/lib_symbolize.cmake)

@@ -26,6 +26,36 @@ namespace {
 static const int kLowMemoryDeviceThresholdMB = 512;
 }  // namespace
 
+#if defined(OS_EMSCRIPTEN)
+int64_t SysInfo::AmountOfPhysicalMemoryImpl() {
+  int resHEAP8 = EM_ASM_INT(return HEAP8.length);
+  return static_cast<int64_t>(resHEAP8);
+}
+
+// static
+SysInfo::HardwareInfo SysInfo::GetHardwareInfoSync() {
+  static const size_t kMaxStringSize = 100u;
+  HardwareInfo info;
+  info.model = "emscripten";
+  info.manufacturer = "emscripten";
+  info.serial_number = "emscripten";
+  return info;
+}
+
+// static
+int64_t SysInfo::AmountOfAvailablePhysicalMemoryImpl() {
+  s_mallinfo i = mallinfo();
+  unsigned int totalMemory = AmountOfPhysicalMemoryImpl();
+  unsigned int dynamicTop = EM_ASM_INT(return HEAPU32[DYNAMICTOP_PTR>>2]);
+  return static_cast<int64_t>( totalMemory - dynamicTop + i.fordblks);
+}
+
+// static
+std::string SysInfo::CPUModelName() {
+  return std::string("emscripten");
+}
+#endif // EMSCRIPTEN
+
 // static
 int64_t SysInfo::AmountOfPhysicalMemory() {
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(

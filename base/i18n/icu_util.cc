@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include "base/command_line.h"
 #include "base/debug/alias.h"
 #include "base/environment.h"
 #include "base/files/file_path.h"
@@ -20,6 +21,7 @@
 #include "base/metrics/metrics_hashes.h"
 #include "base/path_service.h"
 #include "base/strings/string_util.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/strings/sys_string_conversions.h"
 #include "build/build_config.h"
 #include "build/chromecast_buildflags.h"
@@ -83,6 +85,8 @@ wchar_t g_debug_icu_pf_filename[_MAX_PATH];
 // This variable is exported through the header file.
 const char kIcuDataFileName[] = "icudtl.dat";
 const char kIcuExtraDataFileName[] = "icudtl_extra.dat";
+const char kIcuDataFileFlag[] = "icu-data-file";
+base::FilePath fullIcuDataFilePath;
 
 // Time zone data loading.
 // For now, only Fuchsia has a meaningful use case for this feature, so it is
@@ -132,6 +136,21 @@ struct PfRegion {
   MemoryMappedFile::Region region;
 };
 
+bool SetGlobalIcuDataFile(base::FilePath icuDataFileName) {
+#if (ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_FILE)
+  if (icuDataFileName.empty()) {
+    LOG(ERROR) << "icu data file path can not be empty";
+    return false;
+  }
+  fullIcuDataFilePath = icuDataFileName;
+#else
+  CHECK(FALSE)
+    << "ICU_UTIL_DATA_IMPL does not equal to ICU_UTIL_DATA_FILE."
+       " Use InitializeICU() instead."
+#endif
+  return true;
+}
+
 std::unique_ptr<PfRegion> OpenIcuDataFile(const std::string& filename,
                                           const std::string& split_name) {
   auto result = std::make_unique<PfRegion>();
@@ -144,41 +163,52 @@ std::unique_ptr<PfRegion> OpenIcuDataFile(const std::string& filename,
 #endif  // defined(OS_ANDROID)
   // For unit tests, data file is located on disk, so try there as a fallback.
 #if !defined(OS_APPLE)
-  FilePath data_path;
-  if (!PathService::Get(DIR_ASSETS, &data_path)) {
-    LOG(ERROR) << "Can't find " << filename;
-    return nullptr;
-  }
-#if defined(OS_WIN)
-  // TODO(brucedawson): http://crbug.com/445616
-  wchar_t tmp_buffer[_MAX_PATH] = {0};
-  wcscpy_s(tmp_buffer, data_path.value().c_str());
-  debug::Alias(tmp_buffer);
+  FilePath data_path = fullIcuDataFilePath;
+  if(data_path.empty()) {
+    if (!PathService::Get(DIR_ASSETS, &data_path)) {
+      LOG(ERROR) << "Can't find " << filename;
+#if defined(OS_EMSCRIPTEN)
+      // critical error: EMSCRIPTEN requires icu data file
+      NOTIMPLEMENTED();
 #endif
-  data_path = data_path.AppendASCII(filename);
+      return nullptr;
+    }
+  #if defined(OS_WIN)
+    // TODO(brucedawson): http://crbug.com/445616
+    wchar_t tmp_buffer[_MAX_PATH] = {0};
+    wcscpy_s(tmp_buffer, data_path.value().c_str());
+    debug::Alias(tmp_buffer);
+  #endif
+    data_path = data_path.AppendASCII(filename);
 
-#if defined(OS_WIN)
-  // TODO(brucedawson): http://crbug.com/445616
-  wchar_t tmp_buffer2[_MAX_PATH] = {0};
-  wcscpy_s(tmp_buffer2, data_path.value().c_str());
-  debug::Alias(tmp_buffer2);
-#endif
+  #if defined(OS_WIN)
+    // TODO(brucedawson): http://crbug.com/445616
+    wchar_t tmp_buffer2[_MAX_PATH] = {0};
+    wcscpy_s(tmp_buffer2, data_path.value().c_str());
+    debug::Alias(tmp_buffer2);
+  #endif
+  } // data_path.empty()
 
-#else  // !defined(OS_APPLE)
-  // Assume it is in the framework bundle's Resources directory.
-  ScopedCFTypeRef<CFStringRef> data_file_name(SysUTF8ToCFStringRef(filename));
-  FilePath data_path = mac::PathForFrameworkBundleResource(data_file_name);
-#if defined(OS_IOS)
-  FilePath override_data_path = ios::FilePathOfEmbeddedICU();
-  if (!override_data_path.empty()) {
-    data_path = override_data_path;
-  }
-#endif  // !defined(OS_IOS)
-  if (data_path.empty()) {
-    LOG(ERROR) << filename << " not found in bundle";
-    return nullptr;
-  }
-#endif  // !defined(OS_APPLE)
+  #else  // !defined(OS_APPLE)
+
+  FilePath data_path = fullIcuDataFilePath;
+  if(data_path.empty()) {
+    // Assume it is in the framework bundle's Resources directory.
+    ScopedCFTypeRef<CFStringRef> data_file_name(SysUTF8ToCFStringRef(filename));
+    data_path = mac::PathForFrameworkBundleResource(data_file_name);
+  #if defined(OS_IOS)
+    FilePath override_data_path = ios::FilePathOfEmbeddedICU();
+    if (!override_data_path.empty()) {
+      data_path = override_data_path;
+    }
+  #endif  // !defined(OS_IOS)
+    if (data_path.empty()) {
+      LOG(ERROR) << filename << " not found in bundle";
+      return nullptr;
+    }
+  } // data_path.empty()
+  #endif  // !defined(OS_APPLE)
+
   File file(data_path, File::FLAG_OPEN | File::FLAG_READ);
   if (file.IsValid()) {
     // TODO(brucedawson): http://crbug.com/445616.
@@ -243,15 +273,46 @@ int LoadIcuData(PlatformFile data_fd,
     return 1;  // To debug http://crbug.com/445616.
   }
 
-  out_mapped_data_file->reset(new MemoryMappedFile());
-  if (!(*out_mapped_data_file)->Initialize(File(data_fd), data_region)) {
-    LOG(ERROR) << "Couldn't mmap icu data file";
-    return 2;  // To debug http://crbug.com/445616.
+  if(fullIcuDataFilePath.empty()) {
+    out_mapped_data_file->reset(new MemoryMappedFile());
+    if (!(*out_mapped_data_file)->Initialize(File(data_fd), data_region)) {
+      LOG(ERROR) << "Couldn't mmap icu data file";
+      return 2;  // To debug http://crbug.com/445616.
+    }
+  } else {
+    out_mapped_data_file->reset(new MemoryMappedFile());
+    if (!(*out_mapped_data_file)->Initialize(fullIcuDataFilePath)) {
+      LOG(ERROR) << "Couldn't initialize icu data file";
+      return 2;  // To debug http://crbug.com/445616.
+    }
   }
 
   (*out_error_code) = U_ZERO_ERROR;
+#if defined(__EMSCRIPTEN__)
+   // code below fixes wasm alignment fault
+   // code below inspired by https://github.com/tombo-a2o/Foundation/blob/51e451959cba7eade126e0cb3df28c370def7498/System/CoreFoundation/src/CFRuntime.c#L999
+   // see "Alignment" at http://userguide.icu-project.org/icudata#TOC-ICU-Data-File-Formats
+   int icuDataFd = open(fullIcuDataFilePath, O_RDONLY);
+   if (icuDataFd != -1) {
+     struct stat stbuf;
+     fstat(icuDataFd, &stbuf);
+     size_t icuDataLen = stbuf.st_size;
+     char *icuData = (char*)malloc(icuDataLen);
+     read(icuDataFd, icuData, icuDataLen);
+     close(icuDataFd);
+     udata_setCommonData(icuData, out_error_code);
+     if ((*out_error_code) != 0)
+     {
+       printf("icu initialization failed with error %d\n", (int)err);
+     }
+   } else {
+     printf("No icu data found, using minimal built-in tables\n");
+   }
+#else
   udata_setCommonData(const_cast<uint8_t*>((*out_mapped_data_file)->data()),
                       out_error_code);
+#endif // __EMSCRIPTEN__
+
   if (U_FAILURE(*out_error_code)) {
     LOG(ERROR) << "Failed to initialize ICU with data file: "
                << u_errorName(*out_error_code);
@@ -264,6 +325,9 @@ int LoadIcuData(PlatformFile data_fd,
 bool InitializeICUWithFileDescriptorInternal(
     PlatformFile data_fd,
     const MemoryMappedFile::Region& data_region) {
+#if defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+#endif
   // This can be called multiple times in tests.
   if (g_icudtl_mapped_file) {
     g_debug_icu_load = 0;  // To debug http://crbug.com/445616.
@@ -272,7 +336,9 @@ bool InitializeICUWithFileDescriptorInternal(
 
   std::unique_ptr<MemoryMappedFile> mapped_file;
   UErrorCode err;
+
   g_debug_icu_load = LoadIcuData(data_fd, data_region, &mapped_file, &err);
+
   if (g_debug_icu_load == 1 || g_debug_icu_load == 2) {
     return false;
   }
@@ -282,8 +348,17 @@ bool InitializeICUWithFileDescriptorInternal(
     g_debug_icu_last_error = err;
   }
 
-  // Never try to load ICU data from files.
-  udata_setFileAccess(UDATA_ONLY_PACKAGES, &err);
+  if(fullIcuDataFilePath.empty()) {
+    // Never try to load ICU data from files.
+    udata_setFileAccess(UDATA_ONLY_PACKAGES, &err);
+  } else {
+    DCHECK(g_icudtl_mapped_file->length() > 0);
+    DCHECK(g_icudtl_mapped_file->data());
+    DCHECK(g_icudtl_mapped_file->IsValid());
+    // Tell ICU it can *only* use our data.
+    udata_setFileAccess(UDATA_NO_FILES, &err);
+  }
+
   return U_SUCCESS(err);
 }
 
@@ -342,7 +417,8 @@ void InitializeIcuTimeZone() {
       FuchsiaIntlProfileWatcher::GetPrimaryTimeZoneIdForIcuInitialization();
   icu::TimeZone::adoptDefault(
       icu::TimeZone::createTimeZone(icu::UnicodeString::fromUTF8(zone_id)));
-#elif (defined(OS_LINUX) || defined(OS_CHROMEOS)) && !BUILDFLAG(IS_CHROMECAST)
+#elif !UCONFIG_NO_FORMATTING \
+      && (defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_EMSCRIPTEN)) && !BUILDFLAG(IS_CHROMECAST)
   // To respond to the time zone change properly, the default time zone
   // cache in ICU has to be populated on starting up.
   // See TimeZoneMonitorLinux::NotifyClientsFromImpl().
@@ -592,6 +668,24 @@ bool InitializeICU() {
 #if (ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_STATIC)
   // The ICU data is statically linked.
 #elif (ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_FILE)
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  const bool use_icu_data_path = command_line->HasSwitch(kIcuDataFileFlag);
+  if(use_icu_data_path) {
+    FilePath icu_data_path = command_line->GetSwitchValuePath(kIcuDataFileFlag);
+    DLOG(INFO)
+      << " Current --icu-data-file argument is:"
+      << command_line->GetSwitchValuePath(kIcuDataFileFlag);
+    if (!PathExists(icu_data_path)) { // We don't want to create this.
+        CHECK(false)
+          << "Unable to find path to icu data file (provide --icu-data-file argument): "
+          << icu_data_path
+          << " Current --icu-data-file argument is:"
+          << command_line->GetSwitchValuePath(kIcuDataFileFlag);
+        return false;
+    }
+  SetGlobalIcuDataFile(icu_data_path);
+  }
+
   if (!InitializeICUFromDataFile())
     return false;
 #else
@@ -608,6 +702,14 @@ void AllowMultipleInitializeCallsForTesting() {
 }
 
 #endif  // !defined(OS_NACL)
+
+bool InitializeICUWithPath(base::FilePath icuDataFileName) {
+  SetGlobalIcuDataFile(icuDataFileName);
+
+  bool result = InitializeICU();
+
+  return result;
+}
 
 }  // namespace i18n
 }  // namespace base

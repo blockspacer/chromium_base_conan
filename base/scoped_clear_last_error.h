@@ -47,7 +47,7 @@ class BASE_EXPORT ScopedClearLastError : public ScopedClearLastErrorBase {
   const unsigned long last_system_error_;
 };
 
-#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
+#elif defined(OS_POSIX) || defined(OS_FUCHSIA) || defined(OS_EMSCRIPTEN)
 
 using ScopedClearLastError = ScopedClearLastErrorBase;
 

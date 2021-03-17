@@ -17,6 +17,7 @@
 #include "base/threading/hang_watcher.h"
 #include "base/time/time_override.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 
 #if defined(OS_APPLE)
 #include "base/mac/scoped_nsautorelease_pool.h"
@@ -26,6 +27,9 @@ namespace base {
 namespace internal {
 
 void WorkerThread::Delegate::WaitForWork(WaitableEvent* wake_up_event) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
   DCHECK(wake_up_event);
   const TimeDelta sleep_time = GetSleepTimeout();
   if (sleep_time.is_max()) {
@@ -176,6 +180,10 @@ void WorkerThread::UpdateThreadPriority(
 }
 
 void WorkerThread::ThreadMain() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
   if (priority_hint_ == ThreadPriority::BACKGROUND) {
     switch (delegate_->GetThreadLabel()) {
       case ThreadLabel::POOLED:

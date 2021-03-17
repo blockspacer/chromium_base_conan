@@ -11,6 +11,7 @@
 #include "base/location.h"
 #include "base/macros.h"
 #include "base/threading/hang_watcher.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 // -----------------------------------------------------------------------------
@@ -344,7 +345,7 @@ class WaitableEvent;
 
 bool PathProviderWin(int, FilePath*);
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
 #define INLINE_IF_DCHECK_IS_OFF BASE_EXPORT
 #define EMPTY_BODY_IF_DCHECK_IS_OFF
 #else
@@ -378,7 +379,7 @@ class BASE_EXPORT ScopedDisallowBlocking {
   ~ScopedDisallowBlocking() EMPTY_BODY_IF_DCHECK_IS_OFF;
 
  private:
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   const bool was_disallowed_;
 #endif
 
@@ -428,7 +429,7 @@ class BASE_EXPORT ScopedAllowBlocking {
   ScopedAllowBlocking(const Location& from_here = Location::Current());
   ~ScopedAllowBlocking();
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   const bool was_disallowed_;
 #endif
 
@@ -441,7 +442,7 @@ class ScopedAllowBlockingForTesting {
   ~ScopedAllowBlockingForTesting() {}
 
  private:
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   ScopedAllowBlocking scoped_allow_blocking_;
 #endif
 
@@ -502,7 +503,7 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitives {
   ScopedAllowBaseSyncPrimitives() EMPTY_BODY_IF_DCHECK_IS_OFF;
   ~ScopedAllowBaseSyncPrimitives() EMPTY_BODY_IF_DCHECK_IS_OFF;
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   const bool was_disallowed_;
 #endif
 
@@ -590,7 +591,7 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitivesOutsideBlockingScope {
 
   ~ScopedAllowBaseSyncPrimitivesOutsideBlockingScope();
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   const bool was_disallowed_;
 #endif
 
@@ -613,7 +614,7 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitivesForTesting {
   ~ScopedAllowBaseSyncPrimitivesForTesting() EMPTY_BODY_IF_DCHECK_IS_OFF;
 
  private:
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   const bool was_disallowed_;
 #endif
 
@@ -628,7 +629,7 @@ class BASE_EXPORT ScopedAllowUnresponsiveTasksForTesting {
   ~ScopedAllowUnresponsiveTasksForTesting() EMPTY_BODY_IF_DCHECK_IS_OFF;
 
  private:
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   const bool was_disallowed_base_sync_;
   const bool was_disallowed_blocking_;
   const bool was_disallowed_cpu_;
@@ -669,14 +670,14 @@ class BASE_EXPORT ThreadRestrictions {
     ~ScopedAllowIO();
 
    private:
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
     const bool was_allowed_;
 #endif
 
     DISALLOW_COPY_AND_ASSIGN(ScopedAllowIO);
   };
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   // Set whether the current thread to make IO calls.
   // Threads start out in the *allowed* state.
   // Returns the previous value.
@@ -730,7 +731,7 @@ class BASE_EXPORT ThreadRestrictions {
 #endif
 // END USAGE THAT NEEDS TO BE FIXED.
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   // DEPRECATED. Use ScopedAllowBaseSyncPrimitives.
   static bool SetWaitAllowed(bool allowed);
 #else

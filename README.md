@@ -2,92 +2,38 @@
 
 Modified `base` library from chromium https://github.com/chromium/chromium/tree/master/base
 
-## How to do minor updates
+Modification history in `extensions/PATCH_HISTORY.md` and added files in `extensions/`.
 
-Clone latest base:
+NOTE: Some features or platforms may be not tested. Run unit tests to check support of some feature.
 
-```bash
-cd ~
-git clone https://chromium.googlesource.com/chromium/src/base
-# see https://chromium.googlesource.com/chromium/src/base/+/944910a3c30b76db99a3978f59098e8a33953617
-git checkout 944910a3c30b76db99a3978f59098e8a33953617
-```
+## Project goals
 
-Copy sources and apply patches by hand.
+* Easy integration with open-source projectes that use `CMake` and `conan`
+* Provide codebase similar to `chromium/base`, `libchrome`, `mini_chromium` etc.
+* Make library cross-platform (add browser support etc.)
+* Extend `base` library from chromium with extra general-purpose functionality
 
-## How to do major updates
+## What is it?
 
-```bash
-#
-git config --global url."https://github.com/".insteadOf git://github.com/
-git config --global url."https://chromium.googlesource.com/".insteadOf git://chromium.googlesource.com/
+Base, libchrome and mini_chromium are general utility libraries from chromium.
 
-git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-export PATH=$PWD/depot_tools:$PATH
+See:
 
-mkdir ~/chromium && cd ~/chromium
+* https://github.com/chromium/chromium/tree/master/base
+* https://chromium.googlesource.com/chromiumos/docs/+/master/packages/libchrome.md
+* https://chromium.googlesource.com/chromium/mini_chromium/
 
-cat >> git_with_retry.sh << EOF
-#!/bin/bash
+## How to use it?
 
-GIT_TRACE=1
-REALGIT=/usr/bin/git
+Before usage set `base::i18n::InitializeICU()`, `setlocale(LC_ALL, "en_US.UTF-8")`, `logging::InitLogging(settings);`, `base::ThreadPoolInstance::CreateAndStartWithDefaultParams`, `base::AtExitManager`, `base::CommandLine::Init`, `base::RunLoop`, `base::ThreadPoolInstance::Get()->Shutdown()`, etc.
 
-RETRIES=10
-DELAY=1
-COUNT=1
-while [ \$COUNT -lt \$RETRIES ]; do
-  \$REALGIT "\$@"
-  if [ \$? -eq 0 ]; then
-    RETRIES=0
-    break
-  fi
-  let COUNT=\$COUNT+1
-  sleep \$DELAY
-done
-EOF
-chmod +x git_with_retry.sh
-export PATH=$PWD:$PATH
+See as example https://source.chromium.org/chromium/chromium/src/+/b28193d300f6a0853f31d305b3fb917c3a1601b7:remoting/host/it2me/it2me_native_messaging_host_main.cc
 
-# see https://chromium.googlesource.com/chromium/src/+/f89fc2ac30e582dfe9e334baf19ef8e535eea30d
-wget https://chromium.googlesource.com/chromium/src/+archive/f89fc2ac30e582dfe9e334baf19ef8e535eea30d.tar.gz
-mkdir src && cd src
-tar xzvf ../f89fc2ac30e582dfe9e334baf19ef8e535eea30d.tar.gz
-git init
-git remote add origin https://chromium.googlesource.com/chromium/src.git
-git_with_retry.sh fetch origin master
-git checkout f89fc2ac30e582dfe9e334baf19ef8e535eea30d
-git reset --hard f89fc2ac30e582dfe9e334baf19ef8e535eea30d
+Run compiled app with arguments:
 
-# Pull in all dependencies for HEAD
-gclient.py sync --nohooks --no-history --shallow --revision=f89fc2ac30e582dfe9e334baf19ef8e535eea30d
-
-# see https://chromium.googlesource.com/chromium/src/+/master/build/install-build-deps.sh
-sudo apt install -y \
-  bzip2 tar bison binutils gperf wdiff python-psutil \
-  php php-cli python-psutil
-
-# (only on linux)
-./build/install-build-deps.sh
-
-# Once you've run install-build-deps at least once, you can now run the Chromium-specific hooks,
-# which will download additional binaries and other things you might need:
-gclient runhooks
-
-gn gen out/config --args='is_debug=false is_official_build=true' --ide=json
-```
-
-Parse json to generate cmake vars, see as example https://github.com/google/skia/blob/375e1f6a6486a1e423f61d221bc39d81a2aaf6a0/gn/gn_to_cmake.py
-
-See `extensions/README.md`
-
-## EXTRA FEATURES
-
-- ported to CMake
-- supports Conan
-- added CMake options to disable some features
-- ported to WASM (emscripten) with threading support
-- ported to WASM (emscripten) without threading support
+* `--icu-data-file=` must point to icu data file (example `.dat` files in https://chromium.googlesource.com/chromium/deps/icu/+/dc4ceac1fd9c77c3cacf6dec4ac83f684e069644/common/)
+* set logging level using vmodule i.e. `--vmodule=*=9999`
+* `--assets-dir=` can be used to change `DIR_ASSETS` (see `base/base_paths.h`)
 
 ## DOCS
 
@@ -121,12 +67,11 @@ GIT_SSL_NO_VERIFY=true \
   --profile clang \
   -e chromium_base:enable_tests=True \
   -e abseil:enable_llvm_tools=True \
-  -o perfetto:is_hermetic_clang=False \
-  -e flextool:enable_tests=True \
-  -e flextool:enable_llvm_tools=True
+  -o perfetto:is_hermetic_clang=False
 
 (rm CMakeCache.txt || true)
 
+# You can use `cmake --build . -- -j14` on second run.
 cmake -E time \
   conan build .. --build-folder=.
 
@@ -205,19 +150,6 @@ conan remove "*" --build --force
 conan install --build=missing --profile clang ..
 ```
 
-## USAGE EXAMPLES
-
-TODO
-
-## LICENSE
-
-TODO
-
-## PORT ISSUES
-
-- Some flags from `declare_args` may be not supported.
-- Some platforms may be not supported.
-
 ## DEPS
 
 See https://github.com/chromium/chromium/blob/master/base/DEPS
@@ -236,13 +168,97 @@ See https://github.com/chromium/chromium/blob/master/base/DEPS
 ## Used chromium version
 
 ```bash
-from commit 07bf855b4db90ee18e4cf3452bcbc0b4f80256e5
-05/13/2019 12:28 PM
-Worker: Clear ResourceTimingNotifier on WorkerFetchContext::Detach()
-Bug: 959508, 960626
-Change-Id: I2663e5acddec0d9f88a78842c093c594fb57acb8
-Reviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/1609024
+[base] Add C++23 Enum Helpers
+
+This change adds the C++23 enum utilities std::to_underlying and
+std::is_scoped_enum.
+
+Bug: None
+Change-Id: Idb275bfb4833080701dbce5f5d307091debe27b2
+Reviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/2736976
+Reviewed-by: Daniel Cheng <dcheng@chromium.org>
+Commit-Queue: Jan Wilken D?rrie <jdoerrie@chromium.org>
+Cr-Commit-Position: refs/heads/master@{#860144}
+GitOrigin-RevId: f89fc2ac30e582dfe9e334baf19ef8e535eea30d
 ```
+
+## How to do minor updates
+
+Clone latest base:
+
+```bash
+cd ~
+git clone https://chromium.googlesource.com/chromium/src/base
+# see https://chromium.googlesource.com/chromium/src/base/+/944910a3c30b76db99a3978f59098e8a33953617
+# and https://source.chromium.org/chromium/chromium/src/base/+/944910a3c30b76db99a3978f59098e8a33953617:
+git checkout 944910a3c30b76db99a3978f59098e8a33953617
+```
+
+Copy sources and apply patches by hand.
+
+## How to do major updates
+
+```bash
+#
+git config --global url."https://github.com/".insteadOf git://github.com/
+git config --global url."https://chromium.googlesource.com/".insteadOf git://chromium.googlesource.com/
+
+git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+export PATH=$PWD/depot_tools:$PATH
+
+mkdir ~/chromium && cd ~/chromium
+
+cat >> git_with_retry.sh << EOF
+#!/bin/bash
+
+GIT_TRACE=1
+REALGIT=/usr/bin/git
+
+RETRIES=10
+DELAY=1
+COUNT=1
+while [ \$COUNT -lt \$RETRIES ]; do
+  \$REALGIT "\$@"
+  if [ \$? -eq 0 ]; then
+    RETRIES=0
+    break
+  fi
+  let COUNT=\$COUNT+1
+  sleep \$DELAY
+done
+EOF
+chmod +x git_with_retry.sh
+export PATH=$PWD:$PATH
+
+# see https://chromium.googlesource.com/chromium/src/+/f89fc2ac30e582dfe9e334baf19ef8e535eea30d
+wget https://chromium.googlesource.com/chromium/src/+archive/f89fc2ac30e582dfe9e334baf19ef8e535eea30d.tar.gz
+mkdir src && cd src
+tar xzvf ../f89fc2ac30e582dfe9e334baf19ef8e535eea30d.tar.gz
+git init
+git remote add origin https://chromium.googlesource.com/chromium/src.git
+git_with_retry.sh fetch origin master
+git checkout f89fc2ac30e582dfe9e334baf19ef8e535eea30d
+git reset --hard f89fc2ac30e582dfe9e334baf19ef8e535eea30d
+
+# Pull in all dependencies for HEAD
+gclient.py sync --nohooks --no-history --shallow --revision=f89fc2ac30e582dfe9e334baf19ef8e535eea30d
+
+# see https://chromium.googlesource.com/chromium/src/+/master/build/install-build-deps.sh
+sudo apt install -y \
+  bzip2 tar bison binutils gperf wdiff python-psutil \
+  php php-cli python-psutil
+
+# (only on linux)
+./build/install-build-deps.sh
+
+# Once you've run install-build-deps at least once, you can now run the Chromium-specific hooks,
+# which will download additional binaries and other things you might need:
+gclient runhooks
+
+gn gen out/config --args='is_debug=false is_official_build=true' --ide=json
+```
+
+Follow `extensions/README.md`
 
 ## Disclaimer
 

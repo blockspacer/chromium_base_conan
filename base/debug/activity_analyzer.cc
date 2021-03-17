@@ -115,7 +115,7 @@ GlobalActivityAnalyzer::CreateWithAllocator(
   return std::make_unique<GlobalActivityAnalyzer>(std::move(allocator));
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // static
 std::unique_ptr<GlobalActivityAnalyzer> GlobalActivityAnalyzer::CreateWithFile(
     const FilePath& file_path) {

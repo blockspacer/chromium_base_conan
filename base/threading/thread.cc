@@ -26,13 +26,19 @@
 #include "base/threading/thread_restrictions.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
+#include "basic/wasm_util.h"
 
-#if defined(OS_POSIX) && !defined(OS_NACL)
+#if defined(OS_POSIX) && !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
 #include "base/files/file_descriptor_watcher_posix.h"
 #endif
 
 #if defined(OS_WIN)
 #include "base/win/scoped_com_initializer.h"
+#endif
+
+#if defined(DISABLE_PTHREADS)
+/// \note only one main thread = only one run loop
+static std::unique__ptr<base::RunLoop> g_run_loop;
 #endif
 
 namespace base {
@@ -176,6 +182,11 @@ bool Thread::StartWithOptions(const Options& options) {
 
   start_event_.Reset();
 
+#if defined(DISABLE_PTHREADS)
+  static bool createdOnlyOnePlatformThread = false;
+  if(!createdOnlyOnePlatformThread) {
+    createdOnlyOnePlatformThread = true;
+#endif
   // Hold |thread_lock_| while starting the new thread to synchronize with
   // Stop() while it's not guaranteed to be sequenced (until crbug/629139 is
   // fixed).
@@ -194,6 +205,9 @@ bool Thread::StartWithOptions(const Options& options) {
   }
 
   joinable_ = options.joinable;
+#if defined(DISABLE_PTHREADS)
+  } // createdOnlyOnePlatformThread
+#endif
 
   return true;
 }
@@ -230,7 +244,11 @@ void Thread::FlushForTesting() {
 }
 
 void Thread::Stop() {
+#if defined(DISABLE_PTHREADS)
+  // no check
+#else
   DCHECK(joinable_);
+#endif
 
   // TODO(gab): Fix improper usage of this API (http://crbug.com/629139) and
   // enable this check, until then synchronization with Start() via
@@ -319,6 +337,9 @@ void Thread::SetThreadWasQuitProperly(bool flag) {
 // static
 bool Thread::GetThreadWasQuitProperly() {
   bool quit_properly = true;
+#if defined(DISABLE_PTHREADS)
+  return quit_properly;
+#endif
 #if DCHECK_IS_ON()
   quit_properly = lazy_tls_bool.Pointer()->Get();
 #endif
@@ -377,10 +398,19 @@ void Thread::ThreadMain() {
 
   start_event_.Signal();
 
+#if defined(DISABLE_PTHREADS)
+  if(!g_run_loop) {
+    g_run_loop = std::make_unique<RunLoop>();
+  }
+  run_loop_ = g_run_loop.get();
+#else
   RunLoop run_loop;
   run_loop_ = &run_loop;
+#endif
+
   Run(run_loop_);
 
+#if !defined(DISABLE_PTHREADS)
   {
     AutoLock lock(running_lock_);
     running_ = false;
@@ -399,11 +429,14 @@ void Thread::ThreadMain() {
   // (The message loop is destructed at the end of this block)
   delegate_.reset();
   run_loop_ = nullptr;
+#endif // DISABLE_PTHREADS
 }
 
 void Thread::ThreadQuitHelper() {
+#if !defined(DISABLE_PTHREADS)
   DCHECK(run_loop_);
   run_loop_->QuitWhenIdle();
+#endif
   SetThreadWasQuitProperly(true);
 }
 

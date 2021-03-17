@@ -25,6 +25,7 @@
 #include "base/task/thread_pool/task_tracker.h"
 #include "base/task/thread_pool/worker_thread.h"
 #include "base/threading/platform_thread.h"
+#include "basic/wasm_util.h"
 #include "base/time/time.h"
 
 #if defined(OS_WIN)
@@ -79,6 +80,9 @@ class AtomicThreadRefChecker {
   }
 
   bool IsCurrentThreadSameAsSetThread() {
+#if defined(DISABLE_PTHREADS)
+    return true;
+#endif
     return is_set_.IsSet() && thread_ref_ == PlatformThread::CurrentRef();
   }
 
@@ -406,6 +410,12 @@ class PooledSingleThreadTaskRunnerManager::PooledSingleThreadTaskRunner
   bool PostDelayedTask(const Location& from_here,
                        OnceClosure closure,
                        TimeDelta delay) override {
+#if defined(DISABLE_PTHREADS)
+    std::move(closure).Run();
+    NOTIMPLEMENTED();
+    // Returns true if the task may be run
+    return true;
+#endif
     if (!g_manager_is_alive)
       return false;
 

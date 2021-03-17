@@ -171,7 +171,7 @@ constexpr in_place_t in_place = {};
 
 // base::in_place_type_t is an implementation of std::in_place_type_t from
 // C++17. A tag type used for in-place construction when the type to construct
-// needs to be specified, such as with base::unique_any, designed to be a
+// needs to be specified, such as with basic::unique_any, designed to be a
 // drop-in replacement.
 
 // Specification:

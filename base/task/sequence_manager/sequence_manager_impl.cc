@@ -30,6 +30,7 @@
 #include "base/time/default_tick_clock.h"
 #include "base/time/tick_clock.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -127,7 +128,7 @@ SequenceManager::MetricRecordingSettings InitializeMetricRecordingSettings(
 // Writes |address| in hexadecimal ("0x11223344") form starting from |output|
 // and moving backwards in memory. Returns a pointer to the first digit of the
 // result. Does *not* NUL-terminate the number.
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 char* PrependHexAddress(char* output, const void* address) {
   uintptr_t value = reinterpret_cast<uintptr_t>(address);
   static const char kHexChars[] = "0123456789ABCDEF";
@@ -319,6 +320,9 @@ void SequenceManagerImpl::BindToMessagePump(std::unique_ptr<MessagePump> pump) {
 }
 
 void SequenceManagerImpl::BindToCurrentThread() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
   associated_thread_->BindToCurrentThread();
   CompleteInitializationOnBoundThread();
 }
@@ -534,7 +538,7 @@ Task* SequenceManagerImpl::SelectNextTask(SelectTaskOption option) {
   return task;
 }
 
-#if DCHECK_IS_ON() && !defined(OS_NACL)
+#if DCHECK_IS_ON() && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 void SequenceManagerImpl::LogTaskDebugInfo(
     const WorkQueue* selected_work_queue) const {
   const Task* task = selected_work_queue->GetFrontTask();
@@ -644,7 +648,7 @@ Task* SequenceManagerImpl::SelectNextTaskImpl(SelectTaskOption option) {
       return nullptr;
     }
 
-#if DCHECK_IS_ON() && !defined(OS_NACL)
+#if DCHECK_IS_ON() && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
     LogTaskDebugInfo(work_queue);
 #endif  // DCHECK_IS_ON() && !defined(OS_NACL)
 

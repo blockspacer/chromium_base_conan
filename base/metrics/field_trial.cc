@@ -26,7 +26,7 @@
 #include "base/unguessable_token.h"
 
 // On POSIX, the fd is shared using the mapping in GlobalDescriptors.
-#if defined(OS_POSIX) && !defined(OS_NACL)
+#if defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 #include "base/posix/global_descriptors.h"
 #endif
 
@@ -171,14 +171,14 @@ void AddFeatureAndFieldTrialFlags(const char* enable_features_switch,
 }
 
 void OnOutOfMemory(size_t size) {
-#if defined(OS_NACL)
+#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
   NOTREACHED();
 #else
   TerminateBecauseOutOfMemory(size);
 #endif
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // Returns whether the operation succeeded.
 bool DeserializeGUIDFromStringPieces(StringPiece first,
                                      StringPiece second,
@@ -758,7 +758,7 @@ void FieldTrialList::CreateTrialsFromCommandLine(
     UMA_HISTOGRAM_BOOLEAN("ChildProcess.FieldTrials.CreateFromShmemSuccess",
                           result);
   }
-#elif defined(OS_POSIX) && !defined(OS_NACL)
+#elif defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // On POSIX, we check if the handle is valid by seeing if the browser process
   // sent over the switch (we don't care about the value). Invalid handles
   // occur in some browser tests which don't initialize the allocator.
@@ -825,7 +825,7 @@ void FieldTrialList::InsertFieldTrialHandleIfNeeded(
             MACH_MSG_TYPE_COPY_SEND));
   }
 }
-#elif defined(OS_POSIX) && !defined(OS_NACL)
+#elif defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // static
 int FieldTrialList::GetFieldTrialDescriptor() {
   InstantiateFieldTrialAllocatorIfNeeded();
@@ -1227,7 +1227,7 @@ FieldTrialList::DeserializeSharedMemoryRegionMetadata(
   return ReadOnlySharedMemoryRegion::Deserialize(std::move(platform_handle));
 }
 
-#elif defined(OS_POSIX) && !defined(OS_NACL)
+#elif defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 
 // static
 ReadOnlySharedMemoryRegion
@@ -1266,7 +1266,7 @@ bool FieldTrialList::CreateTrialsFromSwitchValue(
     return false;
   return FieldTrialList::CreateTrialsFromSharedMemoryRegion(shm);
 }
-#elif defined(OS_POSIX) && !defined(OS_NACL)
+#elif defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // static
 bool FieldTrialList::CreateTrialsFromDescriptor(
     int fd_key,
@@ -1361,7 +1361,7 @@ void FieldTrialList::InstantiateFieldTrialAllocatorIfNeeded() {
   FeatureList::GetInstance()->AddFeaturesToAllocator(
       global_->field_trial_allocator_.get());
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   global_->readonly_allocator_region_ = std::move(shm.region);
 #endif
 }

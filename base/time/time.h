@@ -80,7 +80,7 @@
 #include <jni.h>
 #endif
 
-#if defined(OS_POSIX) || defined(OS_FUCHSIA)
+#if defined(OS_POSIX) || defined(OS_FUCHSIA) || defined(OS_EMSCRIPTEN)
 #include <unistd.h>
 #include <sys/time.h>
 #endif

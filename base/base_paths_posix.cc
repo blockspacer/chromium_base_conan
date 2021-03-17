@@ -23,6 +23,7 @@
 #include "base/notreached.h"
 #include "base/path_service.h"
 #include "base/process/process_metrics.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 #if defined(OS_FREEBSD)
@@ -38,6 +39,11 @@ bool PathProviderPosix(int key, FilePath* result) {
   switch (key) {
     case FILE_EXE:
     case FILE_MODULE: {  // TODO(evanm): is this correct?
+#if defined(OS_EMSCRIPTEN)
+      *result = FilePath("/"); // TODO
+      return true;
+#endif
+
 #if defined(OS_LINUX) || defined(OS_CHROMEOS)
       FilePath bin_dir;
       if (!ReadSymbolicLink(FilePath(kProcSelfExe), &bin_dir)) {
@@ -104,9 +110,18 @@ bool PathProviderPosix(int key, FilePath* result) {
       return false;
     }
     case DIR_USER_DESKTOP:
+#if defined(OS_EMSCRIPTEN)
+      *result = FilePath("/"); // TODO
+      return true;
+#endif
       *result = nix::GetXDGUserDirectory("DESKTOP", "Desktop");
       return true;
     case DIR_CACHE: {
+#if defined(OS_EMSCRIPTEN)
+      *result = FilePath("/"); // TODO
+      return true;
+#endif
+
       std::unique_ptr<Environment> env(Environment::Create());
       FilePath cache_dir(
           nix::GetXDGDirectory(env.get(), "XDG_CACHE_HOME", ".cache"));

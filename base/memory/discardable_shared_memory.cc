@@ -21,7 +21,7 @@
 #include "base/tracing_buildflags.h"
 #include "build/build_config.h"
 
-#if defined(OS_POSIX) && !defined(OS_NACL)
+#if defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // For madvise() which is available on all POSIX compatible systems.
 #include <sys/mman.h>
 #endif
@@ -397,7 +397,7 @@ bool DiscardableSharedMemory::Purge(Time current_time) {
 // Note: this memory will not be accessed again.  The segment will be
 // freed asynchronously at a later time, so just do the best
 // immediately.
-#if defined(OS_POSIX) && !defined(OS_NACL)
+#if defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // Linux and Android provide MADV_REMOVE which is preferred as it has a
 // behavior that can be verified in tests. Other POSIX flavors (MacOSX, BSDs),
 // provide MADV_FREE which has the same result but memory is purged lazily.
@@ -463,7 +463,7 @@ bool DiscardableSharedMemory::Purge(Time current_time) {
 
 void DiscardableSharedMemory::ReleaseMemoryIfPossible(size_t offset,
                                                       size_t length) {
-#if defined(OS_POSIX) && !defined(OS_NACL)
+#if defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // Linux and Android provide MADV_REMOVE which is preferred as it has a
 // behavior that can be verified in tests. Other POSIX flavors (MacOSX, BSDs),
 // provide MADV_FREE which has the same result but memory is purged lazily.

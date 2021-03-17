@@ -8,6 +8,7 @@
 
 #include "base/bind.h"
 #include "base/check.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -40,6 +41,10 @@ DeferredSequencedTaskRunner::DeferredSequencedTaskRunner()
 bool DeferredSequencedTaskRunner::PostDelayedTask(const Location& from_here,
                                                   OnceClosure task,
                                                   TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
   AutoLock lock(lock_);
   if (started_) {
     DCHECK(deferred_tasks_queue_.empty());

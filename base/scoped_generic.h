@@ -15,6 +15,7 @@
 // TODO(crbug.com/1010217) Remove once no #includers are getting base/macros.h
 // by including this header.
 #include "base/macros.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -139,8 +140,10 @@ class ScopedGeneric {
   // object, if given. Self-resets are not allowd as on unique_ptr. See
   // http://crbug.com/162971
   void reset(const element_type& value = traits_type::InvalidValue()) {
-    if (data_.generic != traits_type::InvalidValue() && data_.generic == value)
+    if (data_.generic != traits_type::InvalidValue() && data_.generic == value) {
       abort();
+      HTML5_STACKTRACE();
+    }
     FreeIfNecessary();
     data_.generic = value;
     TrackAcquire(value);

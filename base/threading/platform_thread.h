@@ -14,6 +14,7 @@
 #include "base/base_export.h"
 #include "base/macros.h"
 #include "base/time/time.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 
@@ -102,7 +103,11 @@ class PlatformThreadHandle {
   Handle handle_;
 };
 
+#if defined(DISABLE_PTHREADS)
+const PlatformThreadId kInvalidThreadId(-999); // 0 = main thread
+#else
 const PlatformThreadId kInvalidThreadId(0);
+#endif
 
 // Valid values for priority of Thread::Options and SimpleThread::Options, and
 // SetCurrentThreadPriority(), listed in increasing order of importance.

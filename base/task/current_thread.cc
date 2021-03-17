@@ -115,7 +115,7 @@ bool CurrentThread::operator==(const CurrentThread& other) const {
   return current_ == other.current_;
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 
 //------------------------------------------------------------------------------
 // CurrentUIThread
@@ -210,7 +210,7 @@ MessagePumpForIO* CurrentIOThread::GetMessagePumpForIO() const {
   return static_cast<MessagePumpForIO*>(current_->GetMessagePump());
 }
 
-#if !defined(OS_NACL_SFI)
+#if !defined(OS_NACL_SFI) && !defined(OS_EMSCRIPTEN)
 
 #if defined(OS_WIN)
 HRESULT CurrentIOThread::RegisterIOHandler(

@@ -3,6 +3,20 @@
 Use `extensions` when you need to:
 * patch original files in base - some files have too many modifications to be stored in git `.patch` files
 * fix missing include paths - `base/extensions/` in public include directories
+* replace folders in `base/third_party/` with conan packages
+
+## How to upgrade double_conversion
+
+```bash
+mv base/third_party/double_conversion extensions/base/third_party/double_conversion
+replace_header_contents () \
+{ \
+  echo "#pragma once" > $1; \
+  echo "#include \"${1#$PWD/extensions/base/third_party/double_conversion/}\" " >> $1 ; \
+}
+export -f replace_header_contents
+find $PWD/extensions/base/third_party/double_conversion -type f -name "*.h" -exec bash -c 'replace_header_contents "$0"' {} \;
+```
 
 ## How to upgrade chromium/src/build
 

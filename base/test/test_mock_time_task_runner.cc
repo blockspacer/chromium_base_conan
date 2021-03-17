@@ -12,6 +12,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
 #include "base/threading/thread_task_runner_handle.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -311,6 +312,11 @@ bool TestMockTimeTaskRunner::RunsTasksInCurrentSequence() const {
 bool TestMockTimeTaskRunner::PostDelayedTask(const Location& from_here,
                                              OnceClosure task,
                                              TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
+
   AutoLock scoped_lock(tasks_lock_);
   tasks_.push(TestOrderedPendingTask(from_here, std::move(task), now_ticks_,
                                      delay, next_task_ordinal_++,

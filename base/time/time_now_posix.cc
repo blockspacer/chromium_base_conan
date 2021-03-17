@@ -16,6 +16,7 @@
 #include "base/notreached.h"
 #include "base/numerics/safe_math.h"
 #include "base/time/time_override.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 // Ensure the Fuchsia and Mac builds do not include this module. Instead,
@@ -47,7 +48,7 @@ int64_t ConvertTimespecToMicros(const struct timespec& ts) {
 // _POSIX_MONOTONIC_CLOCK to -1.
 #if (defined(OS_POSIX) && defined(_POSIX_MONOTONIC_CLOCK) && \
      _POSIX_MONOTONIC_CLOCK >= 0) ||                         \
-    defined(OS_BSD) || defined(OS_ANDROID)
+    defined(OS_BSD) || defined(OS_ANDROID) || defined(OS_EMSCRIPTEN)
 int64_t ClockNow(clockid_t clk_id) {
   struct timespec ts;
   CHECK(clock_gettime(clk_id, &ts) == 0);

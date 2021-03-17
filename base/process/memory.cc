@@ -17,6 +17,7 @@
 #include "base/immediate_crash.h"
 #include "base/logging.h"
 #include "base/partition_alloc_buildflags.h"
+#include "basic/wasm_util.h"
 #if BUILDFLAG(USE_PARTITION_ALLOC)
 #include "base/allocator/partition_allocator/page_allocator.h"
 #endif
@@ -64,6 +65,9 @@ NOINLINE void OnNoMemoryInternal(size_t size) {
 }  // namespace internal
 
 void TerminateBecauseOutOfMemory(size_t size) {
+#if defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+#endif
   internal::OnNoMemoryInternal(size);
 }
 

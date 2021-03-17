@@ -49,7 +49,7 @@ ThreadPoolInstance::ScopedBestEffortExecutionFence::
   g_thread_pool->EndBestEffortFence();
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
 // static
 void ThreadPoolInstance::CreateAndStartWithDefaultParams(StringPiece name) {
   Create(name);

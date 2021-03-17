@@ -322,7 +322,7 @@ PersistentMemoryAllocator::PersistentMemoryAllocator(Memory memory,
       mem_type_(memory.type),
       mem_size_(static_cast<uint32_t>(size)),
       mem_page_(static_cast<uint32_t>((page_size ? page_size : size))),
-#if defined(OS_NACL)
+#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
       vm_page_size_(4096U),  // SysInfo is not built for NACL.
 #else
       vm_page_size_(SysInfo::VMAllocationGranularity()),
@@ -1061,7 +1061,7 @@ bool ReadOnlySharedPersistentMemoryAllocator::IsSharedMemoryAcceptable(
   return IsMemoryAcceptable(memory.memory(), memory.size(), 0, true);
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 //----- FilePersistentMemoryAllocator ------------------------------------------
 
 FilePersistentMemoryAllocator::FilePersistentMemoryAllocator(

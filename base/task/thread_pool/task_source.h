@@ -18,6 +18,7 @@
 #include "base/task/thread_pool/task.h"
 #include "base/task/thread_pool/task_source_sort_key.h"
 #include "base/threading/sequence_local_storage_map.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace internal {
@@ -25,7 +26,9 @@ namespace internal {
 class TaskTracker;
 
 enum class TaskSourceExecutionMode {
+#if !defined(DISABLE_PTHREADS)
   kParallel,
+#endif
   kSequenced,
   kSingleThread,
   kJob,

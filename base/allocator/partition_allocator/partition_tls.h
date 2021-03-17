@@ -7,6 +7,7 @@
 
 #include "base/allocator/partition_allocator/partition_alloc_check.h"
 #include "base/compiler_specific.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 #if defined(OS_POSIX)
@@ -28,12 +29,21 @@ typedef pthread_key_t PartitionTlsKey;
 
 ALWAYS_INLINE bool PartitionTlsCreate(PartitionTlsKey* key,
                                       void (*destructor)(void*)) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
   return !pthread_key_create(key, destructor);
 }
 ALWAYS_INLINE void* PartitionTlsGet(PartitionTlsKey key) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
   return pthread_getspecific(key);
 }
 ALWAYS_INLINE void PartitionTlsSet(PartitionTlsKey key, void* value) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
   int ret = pthread_setspecific(key, value);
   PA_DCHECK(!ret);
 }

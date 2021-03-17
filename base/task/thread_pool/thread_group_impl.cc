@@ -1084,7 +1084,7 @@ void ThreadGroupImpl::AdjustMaxTasks() {
 void ThreadGroupImpl::ScheduleAdjustMaxTasks() {
   // |adjust_max_tasks_posted_| can't change before the task posted below runs.
   // Skip check on NaCl to avoid unsafe reference acquisition warning.
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   DCHECK(TS_UNCHECKED_READ(adjust_max_tasks_posted_));
 #endif
 

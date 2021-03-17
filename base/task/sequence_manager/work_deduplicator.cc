@@ -6,6 +6,7 @@
 
 #include <utility>
 #include "base/check_op.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace sequence_manager {
@@ -18,6 +19,10 @@ WorkDeduplicator::WorkDeduplicator(
 WorkDeduplicator::~WorkDeduplicator() = default;
 
 WorkDeduplicator::ShouldScheduleWork WorkDeduplicator::BindToCurrentThread() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
   DCHECK_CALLED_ON_VALID_THREAD(associated_thread_->thread_checker);
   int previous_flags = state_.fetch_or(kBoundFlag);
   DCHECK_EQ(previous_flags & kBoundFlag, 0) << "Can't bind twice!";

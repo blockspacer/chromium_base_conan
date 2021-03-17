@@ -128,28 +128,25 @@ list(APPEND COMPONENT_BASE_SOURCES_ANDROID_UNPROCESSED
   "system/sys_info_linux.cc"
 )
 
-# TODO
-#if (can_unwind_with_cfi_table) {
-#  sources += [
-#    "trace_event/cfi_backtrace_android.cc"
-#    "trace_event/cfi_backtrace_android.h"
-#  ]
-#}
-#if (current_cpu == "arm") {
-#  sources += [
-#    "profiler/chrome_unwinder_android.cc"
-#    "profiler/chrome_unwinder_android.h"
-#  ]
-#}
-#
-#if (current_cpu != "arm" && current_cpu != "arm64") {
-#  # The reached code profiler is only supported on Android arm arch.
-#  sources += [ "android/reached_code_profiler_stub.cc" ]
-#}
+if (can_unwind_with_cfi_table) {
+  list(APPEND COMPONENT_BASE_SOURCES_ANDROID_UNPROCESSED
+    "trace_event/cfi_backtrace_android.cc"
+    "trace_event/cfi_backtrace_android.h"
+  )
+endif(can_unwind_with_cfi_table)
 
-#  if (is_android || is_chromeos_ash)
-list(APPEND COMPONENT_BASE_SOURCES_POSIX_UNPROCESSED
-  "time/time_android.cc"
-)
+if (TARGET_ARM) {
+  list(APPEND COMPONENT_BASE_SOURCES_ANDROID_UNPROCESSED
+    "profiler/chrome_unwinder_android.cc"
+    "profiler/chrome_unwinder_android.h"
+  )
+endif()
+
+if (NOT TARGET_ARM AND NOT TARGET_ARM64) {
+  # The reached code profiler is only supported on Android arm arch.
+  list(APPEND COMPONENT_BASE_SOURCES_ANDROID_UNPROCESSED
+   "android/reached_code_profiler_stub.cc"
+  )
+endif()
 
 list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_ANDROID_UNPROCESSED})

@@ -758,7 +758,7 @@ class BASE_EXPORT ReadOnlySharedPersistentMemoryAllocator
   DISALLOW_COPY_AND_ASSIGN(ReadOnlySharedPersistentMemoryAllocator);
 };
 
-#if !defined(OS_NACL)  // NACL doesn't support any kind of file access in build.
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)  // NACL doesn't support any kind of file access in build.
 // This allocator takes a memory-mapped file object and performs allocation
 // from it. The allocator takes ownership of the file object.
 class BASE_EXPORT FilePersistentMemoryAllocator

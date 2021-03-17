@@ -223,7 +223,7 @@ bool AllocationContextTracker::GetContextSnapshot(AllocationContext* ctx) {
 // from this point and up until main(). We intentionally request
 // kMaxFrameCount + 1 frames, so that we know if there are more frames
 // than our backtrace capacity.
-#if !defined(OS_NACL)  // We don't build base/debug/stack_trace.cc for NaCl.
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN) // We don't build base/debug/stack_trace.cc for NaCl.
 #if defined(OS_ANDROID) && BUILDFLAG(CAN_UNWIND_WITH_CFI_TABLE)
         const void* frames[Backtrace::kMaxFrameCount + 1];
         static_assert(base::size(frames) >= Backtrace::kMaxFrameCount,

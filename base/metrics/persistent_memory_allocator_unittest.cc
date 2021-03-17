@@ -718,7 +718,7 @@ TEST(SharedPersistentMemoryAllocatorTest, CreationTest) {
 }
 
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 //----- FilePersistentMemoryAllocator ------------------------------------------
 
 TEST(FilePersistentMemoryAllocatorTest, CreationTest) {

@@ -78,7 +78,7 @@ if(ENABLE_MSAN OR ENABLE_TSAN OR ENABLE_ASAN OR ENABLE_UBSAN)
   message(STATUS
     "Using sanitizers")
 
-  if(cmake_build_type_tolower MATCHES "release" )
+  if(IS_RELEASE)
     message(WARNING
       "Disable sanitizers in Release builds")
   endif()

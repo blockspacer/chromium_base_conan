@@ -578,7 +578,7 @@ class BASE_EXPORT FieldTrialList {
   // the child looks up directly.
   static void InsertFieldTrialHandleIfNeeded(
       MachPortsForRendezvous* rendezvous_ports);
-#elif defined(OS_POSIX) && !defined(OS_NACL)
+#elif defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // On POSIX, we also need to explicitly pass down this file descriptor that
   // should be shared with the child process. Returns -1 if it was not
   // initialized properly. The current process remains the onwer of the passed
@@ -698,7 +698,7 @@ class BASE_EXPORT FieldTrialList {
 #if defined(OS_WIN) || defined(OS_FUCHSIA) || defined(OS_MAC)
   static ReadOnlySharedMemoryRegion DeserializeSharedMemoryRegionMetadata(
       const std::string& switch_value);
-#elif defined(OS_POSIX) && !defined(OS_NACL)
+#elif defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   static ReadOnlySharedMemoryRegion DeserializeSharedMemoryRegionMetadata(
       int fd,
       const std::string& switch_value);
@@ -710,7 +710,7 @@ class BASE_EXPORT FieldTrialList {
   // Returns true on success, false on failure.
   // |switch_value| also contains the serialized GUID.
   static bool CreateTrialsFromSwitchValue(const std::string& switch_value);
-#elif defined(OS_POSIX) && !defined(OS_NACL)
+#elif defined(OS_POSIX) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // On POSIX systems that use the zygote, we look up the correct fd that backs
   // the shared memory segment containing the field trials by looking it up via
   // an fd key in GlobalDescriptors. Returns true on success, false on failure.

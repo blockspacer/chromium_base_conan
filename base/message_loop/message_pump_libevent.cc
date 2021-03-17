@@ -253,11 +253,19 @@ void MessagePumpLibevent::Run(Delegate* delegate) {
       did_set_timer = true;
     }
 
+#if defined(DISABLE_PTHREADS)
+    // EVLOOP_ONCE - Block until we have an active event, then exit once all active events have had their callbacks run.
+    // EVLOOP_NONBLOCK - Do not block: see which events are ready now, run the callbacks of the highest-priority ones, then exit.
+    const int flags_ONCE = EVLOOP_ONCE | EVLOOP_NONBLOCK;
+#else
+    const int flags_ONCE = EVLOOP_ONCE;
+#endif
+
     // Block waiting for events and process all available upon waking up. This
     // is conditionally interrupted to look for more work if we are aware of a
     // delayed task that will need servicing.
     delegate->BeforeWait();
-    event_base_loop(event_base_, EVLOOP_ONCE);
+    event_base_loop(event_base_, flags_ONCE);
 
     // We previously setup a timer to break out the event loop to look for more
     // work. Now that we're here delete the event.

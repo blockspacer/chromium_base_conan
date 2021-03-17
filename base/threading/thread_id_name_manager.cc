@@ -51,10 +51,12 @@ const char* ThreadIdNameManager::GetDefaultInternedString() {
 
 void ThreadIdNameManager::RegisterThread(PlatformThreadHandle::Handle handle,
                                          PlatformThreadId id) {
+#if !defined(DISABLE_PTHREADS)
   AutoLock locked(lock_);
   thread_id_to_handle_[id] = handle;
   thread_handle_to_interned_name_[handle] =
       name_to_interned_name_[kDefaultName];
+#endif
 }
 
 void ThreadIdNameManager::AddObserver(Observer* obs) {
@@ -70,6 +72,7 @@ void ThreadIdNameManager::RemoveObserver(Observer* obs) {
 }
 
 void ThreadIdNameManager::SetName(const std::string& name) {
+#if !defined(DISABLE_PTHREADS)
   PlatformThreadId id = PlatformThread::CurrentId();
   std::string* leaked_str = nullptr;
   {
@@ -105,9 +108,11 @@ void ThreadIdNameManager::SetName(const std::string& name) {
   // ThreadIdNameManager itself when holding the lock.
   trace_event::AllocationContextTracker::SetCurrentThreadName(
       leaked_str->c_str());
+#endif // EMSCRIPTEN
 }
 
 const char* ThreadIdNameManager::GetName(PlatformThreadId id) {
+#if !defined(DISABLE_PTHREADS)
   AutoLock locked(lock_);
 
   if (id == main_process_id_)
@@ -120,6 +125,9 @@ const char* ThreadIdNameManager::GetName(PlatformThreadId id) {
   auto handle_to_name_iter =
       thread_handle_to_interned_name_.find(id_to_handle_iter->second);
   return handle_to_name_iter->second->c_str();
+#else
+  return name_to_interned_name_[kDefaultName]->c_str();
+#endif // EMSCRIPTEN
 }
 
 const char* ThreadIdNameManager::GetNameForCurrentThread() {
@@ -129,6 +137,7 @@ const char* ThreadIdNameManager::GetNameForCurrentThread() {
 
 void ThreadIdNameManager::RemoveName(PlatformThreadHandle::Handle handle,
                                      PlatformThreadId id) {
+#if !defined(DISABLE_PTHREADS)
   AutoLock locked(lock_);
   auto handle_to_name_iter = thread_handle_to_interned_name_.find(handle);
 
@@ -143,6 +152,7 @@ void ThreadIdNameManager::RemoveName(PlatformThreadHandle::Handle handle,
     return;
 
   thread_id_to_handle_.erase(id_to_handle_iter);
+#endif // EMSCRIPTEN
 }
 
 }  // namespace base

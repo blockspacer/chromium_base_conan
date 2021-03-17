@@ -1,5 +1,5 @@
 ﻿# see component("base") in BUILD.gn
-list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
+list(APPEND COMPONENT_BASE_SOURCES_PARTITION_ALLOC_UNPROCESSED
   # PartitionAlloc uses SpinLock, which doesn't work in NaCl (see below).
   "allocator/partition_allocator/address_pool_manager.cc"
   "allocator/partition_allocator/address_pool_manager.h"
@@ -61,19 +61,19 @@ list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
 )
 
 if(TARGET_WINDOWS)
-  list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
+  list(APPEND COMPONENT_BASE_SOURCES_PARTITION_ALLOC_UNPROCESSED
     "allocator/partition_allocator/page_allocator_internals_win.h"
     "allocator/partition_allocator/partition_tls_win.cc"
   )
 elseif(TARGET_POSIX)
-  list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
+  list(APPEND COMPONENT_BASE_SOURCES_PARTITION_ALLOC_UNPROCESSED
     "allocator/partition_allocator/page_allocator_internals_posix.cc"
     "allocator/partition_allocator/page_allocator_internals_posix.h"
   )
 elseif(TARGET_FUCHSIA)
-  list(APPEND COMPONENT_BASE_SOURCES_ALLOC_SHIM_UNPROCESSED
+  list(APPEND COMPONENT_BASE_SOURCES_PARTITION_ALLOC_UNPROCESSED
     "allocator/partition_allocator/page_allocator_internals_fuchsia.h"
   )
 endif()
 
-list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_IOS_UNPROCESSED})
+list(APPEND COMPONENT_BASE_SOURCES ${COMPONENT_BASE_SOURCES_PARTITION_ALLOC_UNPROCESSED})

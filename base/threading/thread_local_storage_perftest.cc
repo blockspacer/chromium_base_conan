@@ -15,6 +15,7 @@
 #include "base/threading/simple_thread.h"
 #include "base/threading/thread_local_storage.h"
 #include "base/time/time.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/perf/perf_result_reporter.h"
@@ -223,6 +224,9 @@ TEST_F(ThreadLocalStoragePerfTest, PlatformTls) {
     return reinterpret_cast<intptr_t>(pthread_getspecific(key));
   };
   auto write = [&](intptr_t value) {
+#if defined(DISABLE_PTHREADS)
+    NOTIMPLEMENTED();
+#endif
     pthread_setspecific(key, reinterpret_cast<void*>(value));
   };
 

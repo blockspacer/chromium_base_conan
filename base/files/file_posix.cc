@@ -15,6 +15,7 @@
 #include "base/posix/eintr_wrapper.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/scoped_blocking_call.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 
@@ -33,7 +34,7 @@ namespace {
 
 // NaCl doesn't provide the following system calls, so either simulate them or
 // wrap them in order to minimize the number of #ifdef's in this file.
-#if !defined(OS_NACL) && !defined(OS_AIX)
+#if !defined(OS_NACL) && !defined(OS_AIX) && !defined(OS_EMSCRIPTEN)
 bool IsOpenAppend(PlatformFile file) {
   return (fcntl(file, F_GETFL) & O_APPEND) != 0;
 }
@@ -423,7 +424,7 @@ File::Error File::OSErrorToFileError(int saved_errno) {
     case EPERM:
       return FILE_ERROR_ACCESS_DENIED;
     case EBUSY:
-#if !defined(OS_NACL)  // ETXTBSY not defined by NaCl.
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)  // ETXTBSY not defined by NaCl.
     case ETXTBSY:
 #endif
       return FILE_ERROR_IN_USE;
@@ -453,7 +454,7 @@ File::Error File::OSErrorToFileError(int saved_errno) {
 }
 
 // NaCl doesn't implement system calls to open files directly.
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 // TODO(erikkay): does it make sense to support FLAG_EXCLUSIVE_* here?
 void File::DoInitialize(const FilePath& path, uint32_t flags) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
@@ -546,7 +547,7 @@ bool File::Flush() {
   DCHECK(IsValid());
   SCOPED_FILE_TRACE("Flush");
 
-#if defined(OS_NACL)
+#if defined(OS_NACL) || defined(OS_EMSCRIPTEN)
   NOTIMPLEMENTED();  // NaCl doesn't implement fsync.
   return true;
 #elif defined(OS_ANDROID) || defined(OS_CHROMEOS) || defined(OS_FUCHSIA) || \
@@ -585,7 +586,8 @@ File::Error File::GetLastFileError() {
 }
 
 #if defined(OS_BSD) || defined(OS_APPLE) || defined(OS_NACL) || \
-    defined(OS_FUCHSIA) || (defined(OS_ANDROID) && __ANDROID_API__ < 21)
+    defined(OS_FUCHSIA) || (defined(OS_ANDROID) && __ANDROID_API__ < 21) || \
+    defined(OS_EMSCRIPTEN)
 int File::Stat(const char* path, stat_wrapper_t* sb) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   return stat(path, sb);

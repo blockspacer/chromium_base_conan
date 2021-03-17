@@ -194,7 +194,7 @@ class BASE_EXPORT CurrentThread {
   sequence_manager::internal::SequenceManagerImpl* current_;
 };
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 
 // UI extension of CurrentThread.
 class BASE_EXPORT CurrentUIThread : public CurrentThread {
@@ -263,7 +263,7 @@ class BASE_EXPORT CurrentIOThread : public CurrentThread {
 
   CurrentIOThread* operator->() { return this; }
 
-#if !defined(OS_NACL_SFI)
+#if !defined(OS_NACL_SFI) && !defined(OS_EMSCRIPTEN)
 
 #if defined(OS_WIN)
   // Please see MessagePumpWin for definitions of these methods.

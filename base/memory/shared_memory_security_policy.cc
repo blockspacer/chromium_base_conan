@@ -19,7 +19,7 @@ namespace {
 
 // Note: pointers are 32 bits on all architectures in NaCl. See
 // https://bugs.chromium.org/p/nativeclient/issues/detail?id=1162
-#if defined(ARCH_CPU_32_BITS) || defined(OS_NACL)
+#if defined(ARCH_CPU_32_BITS) || defined(OS_NACL) || defined(OS_EMSCRIPTEN)
 // No effective limit on 32-bit, since there simply isn't enough address space
 // for ASLR to be particularly effective.
 constexpr size_t kTotalMappedSizeLimit = -1;

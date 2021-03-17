@@ -50,7 +50,7 @@ class PersistentHistogramStorageTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(PersistentHistogramStorageTest);
 };
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 TEST_F(PersistentHistogramStorageTest, HistogramWriteTest) {
   auto persistent_histogram_storage =
       std::make_unique<PersistentHistogramStorage>(

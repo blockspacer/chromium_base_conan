@@ -44,6 +44,7 @@
 #include "base/system/sys_info.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "base/time/time.h"
+#include "basic/wasm_util.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -72,11 +73,16 @@ namespace base {
 
 namespace {
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 // Helper for VerifyPathControlledByUser.
 bool VerifySpecificPathControlledByUser(const FilePath& path,
                                         uid_t owner_uid,
                                         const std::set<gid_t>& group_gids) {
+#if defined(OS_EMSCRIPTEN)
+  // In browser all paths are controlled by user
+  return true;
+#endif
+
   stat_wrapper_t stat_info;
   if (File::Lstat(path.value().c_str(), &stat_info) != 0) {
     DPLOG(ERROR) << "Failed to get information on path "
@@ -327,7 +333,7 @@ std::string AppendModeCharacter(StringPiece mode, char mode_char) {
 
 }  // namespace
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 FilePath MakeAbsoluteFilePath(const FilePath& input) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   char full_path[PATH_MAX];
@@ -414,7 +420,7 @@ bool SetNonBlocking(int fd) {
 }
 
 bool SetCloseOnExec(int fd) {
-#if defined(OS_NACL_NONSFI)
+#if defined(OS_NACL_NONSFI) || defined(OS_EMSCRIPTEN)
   const int flags = 0;
 #else
   const int flags = fcntl(fd, F_GETFD);
@@ -438,14 +444,14 @@ bool PathExists(const FilePath& path) {
   return access(path.value().c_str(), F_OK) == 0;
 }
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 bool PathIsReadable(const FilePath& path) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   return access(path.value().c_str(), R_OK) == 0;
 }
 #endif  // !defined(OS_NACL_NONSFI)
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 bool PathIsWritable(const FilePath& path) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   return access(path.value().c_str(), W_OK) == 0;
@@ -472,7 +478,7 @@ bool ReadFromFD(int fd, char* buffer, size_t bytes) {
   return total_read == bytes;
 }
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 
 ScopedFD CreateAndOpenFdForTemporaryFileInDir(const FilePath& directory,
                                               FilePath* path) {
@@ -490,6 +496,11 @@ ScopedFD CreateAndOpenFdForTemporaryFileInDir(const FilePath& directory,
 #if !defined(OS_FUCHSIA)
 bool CreateSymbolicLink(const FilePath& target_path,
                         const FilePath& symlink_path) {
+#if defined(OS_EMSCRIPTEN)
+  /// \todo no symlink support in browser
+  return false;
+#endif
+
   DCHECK(!symlink_path.empty());
   DCHECK(!target_path.empty());
   return ::symlink(target_path.value().c_str(),
@@ -497,6 +508,10 @@ bool CreateSymbolicLink(const FilePath& target_path,
 }
 
 bool ReadSymbolicLink(const FilePath& symlink_path, FilePath* target_path) {
+#if defined(OS_EMSCRIPTEN)
+  /// \todo no symlink support in browser
+  return false;
+#endif
   DCHECK(!symlink_path.empty());
   DCHECK(target_path);
   char buf[PATH_MAX];
@@ -523,6 +538,11 @@ bool ReadSymbolicLink(const FilePath& symlink_path, FilePath* target_path) {
 }
 
 bool GetPosixFilePermissions(const FilePath& path, int* mode) {
+#if defined(OS_EMSCRIPTEN)
+  /// \todo no FilePermissions support in browser
+  return false;
+#endif
+
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   DCHECK(mode);
 
@@ -538,6 +558,11 @@ bool GetPosixFilePermissions(const FilePath& path, int* mode) {
 
 bool SetPosixFilePermissions(const FilePath& path,
                              int mode) {
+#if defined(OS_EMSCRIPTEN)
+  /// \todo no FilePermissions support in browser
+  return false;
+#endif
+
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   DCHECK_EQ(mode & ~FILE_PERMISSION_MASK, 0);
 
@@ -558,6 +583,11 @@ bool SetPosixFilePermissions(const FilePath& path,
 
 bool ExecutableExistsInPath(Environment* env,
                             const FilePath::StringType& executable) {
+#if defined(OS_EMSCRIPTEN)
+  /// \todo no Executable files in browser
+  return false;
+#endif
+
   std::string path;
   if (!env->GetVar("PATH", &path)) {
     LOG(ERROR) << "No $PATH variable. Assuming no " << executable << ".";
@@ -783,6 +813,11 @@ bool NormalizeFilePath(const FilePath& path, FilePath* normalized_path) {
 // TODO(rkc): Refactor GetFileInfo and FileEnumerator to handle symlinks
 // correctly. http://code.google.com/p/chromium-os/issues/detail?id=15948
 bool IsLink(const FilePath& file_path) {
+#if defined(OS_EMSCRIPTEN)
+  /// \todo no symlink support in browser
+  return false;
+#endif
+
   stat_wrapper_t st;
   // If we can't lstat the file, it's safe to assume that the file won't at
   // least be a 'followable' link.
@@ -840,7 +875,7 @@ FILE* OpenFile(const FilePath& filename, const char* mode) {
 }
 
 // NaCl doesn't implement system calls to open files directly.
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 FILE* FileToFILE(File file, const char* mode) {
   FILE* stream = fdopen(file.GetPlatformFile(), mode);
   if (stream)
@@ -972,7 +1007,7 @@ bool AllocateFileRegion(File* file, int64_t offset, size_t size) {
   return true;
 }
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 
 bool AppendToFile(const FilePath& filename, const char* data, int size) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);

@@ -1,4 +1,5 @@
-#include "tests_common.hpp"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/gmock/include/gmock/gmock.h"
 
 #include <chrono>
 #include <cstdlib>

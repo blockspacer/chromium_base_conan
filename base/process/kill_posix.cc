@@ -18,6 +18,7 @@
 #include "base/process/process_iterator.h"
 #include "base/task/post_task.h"
 #include "base/threading/platform_thread.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 
@@ -84,6 +85,10 @@ TerminationStatus GetTerminationStatus(ProcessHandle handle, int* exit_code) {
 
 TerminationStatus GetKnownDeadTerminationStatus(ProcessHandle handle,
                                                 int* exit_code) {
+#if defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+#endif
+
   bool result = kill(handle, SIGKILL) == 0;
 
   if (!result)
@@ -92,7 +97,7 @@ TerminationStatus GetKnownDeadTerminationStatus(ProcessHandle handle,
   return GetTerminationStatusImpl(handle, true /* can_block */, exit_code);
 }
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN) && !defined(DISABLE_PTHREADS)
 bool WaitForProcessesToExit(const FilePath::StringType& executable_name,
                             TimeDelta wait,
                             const ProcessFilter* filter) {
@@ -135,6 +140,9 @@ class BackgroundReaper : public PlatformThread::Delegate {
 
   void ThreadMain() override {
     if (!wait_time_.is_zero()) {
+#if defined(OS_EMSCRIPTEN)
+      NOTIMPLEMENTED();
+#endif
       child_process_.WaitForExitWithTimeout(wait_time_, nullptr);
       kill(child_process_.Handle(), SIGKILL);
     }

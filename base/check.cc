@@ -14,6 +14,7 @@
 #include "base/check_op.h"
 #include "base/logging.h"
 #include "build/build_config.h"
+#include "basic/wasm_util.h"
 
 namespace logging {
 
@@ -22,6 +23,9 @@ CheckError CheckError::Check(const char* file,
                              const char* condition) {
   CheckError check_error(new LogMessage(file, line, LOGGING_FATAL));
   check_error.stream() << "Check failed: " << condition << ". ";
+#if defined(OS_EMSCRIPTEN)
+  HTML5_STACKTRACE();
+#endif
   return check_error;
 }
 
@@ -32,6 +36,9 @@ CheckError CheckError::CheckOp(const char* file,
   check_error.stream() << "Check failed: " << check_op_result->message_;
   free(check_op_result->message_);
   check_op_result->message_ = nullptr;
+#if defined(OS_EMSCRIPTEN)
+  HTML5_STACKTRACE();
+#endif
   return check_error;
 }
 
@@ -40,6 +47,9 @@ CheckError CheckError::DCheck(const char* file,
                               const char* condition) {
   CheckError check_error(new LogMessage(file, line, LOGGING_DCHECK));
   check_error.stream() << "Check failed: " << condition << ". ";
+#if defined(OS_EMSCRIPTEN)
+  HTML5_STACKTRACE();
+#endif
   return check_error;
 }
 
@@ -50,6 +60,9 @@ CheckError CheckError::DCheckOp(const char* file,
   check_error.stream() << "Check failed: " << check_op_result->message_;
   free(check_op_result->message_);
   check_op_result->message_ = nullptr;
+#if defined(OS_EMSCRIPTEN)
+  HTML5_STACKTRACE();
+#endif
   return check_error;
 }
 
@@ -65,6 +78,9 @@ CheckError CheckError::PCheck(const char* file,
       new ErrnoLogMessage(file, line, LOGGING_FATAL, err_code));
 #endif
   check_error.stream() << "Check failed: " << condition << ". ";
+#if defined(OS_EMSCRIPTEN)
+  HTML5_STACKTRACE();
+#endif
   return check_error;
 }
 
@@ -84,6 +100,9 @@ CheckError CheckError::DPCheck(const char* file,
       new ErrnoLogMessage(file, line, LOGGING_DCHECK, err_code));
 #endif
   check_error.stream() << "Check failed: " << condition << ". ";
+#if defined(OS_EMSCRIPTEN)
+  HTML5_STACKTRACE();
+#endif
   return check_error;
 }
 
@@ -92,6 +111,9 @@ CheckError CheckError::NotImplemented(const char* file,
                                       const char* function) {
   CheckError check_error(new LogMessage(file, line, LOGGING_ERROR));
   check_error.stream() << "Not implemented reached in " << function;
+#if defined(OS_EMSCRIPTEN)
+  HTML5_STACKTRACE();
+#endif
   return check_error;
 }
 

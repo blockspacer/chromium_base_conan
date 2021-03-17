@@ -7,6 +7,7 @@
 #include "base/feature_list.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace sequence_manager {
@@ -30,6 +31,10 @@ ThreadControllerPowerMonitor::~ThreadControllerPowerMonitor() {
 }
 
 void ThreadControllerPowerMonitor::BindToCurrentThread() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
   // Occasionally registration happens twice (i.e. when the
   // ThreadController::SetDefaultTaskRunner() re-initializes the
   // ThreadController).

@@ -31,7 +31,7 @@ MemoryMappedFile::~MemoryMappedFile() {
   CloseHandles();
 }
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 bool MemoryMappedFile::Initialize(const FilePath& file_name, Access access) {
   if (IsValid())
     return false;

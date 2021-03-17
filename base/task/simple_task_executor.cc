@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/task/simple_task_executor.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -28,6 +29,10 @@ bool SimpleTaskExecutor::PostDelayedTask(const Location& from_here,
                                          const TaskTraits& traits,
                                          OnceClosure task,
                                          TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
   return task_queue_->PostDelayedTask(from_here, std::move(task), delay);
 }
 

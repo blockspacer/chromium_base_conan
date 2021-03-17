@@ -21,6 +21,7 @@
 #include "base/process/kill.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 #if defined(OS_MAC)
@@ -33,7 +34,7 @@
 
 namespace {
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 
 bool WaitpidWithTimeout(base::ProcessHandle handle,
                         int* status,
@@ -310,7 +311,7 @@ void Process::Close() {
   // end up w/ a zombie when it does finally exit.
 }
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 bool Process::Terminate(int exit_code, bool wait) const {
   // exit_code isn't supportable.
   DCHECK(IsValid());

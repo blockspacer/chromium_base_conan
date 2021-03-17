@@ -9,6 +9,7 @@
 #include "base/threading/thread_checker.h"
 #include "base/threading/thread_local.h"
 #include "base/threading/thread_task_runner_handle.h"
+#include "basic/wasm_util.h"
 
 namespace {
 bool g_log_thread_and_sequence_checker_binding = false;
@@ -22,8 +23,13 @@ void ThreadCheckerImpl::EnableStackLogging() {
 }
 
 ThreadCheckerImpl::ThreadCheckerImpl() {
+#if defined(DISABLE_PTHREADS)
+  return;
+#endif
+
   AutoLock auto_lock(lock_);
   EnsureAssignedLockRequired();
+
 }
 
 ThreadCheckerImpl::~ThreadCheckerImpl() = default;
@@ -69,6 +75,10 @@ ThreadCheckerImpl& ThreadCheckerImpl::operator=(ThreadCheckerImpl&& other) {
 
 bool ThreadCheckerImpl::CalledOnValidThread(
     std::unique_ptr<debug::StackTrace>* out_bound_at) const {
+#if defined(DISABLE_PTHREADS)
+  return true;
+#endif
+
   const bool has_thread_been_destroyed = ThreadLocalStorage::HasBeenDestroyed();
 
   AutoLock auto_lock(lock_);
@@ -115,6 +125,10 @@ bool ThreadCheckerImpl::CalledOnValidThread(
 }
 
 void ThreadCheckerImpl::DetachFromThread() {
+#if defined(DISABLE_PTHREADS)
+  return;
+#endif
+
   AutoLock auto_lock(lock_);
   bound_at_ = nullptr;
   thread_id_ = PlatformThreadRef();
@@ -123,6 +137,10 @@ void ThreadCheckerImpl::DetachFromThread() {
 }
 
 std::unique_ptr<debug::StackTrace> ThreadCheckerImpl::GetBoundAt() const {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return nullptr;
+#endif
   AutoLock auto_lock(lock_);
   if (!bound_at_)
     return nullptr;
@@ -130,6 +148,9 @@ std::unique_ptr<debug::StackTrace> ThreadCheckerImpl::GetBoundAt() const {
 }
 
 void ThreadCheckerImpl::EnsureAssignedLockRequired() const {
+#if defined(DISABLE_PTHREADS)
+  return;
+#endif
   if (!thread_id_.is_null())
     return;
   if (g_log_thread_and_sequence_checker_binding)

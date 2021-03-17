@@ -13,6 +13,7 @@
 #include "base/task/task_features.h"
 #include "base/task/thread_pool/task_tracker.h"
 #include "base/threading/thread_local.h"
+#include "basic/wasm_util.h"
 
 #if defined(OS_WIN)
 #include "base/win/com_init_check_hook.h"
@@ -83,6 +84,10 @@ ThreadGroup::ThreadGroup(TrackedRef<TaskTracker> task_tracker,
 ThreadGroup::~ThreadGroup() = default;
 
 void ThreadGroup::BindToCurrentThread() {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
   DCHECK(!GetCurrentThreadGroup());
   tls_current_thread_group.Get().Set(this);
 }

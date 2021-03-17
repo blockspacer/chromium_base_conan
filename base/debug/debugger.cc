@@ -5,6 +5,7 @@
 #include "base/debug/debugger.h"
 #include "base/logging.h"
 #include "base/threading/platform_thread.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -13,6 +14,10 @@ namespace debug {
 static bool is_debug_ui_suppressed = false;
 
 bool WaitForDebugger(int wait_seconds, bool silent) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+#endif
+
 #if defined(OS_ANDROID)
   // The pid from which we know which process to attach to are not output by
   // android ddms, so we have to print it out explicitly.

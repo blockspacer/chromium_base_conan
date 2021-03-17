@@ -12,6 +12,7 @@
 #include "base/threading/thread_local.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -42,8 +43,10 @@ ThreadLocalPointer<const RunLoop::RunLoopTimeout>& RunLoopTimeoutTLS() {
 void OnRunLoopTimeout(RunLoop* run_loop,
                       const Location& location,
                       OnceCallback<void(const Location&)> on_timeout) {
+#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   run_loop->Quit();
   std::move(on_timeout).Run(location);
+#endif // EMSCRIPTEN
 }
 
 }  // namespace
@@ -67,6 +70,9 @@ RunLoop::Delegate::~Delegate() {
 }
 
 bool RunLoop::Delegate::ShouldQuitWhenIdle() {
+#if defined(DISABLE_PTHREADS)
+  return false;
+#endif // EMSCRIPTEN
   const auto* top_loop = active_run_loops_.top();
   if (top_loop->quit_when_idle_received_) {
     TRACE_EVENT_WITH_FLOW0("toplevel.flow", "RunLoop_ExitedOnIdle",
@@ -78,6 +84,7 @@ bool RunLoop::Delegate::ShouldQuitWhenIdle() {
 
 // static
 void RunLoop::RegisterDelegateForCurrentThread(Delegate* delegate) {
+#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   // Bind |delegate| to this thread.
   DCHECK(!delegate->bound_);
   DCHECK_CALLED_ON_VALID_THREAD(delegate->bound_thread_checker_);
@@ -87,6 +94,8 @@ void RunLoop::RegisterDelegateForCurrentThread(Delegate* delegate) {
       << "Error: Multiple RunLoop::Delegates registered on the same thread.\n\n"
          "Hint: You perhaps instantiated a second "
          "MessageLoop/TaskEnvironment on a thread that already had one?";
+#endif // EMSCRIPTEN
+
   GetTlsDelegate().Set(delegate);
   delegate->bound_ = true;
 }
@@ -127,12 +136,14 @@ void RunLoop::Run(const Location& location) {
   }
 
   DCHECK_EQ(this, delegate_->active_run_loops_.top());
+#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   const bool application_tasks_allowed =
       delegate_->active_run_loops_.size() == 1U ||
       type_ == Type::kNestableTasksAllowed;
   delegate_->Run(application_tasks_allowed, TimeDelta::Max());
 
   AfterRun();
+#endif // EMSCRIPTEN
 }
 
 void RunLoop::RunUntilIdle() {
@@ -161,10 +172,12 @@ void RunLoop::Quit() {
                          TRACE_EVENT_FLAG_FLOW_OUT | TRACE_EVENT_FLAG_FLOW_IN);
 
   quit_called_ = true;
+#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   if (running_ && delegate_->active_run_loops_.top() == this) {
     // This is the inner-most RunLoop, so quit now.
     delegate_->Quit();
   }
+#endif // EMSCRIPTEN
 }
 
 void RunLoop::QuitWhenIdle() {
@@ -213,12 +226,20 @@ RepeatingClosure RunLoop::QuitWhenIdleClosure() {
 
 // static
 bool RunLoop::IsRunningOnCurrentThread() {
+#if defined(DISABLE_PTHREADS)
+  return true;
+#endif // EMSCRIPTEN
+
   Delegate* delegate = GetTlsDelegate().Get();
   return delegate && !delegate->active_run_loops_.empty();
 }
 
 // static
 bool RunLoop::IsNestedOnCurrentThread() {
+#if defined(DISABLE_PTHREADS)
+  return false;
+#endif // EMSCRIPTEN
+
   Delegate* delegate = GetTlsDelegate().Get();
   return delegate && delegate->active_run_loops_.size() > 1;
 }
@@ -239,6 +260,10 @@ void RunLoop::RemoveNestingObserverOnCurrentThread(NestingObserver* observer) {
 
 // static
 void RunLoop::QuitCurrentDeprecated() {
+#if (defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
+  return;
+#endif // EMSCRIPTEN
+
   DCHECK(IsRunningOnCurrentThread());
   Delegate* delegate = GetTlsDelegate().Get();
   DCHECK(delegate->active_run_loops_.top()->allow_quit_current_deprecated_)
@@ -248,6 +273,10 @@ void RunLoop::QuitCurrentDeprecated() {
 
 // static
 void RunLoop::QuitCurrentWhenIdleDeprecated() {
+#if defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
+  return;
+#endif // EMSCRIPTEN
+
   DCHECK(IsRunningOnCurrentThread());
   Delegate* delegate = GetTlsDelegate().Get();
   DCHECK(delegate->active_run_loops_.top()->allow_quit_current_deprecated_)
@@ -266,7 +295,7 @@ RepeatingClosure RunLoop::QuitCurrentWhenIdleClosureDeprecated() {
   return BindRepeating(&RunLoop::QuitCurrentWhenIdleDeprecated);
 }
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() || defined(DISABLE_PTHREADS)
 RunLoop::ScopedDisallowRunning::ScopedDisallowRunning()
     : current_delegate_(GetTlsDelegate().Get()),
       previous_run_allowance_(
@@ -306,7 +335,7 @@ const RunLoop::RunLoopTimeout* RunLoop::GetTimeoutForCurrentThread() {
 bool RunLoop::BeforeRun() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   DCHECK(delegate_->allow_running_for_testing_)
       << "RunLoop::Run() isn't allowed in the scope of a "
          "ScopedDisallowRunning. Hint: if mixing "
@@ -323,6 +352,7 @@ bool RunLoop::BeforeRun() {
     return false;
   }
 
+#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   auto& active_run_loops = delegate_->active_run_loops_;
   active_run_loops.push(this);
 
@@ -334,6 +364,7 @@ bool RunLoop::BeforeRun() {
     if (type_ == Type::kNestableTasksAllowed)
       delegate_->EnsureWorkScheduled();
   }
+#endif // EMSCRIPTEN
 
   running_ = true;
   return true;
@@ -344,6 +375,7 @@ void RunLoop::AfterRun() {
 
   running_ = false;
 
+#if !(defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS))
   TRACE_EVENT_WITH_FLOW0("toplevel.flow", "RunLoop_Exited",
                          TRACE_ID_LOCAL(this), TRACE_EVENT_FLAG_FLOW_IN);
 
@@ -360,6 +392,7 @@ void RunLoop::AfterRun() {
     if (active_run_loops.top()->quit_called_)
       delegate_->Quit();
   }
+#endif // EMSCRIPTEN
 }
 
 }  // namespace base

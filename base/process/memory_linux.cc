@@ -69,6 +69,9 @@ class AdjustOOMScoreHelper {
 
 // static.
 bool AdjustOOMScoreHelper::AdjustOOMScore(ProcessId process, int score) {
+#if !defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+#endif
   if (score < 0 || score > kMaxOomScore)
     return false;
 

@@ -162,7 +162,7 @@ struct BackupRefPtrImpl {
     //
     // 64-bit systems don't have this problem, because there is only one normal
     // bucket pool region, positioned after the direct map pool.
-#if !(defined(ARCH_CPU_64_BITS) && !defined(OS_NACL))
+#if !(defined(ARCH_CPU_64_BITS) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN))
     auto* adjusted_ptr = reinterpret_cast<char*>(ptr) - 1;
     ret &= IsManagedByPartitionAllocNormalBuckets(adjusted_ptr);
 #endif

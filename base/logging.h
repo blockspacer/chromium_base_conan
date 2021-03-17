@@ -195,7 +195,7 @@ enum : uint32_t {
 // On POSIX platforms, where it may not even be possible to locate the
 // executable on disk, use stderr.
 // On Fuchsia, use the Fuchsia logging service.
-#if defined(OS_FUCHSIA) || defined(OS_NACL)
+#if defined(OS_FUCHSIA) || defined(OS_NACL) || defined(OS_EMSCRIPTEN)
   LOG_DEFAULT = LOG_TO_SYSTEM_DEBUG_LOG,
 #elif defined(OS_WIN)
   LOG_DEFAULT = LOG_TO_FILE,
@@ -579,6 +579,77 @@ const LogSeverity LOGGING_DCHECK = LOGGING_FATAL;
 #undef assert
 #define assert(x) DLOG_ASSERT(x)
 
+class LogStringStream
+  : public std::ostringstream
+{
+public:
+  LogStringStream()
+    : std::ostringstream()
+    , file_("-")
+    , line_(0)
+    , severity_(0)
+    , noEndl_(false)
+    , noFormat_(false)
+  {}
+
+  ~LogStringStream() {
+    noEndl_ = false;
+    noFormat_ = false;
+  }
+
+  inline LogStringStream& operator<<(LogStringStream& (*m)(LogStringStream&)) {
+    return m(*this);
+  }
+
+  inline LogStringStream& operator<<(std::ostream& (*m)(std::ostream&)) {
+    m(*(std::ostream*)this);
+    return *this;
+  }
+
+  template <typename T> inline LogStringStream& operator<<(T const& t) {
+    *(std::ostream*)this << t;
+    return *this;
+  }
+
+  LogStringStream& SetPosition(const char* file, int line, LogSeverity);
+
+  LogStringStream& dontEndlOnce()
+  {
+    noEndl_ = true;
+    return *this;
+  }
+
+  LogStringStream& dontFormatOnce()
+  {
+    noFormat_ = true;
+    return *this;
+  }
+
+  const char* file() const { return file_; }
+
+  int line() const { return line_; }
+
+  LogSeverity severity() const { return severity_; }
+
+  // Returns false if stream must continue on same line
+  bool needEndl() const
+  {
+    return !noEndl_;
+  }
+
+  bool needFormat() const
+  {
+    return !noFormat_;
+  }
+
+private:
+  const char* file_;
+  int line_;
+  LogSeverity severity_;
+  bool noEndl_;
+  bool noFormat_;
+};
+
 // This class more or less represents a particular log message.  You
 // create an instance of LogMessage and then stream stuff to it.
 // When you finish streaming to it, ~LogMessage is called and the
@@ -589,6 +660,12 @@ const LogSeverity LOGGING_DCHECK = LOGGING_FATAL;
 // above.
 class BASE_EXPORT LogMessage {
  public:
+  using LogStreamType
+    = std::ostream;
+
+  using LogStringStreamType
+    = LogStringStream;
+
   // Used for LOG(severity).
   LogMessage(const char* file, int line, LogSeverity severity);
 
@@ -598,16 +675,18 @@ class BASE_EXPORT LogMessage {
   LogMessage& operator=(const LogMessage&) = delete;
   virtual ~LogMessage();
 
-  std::ostream& stream() { return stream_; }
+  LogStreamType& stream() { return logStream_; }
 
   LogSeverity severity() { return severity_; }
-  std::string str() { return stream_.str(); }
+
+  std::string str() { return logStream_.str(); }
 
  private:
   void Init(const char* file, int line);
 
   LogSeverity severity_;
-  std::ostringstream stream_;
+  // The real data is inside LogStream which may be cached thread-locally.
+  LogStringStreamType logStream_;
   size_t message_start_;  // Offset of the start of the message (past prefix
                           // info).
   // The file and line information passed in to the constructor.
@@ -716,6 +795,41 @@ BASE_EXPORT bool IsLoggingToFileEnabled();
 // Returns the default log file path.
 BASE_EXPORT std::wstring GetLogFileFullPath();
 #endif
+
+// Do not append endl after each log message
+inline LogStringStream& noEndl(LogStringStream& ls)
+{
+  ls.dontEndlOnce();
+  return ls;
+}
+
+// Do not append extra information before each log message
+// that looks similar to:
+// [25583:25583:1113/185640.856387:39412343570:INFO:main.cc(375)]
+inline LogStringStream& noFormat(LogStringStream& ls)
+{
+  ls.dontFormatOnce();
+  return ls;
+}
+
+LogStringStream& info(LogStringStream& ls);
+
+// Can be used in conditions
+//
+// USAGE
+//
+// using ::logging::doNothing;
+//
+// for (auto it = items.begin(); it != items.end(); ++it) {
+//   const bool isLastElem
+//     = it == (items.end() - 1);
+//   LOG(INFO) << ' ' << *it << noFormat
+//             << (!isLastElem ? noEndl : doNothing);
+// }
+inline LogStringStream& doNothing(LogStringStream& ls)
+{
+  return ls;
+}
 
 }  // namespace logging
 

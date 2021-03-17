@@ -48,7 +48,7 @@ std::unique_ptr<MessagePump> MessagePump::Create(MessagePumpType type) {
         return message_pump_for_ui_factory_();
 #if defined(OS_APPLE)
       return MessagePumpMac::Create();
-#elif defined(OS_NACL) || defined(OS_AIX)
+#elif defined(OS_NACL) || defined(OS_AIX) || defined(OS_EMSCRIPTEN)
       // Currently NaCl and AIX don't have a UI MessagePump.
       // TODO(abarth): Figure out if we need this.
       NOTREACHED();

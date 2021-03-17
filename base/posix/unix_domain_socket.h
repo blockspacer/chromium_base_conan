@@ -19,7 +19,7 @@ namespace base {
 
 class Pickle;
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
 // Creates a connected pair of UNIX-domain SOCK_SEQPACKET sockets, and passes
 // ownership of the newly allocated file descriptors to |one| and |two|.
 // Returns true on success.
@@ -31,7 +31,7 @@ class BASE_EXPORT UnixDomainSocket {
   // Maximum number of file descriptors that can be read by RecvMsg().
   static const size_t kMaxFileDescriptors;
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
   // Use to enable receiving process IDs in RecvMsgWithPid.  Should be called on
   // the receiving socket (i.e., the socket passed to RecvMsgWithPid). Returns
   // true if successful.
@@ -62,7 +62,7 @@ class BASE_EXPORT UnixDomainSocket {
                                 std::vector<ScopedFD>* fds,
                                 ProcessId* pid);
 
-#if !defined(OS_NACL_NONSFI)
+#if !defined(OS_NACL_NONSFI) && !defined(OS_EMSCRIPTEN)
   // Perform a sendmsg/recvmsg pair.
   //   1. This process creates a UNIX SEQPACKET socketpair. Using
   //      connection-oriented sockets (SEQPACKET or STREAM) is critical here,

@@ -20,6 +20,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info_internal.h"
 #include "base/threading/scoped_blocking_call.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 
@@ -39,6 +40,14 @@ namespace {
 
 #if !defined(OS_OPENBSD)
 int NumberOfProcessors() {
+#if defined(__EMSCRIPTEN__) && defined(DISABLE_PTHREADS)
+  return 1; // Targeting a single-threaded Emscripten build.
+#elif defined(__EMSCRIPTEN__)
+  int res = emscripten_num_logical_cores();
+  DCHECK(res > 0);
+  return res;
+#endif
+
   // sysconf returns the number of "logical" (not "physical") processors on both
   // Mac and Linux.  So we get the number of max available "logical" processors.
   //

@@ -550,7 +550,7 @@ void FeatureList::RegisterOverridesFromCommandLine(
     if (pos != std::string::npos) {
       feature_name = StringPiece(value.data(), pos);
       trial = FieldTrialList::Find(value.substr(pos + 1));
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
       // If the below DCHECK fires, it means a non-existent trial name was
       // specified via the "Feature<Trial" command-line syntax.
       DCHECK(trial) << "trial=" << value.substr(pos + 1);

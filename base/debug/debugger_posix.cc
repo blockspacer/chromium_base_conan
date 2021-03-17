@@ -24,6 +24,7 @@
 #include "base/strings/string_util.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 #if defined(__GLIBCXX__)
@@ -207,7 +208,7 @@ bool BeingDebugged() {
 void VerifyDebugger() {
 #if BUILDFLAG(ENABLE_GDBINIT_WARNING)
   // Quick check before potentially slower GetDebuggerProcess().
-  if (Environment::Create()->HasVar("CHROMIUM_GDBINIT_SOURCED"))
+  if (Environment::Create()->HasVar("BASE_GDBINIT_SOURCED"))
     return;
 
   Process proc = GetDebuggerProcess();
@@ -232,7 +233,7 @@ void VerifyDebugger() {
          "https://chromium.googlesource.com/chromium/src/+/master/docs/"
          "gdbinit.md\n"
          "To continue anyway, type 'continue' in gdb.  To always skip this "
-         "check, define an environment variable CHROMIUM_GDBINIT_SOURCED=1";
+         "check, define an environment variable BASE_GDBINIT_SOURCED=1";
 #endif
 }
 
@@ -275,7 +276,11 @@ void VerifyDebugger() {}
 //        SIGABRT
 // Mac: Always send SIGTRAP.
 
-#if defined(ARCH_CPU_ARMEL)
+#if defined(OS_EMSCRIPTEN)
+// see https://github.com/google/xrtl/blob/master/xrtl/base/debugging.h#L78
+// to popup the browser debugger
+#define DEBUG_BREAK_ASM() EM_ASM({ debugger; });
+#elif defined(ARCH_CPU_ARMEL)
 #define DEBUG_BREAK_ASM() asm("bkpt 0")
 #elif defined(ARCH_CPU_ARM64)
 #define DEBUG_BREAK_ASM() asm("brk 0")

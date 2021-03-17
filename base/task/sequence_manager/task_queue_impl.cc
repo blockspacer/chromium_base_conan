@@ -20,6 +20,7 @@
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
 #include "base/trace_event/base_tracing.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -93,6 +94,10 @@ TaskQueueImpl::TaskRunner::~TaskRunner() {}
 bool TaskQueueImpl::TaskRunner::PostDelayedTask(const Location& location,
                                                 OnceClosure callback,
                                                 TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
   return task_poster_->PostTask(PostedTask(this, std::move(callback), location,
                                            delay, Nestable::kNestable,
                                            task_type_));
@@ -254,6 +259,11 @@ void TaskQueueImpl::MaybeLogPostTask(PostedTask* task) {
 
 void TaskQueueImpl::MaybeAdjustTaskDelay(PostedTask* task,
                                          CurrentThread current_thread) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#endif
+
 #if DCHECK_IS_ON()
   if (current_thread == TaskQueueImpl::CurrentThread::kNotMainThread) {
     base::internal::CheckedAutoLock lock(any_thread_lock_);

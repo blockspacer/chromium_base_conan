@@ -8,6 +8,7 @@
 #include "base/logging.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
+#include "basic/wasm_util.h"
 
 #if defined(OS_APPLE)
 #include <mach/thread_policy.h>
@@ -30,6 +31,12 @@ MessagePumpDefault::~MessagePumpDefault() = default;
 
 void MessagePumpDefault::Run(Delegate* delegate) {
   AutoReset<bool> auto_reset_keep_running(&keep_running_, true);
+
+#if defined(DISABLE_PTHREADS)
+    /// \todo endless loop may hang browser!
+    NOTIMPLEMENTED();
+    return;
+#endif
 
   for (;;) {
 #if defined(OS_APPLE)

@@ -302,7 +302,7 @@ AllocatorDispatch g_allocator_dispatch = {&AllocFn,
                                           &AlignedFreeFn,
                                           nullptr};
 
-#if BUILDFLAG(USE_PARTITION_ALLOC) && !defined(OS_NACL)
+#if BUILDFLAG(USE_PARTITION_ALLOC) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
 
 void PartitionAllocHook(void* address, size_t size, const char* type) {
   PoissonAllocationSampler::RecordAlloc(
@@ -382,7 +382,7 @@ bool PoissonAllocationSampler::InstallAllocatorHooks() {
   ignore_result(g_allocator_dispatch);
 #endif  // BUILDFLAG(USE_ALLOCATOR_SHIM)
 
-#if BUILDFLAG(USE_PARTITION_ALLOC) && !defined(OS_NACL)
+#if BUILDFLAG(USE_PARTITION_ALLOC) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   PartitionAllocHooks::SetObserverHooks(&PartitionAllocHook,
                                         &PartitionFreeHook);
 #endif  // BUILDFLAG(USE_PARTITION_ALLOC) && !defined(OS_NACL)

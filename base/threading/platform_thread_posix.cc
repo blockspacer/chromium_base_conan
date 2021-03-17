@@ -22,9 +22,10 @@
 #include "base/threading/platform_thread_internal_posix.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "base/threading/thread_id_name_manager.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
-#if !defined(OS_APPLE) && !defined(OS_FUCHSIA) && !defined(OS_NACL)
+#if !defined(OS_APPLE) && !defined(OS_FUCHSIA) && !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
 #include "base/posix/can_lower_nice_to.h"
 #endif
 
@@ -66,7 +67,7 @@ void* ThreadFunc(void* params) {
     if (!thread_params->joinable)
       base::ThreadRestrictions::SetSingletonAllowed(false);
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
 
 #if defined(OS_APPLE)
     PlatformThread::SetCurrentThreadRealtimePeriodValue(
@@ -86,11 +87,14 @@ void* ThreadFunc(void* params) {
 
   delegate->ThreadMain();
 
+#if !defined(DISABLE_PTHREADS)
   ThreadIdNameManager::GetInstance()->RemoveName(
       PlatformThread::CurrentHandle().platform_handle(),
       PlatformThread::CurrentId());
 
   base::TerminateOnThread();
+#endif
+
   return nullptr;
 }
 
@@ -99,6 +103,19 @@ bool CreateThread(size_t stack_size,
                   PlatformThread::Delegate* delegate,
                   PlatformThreadHandle* thread_handle,
                   ThreadPriority priority) {
+#if defined(DISABLE_PTHREADS)
+  DCHECK(thread_handle);
+  base::InitThreading();
+
+  std::unique_ptr<ThreadParams> params(new ThreadParams);
+  params->delegate = delegate;
+  params->joinable = joinable;
+  params->priority = priority;
+
+  ThreadFunc(params.get());
+
+  return true;
+#else
   DCHECK(thread_handle);
   base::InitThreading();
 
@@ -139,6 +156,7 @@ bool CreateThread(size_t stack_size,
   pthread_attr_destroy(&attributes);
 
   return success;
+#endif
 }
 
 #if defined(OS_LINUX) || defined(OS_CHROMEOS)
@@ -156,7 +174,15 @@ thread_local pid_t g_thread_id = -1;
 
 class InitAtFork {
  public:
-  InitAtFork() { pthread_atfork(nullptr, nullptr, internal::ClearTidCache); }
+  InitAtFork() {
+#if defined(DISABLE_PTHREADS)
+    // does not support multiprocessing via fork() and join().
+    // see https://emscripten.org/docs/porting/pthreads.html
+    NOTIMPLEMENTED();
+#else
+    pthread_atfork(nullptr, nullptr, internal::ClearTidCache);
+#endif
+  }
 };
 
 #endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
@@ -181,6 +207,10 @@ PlatformThreadId PlatformThread::CurrentId() {
   // into the kernel.
 #if defined(OS_APPLE)
   return pthread_mach_thread_np(pthread_self());
+#elif defined(OS_EMSCRIPTEN) && defined(DISABLE_PTHREADS)
+  return 0;
+#elif defined(OS_EMSCRIPTEN) && !defined(DISABLE_PTHREADS)
+  return reinterpret_cast<pthread_t>(pthread_self());
 #elif defined(OS_LINUX) || defined(OS_CHROMEOS)
   static NoDestructor<InitAtFork> init_at_fork;
   if (g_thread_id == -1) {
@@ -212,22 +242,40 @@ PlatformThreadId PlatformThread::CurrentId() {
 
 // static
 PlatformThreadRef PlatformThread::CurrentRef() {
+#if defined(DISABLE_PTHREADS)
+  return PlatformThreadRef(0);
+#else
   return PlatformThreadRef(pthread_self());
+#endif
 }
 
 // static
 PlatformThreadHandle PlatformThread::CurrentHandle() {
+#if defined(DISABLE_PTHREADS)
+  return PlatformThreadHandle(0);
+#else
   return PlatformThreadHandle(pthread_self());
+#endif
 }
 
 // static
 void PlatformThread::YieldCurrentThread() {
+#if !defined(DISABLE_PTHREADS)
   sched_yield();
+#endif
 }
 
 // static
 void PlatformThread::Sleep(TimeDelta duration) {
   struct timespec sleep_time, remaining;
+
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return;
+#elif defined(OS_EMSCRIPTEN)
+  emscripten_thread_sleep(duration.InMilliseconds());
+  return;
+#endif
 
   // Break the duration into seconds and nanoseconds.
   // NOTE: TimeDelta's microseconds are int64s while timespec's
@@ -294,7 +342,7 @@ void PlatformThread::Detach(PlatformThreadHandle thread_handle) {
 
 // static
 bool PlatformThread::CanIncreaseThreadPriority(ThreadPriority priority) {
-#if defined(OS_NACL)
+#if defined(OS_NACL) || defined(DISABLE_PTHREADS)
   return false;
 #else
   auto platform_specific_ability =
@@ -309,8 +357,9 @@ bool PlatformThread::CanIncreaseThreadPriority(ThreadPriority priority) {
 
 // static
 void PlatformThread::SetCurrentThreadPriorityImpl(ThreadPriority priority) {
-#if defined(OS_NACL)
+#if defined(OS_NACL) || defined(DISABLE_PTHREADS)
   NOTIMPLEMENTED();
+  return;
 #else
   if (internal::SetCurrentThreadPriorityForPlatform(priority))
     return;
@@ -331,7 +380,7 @@ void PlatformThread::SetCurrentThreadPriorityImpl(ThreadPriority priority) {
 
 // static
 ThreadPriority PlatformThread::GetCurrentThreadPriority() {
-#if defined(OS_NACL)
+#if defined(OS_NACL) || defined(DISABLE_PTHREADS)
   NOTIMPLEMENTED();
   return ThreadPriority::NORMAL;
 #else

@@ -23,6 +23,10 @@ namespace debug {
 // Scans |proc_maps| starting from |pos| returning true if the gate VMA was
 // found, otherwise returns false.
 static bool ContainsGateVMA(std::string* proc_maps, size_t pos) {
+#if defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+#endif
+
 #if defined(ARCH_CPU_ARM_FAMILY)
   // The gate VMA on ARM kernels is the interrupt vectors page.
   return proc_maps->find(" [vectors]\n", pos) != std::string::npos;
@@ -37,6 +41,10 @@ static bool ContainsGateVMA(std::string* proc_maps, size_t pos) {
 }
 
 bool ReadProcMaps(std::string* proc_maps) {
+#if defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+#endif
+
   // seq_file only writes out a page-sized amount on each call. Refer to header
   // file for details.
   const long kReadSize = sysconf(_SC_PAGESIZE);
@@ -85,6 +93,10 @@ bool ReadProcMaps(std::string* proc_maps) {
 
 bool ParseProcMaps(const std::string& input,
                    std::vector<MappedMemoryRegion>* regions_out) {
+#if defined(OS_EMSCRIPTEN)
+  NOTIMPLEMENTED();
+#endif
+
   CHECK(regions_out);
   std::vector<MappedMemoryRegion> regions;
 

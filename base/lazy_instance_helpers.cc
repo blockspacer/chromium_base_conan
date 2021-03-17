@@ -7,6 +7,7 @@
 #include "base/at_exit.h"
 #include "base/atomicops.h"
 #include "base/threading/platform_thread.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace internal {
@@ -31,6 +32,9 @@ bool NeedsLazyInstance(subtle::AtomicWord* state) {
   if (subtle::Acquire_Load(state) == kLazyInstanceStateCreating) {
     const base::TimeTicks start = base::TimeTicks::Now();
     do {
+#if defined(DISABLE_PTHREADS)
+      NOTIMPLEMENTED();
+#endif
       const base::TimeDelta elapsed = base::TimeTicks::Now() - start;
       // Spin with YieldCurrentThread for at most one ms - this ensures maximum
       // responsiveness. After that spin with Sleep(1ms) so that we don't burn

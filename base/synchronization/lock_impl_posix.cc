@@ -12,6 +12,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
 #include "base/synchronization/synchronization_buildflags.h"
+#include "basic/wasm_util.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -48,7 +49,7 @@ std::string SystemErrorCodeToString(int error_code) {
 // Lock::PriorityInheritanceAvailable still must be checked as the code may
 // compile but the underlying platform still may not correctly support priority
 // inheritance locks.
-#if defined(OS_NACL) || defined(OS_ANDROID) || defined(OS_FUCHSIA)
+#if defined(OS_NACL) || defined(OS_ANDROID) || defined(OS_FUCHSIA) || defined(DISABLE_PTHREADS)
 #define PRIORITY_INHERITANCE_LOCKS_POSSIBLE() 0
 #else
 #define PRIORITY_INHERITANCE_LOCKS_POSSIBLE() 1
@@ -82,8 +83,10 @@ LockImpl::~LockImpl() {
 
 void LockImpl::LockInternalWithTracking() {
   base::debug::ScopedLockAcquireActivity lock_activity(this);
+#if !defined(DISABLE_PTHREADS)
   int rv = pthread_mutex_lock(&native_handle_);
   DCHECK_EQ(rv, 0) << ". " << SystemErrorCodeToString(rv);
+#endif
 }
 
 // static

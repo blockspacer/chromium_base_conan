@@ -13,6 +13,7 @@
 #include "base/threading/thread_checker.h"
 #include "base/threading/thread_checker_impl.h"
 #include "base/threading/thread_local_storage.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -88,6 +89,10 @@ SequenceCheckerImpl& SequenceCheckerImpl::operator=(
 
 bool SequenceCheckerImpl::CalledOnValidSequence(
     std::unique_ptr<debug::StackTrace>* bound_at) const {
+#if defined(DISABLE_PTHREADS)
+  return true;
+#endif
+
   AutoLock auto_lock(lock_);
   if (!core_)
     core_ = std::make_unique<Core>();

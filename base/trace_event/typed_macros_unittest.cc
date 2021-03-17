@@ -211,7 +211,9 @@ TEST_F(TypedTraceEventTest, InternedData) {
                                            serialized_data.size()));
   EXPECT_EQ(2, interned_data.source_locations_size());
   auto interned_loc = interned_data.source_locations()[0];
+#if 1 /// \todo Segmentation fault
   EXPECT_EQ(iid, interned_loc.iid());
+#endif
   EXPECT_EQ("TestFunction", interned_loc.function_name());
   EXPECT_EQ("test.cc", interned_loc.file_name());
   interned_loc = interned_data.source_locations()[1];

@@ -42,11 +42,12 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         "shared": [True, False],
         "debug": [True, False],
         "enable_protoc_autoinstall": [True, False],
-        "enable_sanitizers": [True, False],
         "use_alloc_shim": [True, False],
         "use_deb_alloc": [True, False],
         "use_test_support": [True, False],
+        "use_partition_alloc": [True, False],
         "enable_web_pthreads": [True, False],
+        "enable_profiling": [True, False],
         "enable_ubsan": [True, False],
         "enable_asan": [True, False],
         "enable_msan": [True, False],
@@ -58,7 +59,6 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         "shared=False",
         "debug=False",
         "enable_protoc_autoinstall=True",
-        "enable_sanitizers=False",
         "enable_ubsan=False",
         "enable_asan=False",
         "enable_msan=False",
@@ -68,9 +68,11 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         "use_alloc_shim=False",
         "use_deb_alloc=False",
         "use_test_support=True",
-        "enable_web_pthreads=False"
+        "use_partition_alloc=True",
+        "enable_web_pthreads=False",
+        "enable_profiling=False",
         # build
-        #"*:shared=False"
+        "openssl:shared=True"
     )
 
     # Custom attributes for Bincrafters recipe conventions
@@ -125,6 +127,9 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
            or self.options.enable_tsan:
             if not self._is_llvm_tools_enabled():
                 raise ConanInvalidConfiguration("sanitizers require llvm_tools")
+
+        if self.options.enable_profiling:
+          self.options["chromium_tcmalloc"].enable_profiling = True
 
         if self.options.enable_ubsan:
             if self._is_tests_enabled():
@@ -216,9 +221,10 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
     def requirements(self):
         self.requires("chromium_build_util/master@conan/stable")
+        self.requires("double-conversion/3.1.4@bincrafters/stable")
 
         if self._is_tests_enabled() or self.options.use_test_support:
-            self.requires("chromium_libxml/b73d9be6d6d07a37371854a766eee67e683e3d59@conan/stable")
+            self.requires("chromium_libxml/stable@conan/stable")
             self.requires("conan_gtest/stable@conan/stable")
             self.requires("benchmark/v1.5.2@dev/stable")
 
@@ -239,9 +245,15 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         self.requires("chromium_dynamic_annotations/master@conan/stable")
         self.requires("chromium_modp_b64/master@conan/stable", private=False)
+
+        # todo: in WASM remove ced, replace with "unicode/ucsdet.h"
+        # to make smaller binary
         self.requires("chromium_compact_enc_det/master@conan/stable")
 
         self.requires("perfetto/v13.0@conan/stable")
+        self.requires("openssl/OpenSSL_1_1_1-stable@conan/stable")
+
+        self.requires("fmt/master@dev/stable")
 
         if self.options.enable_protoc_autoinstall:
             # TODO: https://github.com/gaeus/conan-grpc
@@ -275,8 +287,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.output.info("PERFETTO_PROTOS_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_PROTOS_DIR))
         cmake.definitions['PERFETTO_PROTOS_DIR'] = self.deps_env_info['perfetto'].PERFETTO_PROTOS_DIR
 
-        cmake.definitions["protobuf_VERBOSE"] = True
-        cmake.definitions["protobuf_MODULE_COMPATIBLE"] = True
+        self.output.info("PERFETTO_BUILDTOOLS_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_BUILDTOOLS_DIR))
+        cmake.definitions['PERFETTO_BUILDTOOLS_DIR'] = self.deps_env_info['perfetto'].PERFETTO_BUILDTOOLS_DIR
 
         cmake.definitions["ENABLE_VALGRIND"] = 'ON'
         if not self.options.enable_valgrind:
@@ -300,13 +312,13 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         self.add_cmake_option(cmake, "ENABLE_TESTS", self._is_tests_enabled())
 
-        self.add_cmake_option(cmake, "ENABLE_SANITIZERS", self.options.enable_sanitizers)
-
         self.add_cmake_option(cmake, "ENABLE_WEB_PTHREADS", self.options.enable_web_pthreads)
 
         self.add_cmake_option(cmake, "USE_ALLOC_SHIM", self.options.use_alloc_shim)
 
-        self.add_cmake_option(cmake, "USE_TEST_SUPPORT", self.options.use_test_support)
+        self.add_cmake_option(cmake, "BASE_USE_PARTITION_ALLOCATOR", self.options.use_test_support)
+
+        self.add_cmake_option(cmake, "USE_TEST_SUPPORT", self.options.use_partition_alloc)
 
         self.add_cmake_option(cmake, "USE_DEB_ALLOC", self.options.use_deb_alloc)
 
@@ -346,9 +358,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         if self._is_tests_enabled():
           self.output.info('Running tests')
-          # TODO: use cmake.test()
-          self.output.info('TODO: add test runner like ctest')
-          #self.run('ctest --parallel %s' % (cpu_count))
+          cmake.test()
 
     # Importing files copies files from the local store to your project.
     def imports(self):

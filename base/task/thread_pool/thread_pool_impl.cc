@@ -30,6 +30,7 @@
 #include "base/task/thread_pool/worker_thread.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
+#include "basic/wasm_util.h"
 
 #if defined(OS_WIN)
 #include "base/task/thread_pool/thread_group_native_win.h"
@@ -150,7 +151,7 @@ void ThreadPoolImpl::Start(const ThreadPoolInstance::InitParams& init_params,
   // FileDescriptorWatcher in the scope in which tasks run.
   ServiceThread::Options service_thread_options;
   service_thread_options.message_pump_type =
-#if defined(OS_POSIX) && !defined(OS_NACL_SFI)
+#if defined(OS_POSIX) && !defined(OS_NACL_SFI) && !defined(OS_EMSCRIPTEN)
       MessagePumpType::IO;
 #else
       MessagePumpType::DEFAULT;
@@ -160,7 +161,7 @@ void ThreadPoolImpl::Start(const ThreadPoolInstance::InitParams& init_params,
   if (g_synchronous_thread_start_for_testing)
     service_thread_.WaitUntilThreadStarted();
 
-#if defined(OS_POSIX) && !defined(OS_NACL_SFI)
+#if defined(OS_POSIX) && !defined(OS_NACL_SFI) && !defined(DISABLE_PTHREADS)
   // Needs to happen after starting the service thread to get its
   // task_runner().
   task_tracker_->set_io_thread_task_runner(service_thread_.task_runner());
@@ -237,6 +238,11 @@ bool ThreadPoolImpl::PostDelayedTask(const Location& from_here,
                                      const TaskTraits& traits,
                                      OnceClosure task,
                                      TimeDelta delay) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return true;
+#endif
+
   // Post |task| as part of a one-off single-task Sequence.
   const TaskTraits new_traits = VerifyAndAjustIncomingTraits(traits);
   return PostTaskWithSequence(

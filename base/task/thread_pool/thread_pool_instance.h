@@ -189,7 +189,7 @@ class BASE_EXPORT ThreadPoolInstance {
   // not thread-safe; proper synchronization is required to use the post_task.h
   // API after registering a new ThreadPoolInstance.
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(DISABLE_PTHREADS)
   // Creates and starts a thread pool using default params. |name| is used to
   // label histograms, it must not be empty. It should identify the component
   // that calls this. Start() is called by this method; it is invalid to call it

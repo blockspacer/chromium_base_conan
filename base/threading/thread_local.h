@@ -55,6 +55,7 @@
 #include "base/macros.h"
 #include "base/threading/thread_local_internal.h"
 #include "base/threading/thread_local_storage.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -85,7 +86,7 @@ class ThreadLocalPointer {
 // it. Typically this means that ThreadLocalOwnedPointer instances are held in
 // static storage or at the very least only recycled in the single-threaded
 // phase between tests in the same process.
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
 template <typename T>
 using ThreadLocalOwnedPointer = internal::CheckedThreadLocalOwnedPointer<T>;
 #else   // DCHECK_IS_ON()

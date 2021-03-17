@@ -6,7 +6,7 @@
 
 #include "base/trace_event/base_tracing.h"
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
 
 #include "base/check_op.h"
 #include "base/debug/stack_trace.h"
@@ -24,7 +24,7 @@ std::ostream& operator<<(std::ostream&out, const ThreadLocalBoolean& tl) {
 
 namespace {
 
-#if defined(OS_NACL) || defined(OS_ANDROID)
+#if defined(OS_NACL) || defined(OS_ANDROID) || defined(DISABLE_PTHREADS)
 // NaCL doesn't support stack sampling and Android is slow at stack
 // sampling and this causes timeouts (crbug.com/959139).
 using ThreadLocalBooleanWithStacks = ThreadLocalBoolean;
@@ -234,7 +234,7 @@ bool ThreadRestrictions::SetWaitAllowed(bool allowed) {
 namespace base {
 
 ScopedAllowBlocking::ScopedAllowBlocking(const Location& from_here)
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
     : was_disallowed_(g_blocking_disallowed.Get().Get())
 #endif
 {
@@ -245,7 +245,7 @@ ScopedAllowBlocking::ScopedAllowBlocking(const Location& from_here)
                 &ctx, base::trace_event::TraceSourceLocation(from_here)));
       });
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   g_blocking_disallowed.Get().Set(false);
 #endif
 }
@@ -253,7 +253,7 @@ ScopedAllowBlocking::ScopedAllowBlocking(const Location& from_here)
 ScopedAllowBlocking::~ScopedAllowBlocking() {
   TRACE_EVENT_END0("base", "ScopedAllowBlocking");
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   DCHECK(!g_blocking_disallowed.Get().Get());
   g_blocking_disallowed.Get().Set(was_disallowed_);
 #endif
@@ -261,7 +261,7 @@ ScopedAllowBlocking::~ScopedAllowBlocking() {
 
 ScopedAllowBaseSyncPrimitivesOutsideBlockingScope::
     ScopedAllowBaseSyncPrimitivesOutsideBlockingScope(const Location& from_here)
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
     : was_disallowed_(g_base_sync_primitives_disallowed.Get().Get())
 #endif
 {
@@ -273,7 +273,7 @@ ScopedAllowBaseSyncPrimitivesOutsideBlockingScope::
                 &ctx, base::trace_event::TraceSourceLocation(from_here)));
       });
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   g_base_sync_primitives_disallowed.Get().Set(false);
 #endif
 }
@@ -282,14 +282,14 @@ ScopedAllowBaseSyncPrimitivesOutsideBlockingScope::
     ~ScopedAllowBaseSyncPrimitivesOutsideBlockingScope() {
   TRACE_EVENT_END0("base", "ScopedAllowBaseSyncPrimitivesOutsideBlockingScope");
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   DCHECK(!g_base_sync_primitives_disallowed.Get().Get());
   g_base_sync_primitives_disallowed.Get().Set(was_disallowed_);
 #endif
 }
 
 ThreadRestrictions::ScopedAllowIO::ScopedAllowIO(const Location& from_here)
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
     : was_allowed_(SetIOAllowed(true))
 #endif
 {
@@ -303,7 +303,7 @@ ThreadRestrictions::ScopedAllowIO::ScopedAllowIO(const Location& from_here)
 ThreadRestrictions::ScopedAllowIO::~ScopedAllowIO() {
   TRACE_EVENT_END0("base", "ScopedAllowIO");
 
-#if DCHECK_IS_ON()
+#if DCHECK_IS_ON() && !defined(DISABLE_PTHREADS)
   SetIOAllowed(was_allowed_);
 #endif
 }

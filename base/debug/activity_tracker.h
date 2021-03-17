@@ -35,6 +35,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/thread_local.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 
@@ -904,7 +905,7 @@ class BASE_EXPORT GlobalActivityTracker {
       int stack_depth,
       int64_t process_id);
 
-#if !defined(OS_NACL)
+#if !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   // Like above but internally creates an allocator around a disk file with
   // the specified |size| at the given |file_path|. Any existing file will be
   // overwritten. The |id| and |name| are arbitrary and stored in the allocator
@@ -948,7 +949,12 @@ class BASE_EXPORT GlobalActivityTracker {
   static std::unique_ptr<GlobalActivityTracker> ReleaseForTesting();
 
   // Convenience method for determining if a global tracker is active.
-  static bool IsEnabled() { return Get() != nullptr; }
+  static bool IsEnabled() {
+#if defined(DISABLE_PTHREADS)
+    NOTIMPLEMENTED();
+#endif
+    return Get() != nullptr;
+  }
 
   // Gets the persistent-memory-allocator in which data is stored. Callers
   // can store additional records here to pass more information to the
@@ -1350,7 +1356,7 @@ class BASE_EXPORT ScopedThreadJoinActivity
 };
 
 // Some systems don't have base::Process
-#if !defined(OS_NACL) && !defined(OS_IOS)
+#if !defined(OS_NACL) && !defined(OS_IOS) && !defined(OS_EMSCRIPTEN)
 class BASE_EXPORT ScopedProcessWaitActivity
     : public GlobalActivityTracker::ScopedThreadActivity {
  public:

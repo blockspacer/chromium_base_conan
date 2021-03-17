@@ -157,7 +157,7 @@ TEST_F(SharedMemoryMappingTest, TotalMappedSizeLimit) {
   // space exhaustion.
   // Also exclude NaCl since pointers are 32 bits on all architectures:
   // https://bugs.chromium.org/p/nativeclient/issues/detail?id=1162
-#if defined(ARCH_CPU_64_BITS) && !defined(OS_NACL)
+#if defined(ARCH_CPU_64_BITS) && !defined(OS_NACL) && !defined(OS_EMSCRIPTEN)
   base::HistogramTester histogram_tester;
   auto region = WritableSharedMemoryRegion::Create(1024 * 1024 * 1024);
   ASSERT_TRUE(region.IsValid());

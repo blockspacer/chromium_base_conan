@@ -18,6 +18,7 @@
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
 #include "base/time/time_override.h"
+#include "basic/wasm_util.h"
 
 // -----------------------------------------------------------------------------
 // A WaitableEvent on POSIX is implemented as a wait-list. Currently we don't
@@ -159,6 +160,10 @@ void WaitableEvent::Wait() {
 }
 
 bool WaitableEvent::TimedWait(const TimeDelta& wait_delta) {
+#if defined(DISABLE_PTHREADS)
+  NOTIMPLEMENTED();
+  return false;
+#endif
   if (wait_delta <= TimeDelta())
     return IsSignaled();
 
@@ -291,6 +296,12 @@ size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
       waitables[count - (1 + i)].first->kernel_->lock_.Release();
     }
 
+#if defined(DISABLE_PTHREADS)
+    /// \todo endless loop may hang browser!
+    NOTIMPLEMENTED();
+    return true;
+#endif
+
     for (;;) {
       if (sw.fired())
         break;
@@ -342,6 +353,10 @@ size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
 size_t WaitableEvent::EnqueueMany(std::pair<WaitableEvent*, size_t>* waitables,
                                   size_t count,
                                   Waiter* waiter) NO_THREAD_SAFETY_ANALYSIS {
+#if defined(DISABLE_PTHREADS)
+    NOTIMPLEMENTED();
+#endif
+
   size_t winner = count;
   size_t winner_index = count;
   for (size_t i = 0; i < count; ++i) {
@@ -409,6 +424,11 @@ bool WaitableEvent::SignalAll() {
 // held.
 // ---------------------------------------------------------------------------
 bool WaitableEvent::SignalOne() {
+#if defined(DISABLE_PTHREADS)
+    /// \todo endless loop may hang browser!
+    NOTIMPLEMENTED();
+    return true;
+#endif
   for (;;) {
     if (kernel_->waiters_.empty())
       return false;

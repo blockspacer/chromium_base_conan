@@ -14,6 +14,7 @@
 #include "base/threading/platform_thread.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 #include "base/time/tick_clock.h"
+#include "basic/wasm_util.h"
 
 namespace base {
 namespace internal {
@@ -284,6 +285,10 @@ RepeatingTimer::RepeatingTimer(const Location& posted_from,
 void RepeatingTimer::Start(const Location& posted_from,
                            TimeDelta delay,
                            RepeatingClosure user_task) {
+#if defined(DISABLE_PTHREADS)
+  /// \todo RepeatingTimer not supported on single-threaded WASM without emscripten_async_call
+  NOTIMPLEMENTED();
+#endif
   user_task_ = std::move(user_task);
   StartInternal(posted_from, delay);
 }
