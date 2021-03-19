@@ -46,6 +46,10 @@ export -f replace_header_contents
 find $PWD/extensions/testing/gmock -type f -name "*.h" -exec bash -c 'replace_header_contents "$0"' {} \;
 ```
 
+## How to upgrade `boostorg/preprocessor`
+
+See https://github.com/boostorg/preprocessor/tree/boost-1.75.0
+
 ## How to upgrade Abseil
 
 Download `absl` directory from https://github.com/abseil/abseil-cpp and place it into `extensions/third_party/abseil-cpp/`

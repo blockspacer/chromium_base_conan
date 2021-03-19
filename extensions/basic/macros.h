@@ -920,7 +920,7 @@
 // checks like `running_in_this_thread` or `DCHECK_CALLED_ON_VALID_SEQUENCE`
 #define NOT_THREAD_SAFE_FUNCTION(x)
 
-/// \note requires `#include <base/scoped_checks.hpp>`
+/// \note requires `#include <base/scoped_checks.h>`
 /// due to usage of `GUARD_MEMBER_OF_UNKNOWN_THREAD`
 // Creates `weak_ptr_factory_` and `weak_this_`.
 // base::WeakPtr can be used to ensure that any callback bound
@@ -941,7 +941,7 @@
     GUARD_MEMBER_OF_UNKNOWN_THREAD(weak_this_)
 
 // Creates `weakSelf()` function.
-/// \note requires `#include <base/scoped_checks.hpp>`
+/// \note requires `#include <base/scoped_checks.h>`
 /// due to usage of `DCHECK_MEMBER_OF_UNKNOWN_THREAD`
 // It is thread-safe to copy |base::WeakPtr|.
 // Weak pointers may be passed safely between sequences, but must always be

@@ -134,6 +134,7 @@ TEST(Summation, AddLongs) {
   }
 }
 
+#if defined(NDEBUG)
 TEST(Summation, AddSpecial) {
   for (auto x : specialValues) {
     DoubleDoubleSummation sum;
@@ -161,7 +162,9 @@ TEST(Summation, AddSpecial) {
     }
   }
 }
+#endif
 
+#if defined(NDEBUG)
 TEST(Summation, AddInvalid) {
   DoubleDoubleSummation sum;
   sum.addDouble(std::numeric_limits<double>::infinity());
@@ -171,6 +174,7 @@ TEST(Summation, AddInvalid) {
   EXPECT_TRUE(!sum.fitsLong());
   EXPECT_TRUE(!sum.isInteger());
 }
+#endif
 
 TEST(Summation, LongOverflow) {
   DoubleDoubleSummation positive;

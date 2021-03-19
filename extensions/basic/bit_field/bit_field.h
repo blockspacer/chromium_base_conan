@@ -21,7 +21,7 @@
 // with type `uint16_t`:
 // `BitField::DefineFirstValue<uint16_t, 16>;`.
 //
-/// \note If you search for bit masks - see `typed_enum.hpp`.
+/// \note If you search for bit masks - see `typed_enum.h`.
 /// Unlike `BitField` bit masks can not store arbitrary data.
 //
 namespace basic {

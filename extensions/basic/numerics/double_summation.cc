@@ -35,15 +35,46 @@ using namespace base;
 
 namespace basic {
 
+// Even if the conditions are not satisfied, 2Sum and Fast2Sum often provide
+// reasonable approximations to the error,  which enables algorithms
+// for compensated summation, dot-product, etc.,
+// to have low error even if the inputs are not sorted
+// or the rounding mode is unusual.
+#define ENABLE_FAST2SUM_CHECK 0
+
+#if ENABLE_FAST2SUM_CHECK
+#define DCHECK_FAST2SUM(x) DCHECK(x)
+#define DCHECK_LE_FAST2SUM(x, y) DCHECK_LE(x, y)
+#else
+#define DCHECK_FAST2SUM(x) EAT_CHECK_STREAM_PARAMS(!(x))
+#define DCHECK_LE_FAST2SUM(x, y) EAT_CHECK_STREAM_PARAMS(!(x <= y))
+#endif
+
 DoubleDouble computeFast2Sum(double a, double b, bool auto_swap) {
   if(auto_swap && std::fabs(b) > std::fabs(a)) {
     double tmp = a;
     b = a;
     a = tmp;
-  } else if (std::isfinite(a) && std::isfinite(b)) {
-    DCHECK_LE(std::fabs(b), std::fabs(a));
   }
+
+#if ENABLE_FAST2SUM_CHECK
+  if (std::isfinite(a) && std::isfinite(b)) {
+    DCHECK_LE_FAST2SUM(std::fabs(b), std::fabs(a));
+  } else {
+    DCHECK_FAST2SUM(false)
+      << "numbers not finite"
+      << " a = "
+      << a
+      << " b = "
+      << b;
+  }
+#endif // ENABLE_FAST2SUM_CHECK
+
   double s = a + b;
+
+  // a+b must result in a normal floating point number with no overflow
+  DCHECK_FAST2SUM(std::isfinite(s));
+
   double z = s - a;
   double t = b - z;
   return {s, t};

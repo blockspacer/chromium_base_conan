@@ -53,6 +53,70 @@ TEST(SpanTest, DefaultConstructor) {
   static_assert(0u == static_span.size(), "");
 }
 
+TEST(SpanTest, WithoutPrefix) {
+  int array[] = {1, 2, 3};
+  span<int> span(array);
+
+  {
+    auto subspan = span.without_prefix(0);
+    EXPECT_EQ(span.data(), subspan.data());
+    EXPECT_EQ(3u, subspan.size());
+  }
+
+  {
+    auto subspan = span.without_prefix(1);
+    EXPECT_EQ(span.data() + 1, subspan.data());
+    EXPECT_EQ(2u, subspan.size());
+    EXPECT_EQ(2, subspan[0]);
+    EXPECT_EQ(3, subspan[1]);
+  }
+
+  {
+    auto subspan = span.without_prefix(2);
+    EXPECT_EQ(span.data() + 2, subspan.data());
+    EXPECT_EQ(1u, subspan.size());
+    EXPECT_EQ(3, subspan[0]);
+  }
+
+  {
+    auto subspan = span.without_prefix(3);
+    EXPECT_EQ(span.data() + 3, subspan.data());
+    EXPECT_EQ(0u, subspan.size());
+  }
+}
+
+TEST(SpanTest, WithoutSuffix) {
+  int array[] = {1, 2, 3};
+  span<int> span(array);
+
+  {
+    auto subspan = span.without_suffix(0);
+    EXPECT_EQ(span.data(), subspan.data());
+    EXPECT_EQ(3u, subspan.size());
+  }
+
+  {
+    auto subspan = span.without_suffix(1);
+    EXPECT_EQ(span.data(), subspan.data());
+    EXPECT_EQ(2u, subspan.size());
+    EXPECT_EQ(1, subspan[0]);
+    EXPECT_EQ(2, subspan[1]);
+  }
+
+  {
+    auto subspan = span.without_suffix(2);
+    EXPECT_EQ(span.data(), subspan.data());
+    EXPECT_EQ(1u, subspan.size());
+    EXPECT_EQ(1, subspan[0]);
+  }
+
+  {
+    auto subspan = span.without_suffix(3);
+    EXPECT_EQ(span.data(), subspan.data());
+    EXPECT_EQ(0u, subspan.size());
+  }
+}
+
 TEST(SpanTest, ConstructFromDataAndSize) {
   constexpr int* kNull = nullptr;
   constexpr span<int> empty_span(kNull, 0);

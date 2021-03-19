@@ -16,7 +16,7 @@
 //     "Hello", "World", "Yeah",
 //     "Things", "Strings", "Vector"
 // };
-// for (const auto [index, str] : basis::ranges::enumerated(strings))
+// for (const auto [index, str] : basic::ranges::enumerated(strings))
 // {
 //     std::cout << "index: " << index
 //         << " string: " << str << '\n';

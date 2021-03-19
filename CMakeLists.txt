@@ -768,6 +768,7 @@ endif(ENABLE_BASE_TRACING)
 
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "")
 add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "extensions")
+add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "extensions/third_party/boost_preprocessor/include")
 
 # path to base/threading/thread.h
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "basic/macros.h"
+
 #include <stddef.h>
 
 #include <cassert>
@@ -310,7 +312,7 @@
 // #include "base/command_line.h"
 // #include "base/strings/string_number_conversions.h"
 //
-// // ... in my_switches.hpp ...
+// // ... in my_switches.h ...
 //
 // namespace switches {
 //

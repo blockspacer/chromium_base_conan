@@ -90,10 +90,16 @@ public:
    * Adds x to the sum, keeping track of a compensation amount to be subtracted later.
    */
   void addDouble(double x) {
+    switch(std::fpclassify(x)) {
+      // adding positive or negative zero, nothing to do
+      case FP_ZERO: return;
+      default: break;
+    }
+
     // Keep a simple sum to use in case of NaN
     _special += x;
     // Compensated add: _addend tinier than _sum
-    std::tie(x, _addend) = computeFast2Sum(x, _addend, true);
+    std::tie(x, _addend) = computeFast2Sum(x, _addend, false);
     // Compensated add: x maybe larger than _sum
     std::tie(_sum, x) = compute2Sum(_sum, x);
     // Store away lowest part of sum

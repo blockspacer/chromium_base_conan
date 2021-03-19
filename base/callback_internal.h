@@ -31,6 +31,9 @@ struct BindState;
 class CallbackBase;
 class CallbackBaseCopyable;
 
+template <typename CheckerType, typename Functor, typename... BoundArgs>
+struct CheckedBindState;
+
 struct BindStateBaseRefCountTraits {
   static void Destruct(const BindStateBase*);
 };

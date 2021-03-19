@@ -24,6 +24,13 @@
 #include <ostream>
 #endif
 
+namespace basic {
+
+template<typename Tag, typename T>
+class StrongStrictNumeric;
+
+} // namespace basic
+
 namespace base {
 namespace internal {
 
@@ -269,6 +276,9 @@ template <typename T>
 class StrictNumeric {
  public:
   using type = T;
+
+  template <typename Tag, typename U>
+  friend class ::basic::StrongStrictNumeric;
 
   constexpr StrictNumeric() : value_(0) {}
 

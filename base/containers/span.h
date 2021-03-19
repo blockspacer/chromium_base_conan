@@ -376,6 +376,36 @@ class span : public internal::ExtentStorage<Extent> {
     return {data() + (size() - count), count};
   }
 
+  // USAGE
+  //
+  // int array[] = {1, 2, 3};
+  // span<int> span(array);
+  // auto subspan = span.without_prefix(2); // subspan = {3}
+  //
+  constexpr span<T, dynamic_extent> without_prefix(size_t n) const noexcept {
+    return last(size() - n);
+  }
+
+  // same as first(n)
+  constexpr span<T, dynamic_extent> prefix(size_t n) const noexcept {
+    return first(n);
+  }
+
+  // USAGE
+  //
+  // int array[] = {1, 2, 3};
+  // span<int> span(array);
+  // auto subspan = span.without_suffix(2); // subspan = {1}
+  //
+  constexpr span<T, dynamic_extent> without_suffix(size_t n) const noexcept {
+    return first(size() - n);
+  }
+
+  // same as last(n)
+  constexpr span<T, dynamic_extent> suffix(size_t n) const noexcept {
+    return last(n);
+  }
+
   constexpr span<T, dynamic_extent> subspan(size_t offset,
                                             size_t count = dynamic_extent) const
       noexcept {

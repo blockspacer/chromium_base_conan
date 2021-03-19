@@ -51,7 +51,7 @@ namespace basic {
 //
 // USAGE
 //
-//  #include <base/strings/substitute.h>
+//  #include <basic/strings/substitute.h>
 //  #include <base/strings/utf_string_conversions.h>
 //
 //  {

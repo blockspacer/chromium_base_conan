@@ -37,6 +37,8 @@ bool IsNullTerminated(const char(&str)[N]) {
   return IsNullTerminatedStr(N, str);
 }
 
+bool isNullTerminated(const std::string& str);
+
 // Elide the given string `str` with '...' in the middle if the length
 // exceeds `str` width.
 //

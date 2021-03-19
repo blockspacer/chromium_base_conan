@@ -12,6 +12,13 @@
 
 #include "base/numerics/checked_math_impl.h"
 
+namespace basic {
+
+template<typename Tag, typename T>
+class StrongCheckedNumeric;
+
+} // namespace basic
+
 namespace base {
 namespace internal {
 
@@ -23,6 +30,9 @@ class CheckedNumeric {
  public:
   template <typename Src>
   friend class CheckedNumeric;
+
+  template <typename Tag, typename U>
+  friend class ::basic::StrongCheckedNumeric;
 
   using type = T;
 

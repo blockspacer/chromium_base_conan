@@ -13,6 +13,10 @@ bool islatinalpha(const int c) {
 
 namespace basic {
 
+bool isNullTerminated(const std::string& str) {
+  return !str.empty() && str.back() == '\0';
+}
+
 std::string ElideMiddle(const std::string& str, size_t width)
 {
   switch (width) {

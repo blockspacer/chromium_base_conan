@@ -4,9 +4,9 @@
 
 namespace basic {
 
-/// \note Prefer to use `basic/core/typed_enum.hpp` where possible
+/// \note Prefer to use `basic/core/typed_enum.h` where possible
 //
-/// \note See also `basic/core/enum_set.hpp` and `basic/core/typed_enum.hpp`
+/// \note See also `basic/core/enum_set.h` and `basic/core/typed_enum.h`
 //
 // see http://blog.bitwigglers.org/using-enum-classes-as-type-safe-bitmasks/
 //

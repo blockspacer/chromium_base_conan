@@ -12,6 +12,13 @@
 
 #include "base/numerics/clamped_math_impl.h"
 
+namespace basic {
+
+template<typename Tag, typename T>
+class StrongClampedNumeric;
+
+} // namespace basic
+
 namespace base {
 namespace internal {
 
@@ -22,6 +29,9 @@ class ClampedNumeric {
 
  public:
   using type = T;
+
+  template <typename Tag, typename U>
+  friend class ::basic::StrongClampedNumeric;
 
   constexpr ClampedNumeric() : value_(0) {}
 

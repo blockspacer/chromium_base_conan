@@ -106,5 +106,24 @@ class LogStringStream;
 
 ```cpp
 template <typename CheckerType, typename Functor, typename... BoundArgs>
+struct CheckedBindState;
+
+// ...
+
+template <typename CheckerType, typename Functor, typename... BoundArgs>
 friend struct CheckedBindState;
+```
+
+## numerics
+
+Added `StrongCheckedNumeric`, `StrongClampedNumeric`, `StrongStrictNumeric`
+
+## containers
+
+Added to `base/containers/span.h`:
+
+```cpp
+TEST(SpanTest, WithoutPrefix)
+
+TEST(SpanTest, WithoutSuffix)
 ```

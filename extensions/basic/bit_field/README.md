@@ -29,7 +29,7 @@ but read by multiple threads.
 
 ## bit masks vs bit fields
 
-If you search for bit masks - see `typed_enum.hpp`.
+If you search for bit masks - see `typed_enum.h`.
 
 Unlike `BitField` bit masks can not store arbitrary data.
 

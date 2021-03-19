@@ -43,8 +43,17 @@ TEST(StringUtil, StripColors) {
             stripped);
 }
 
-TEST(StringUtil, IsNullTerminatedStr) {
-  const std::string& input = "SOME_STR";
+TEST(StringUtil, IsNullTerminatedStd) {
+  std::string input = "SOME_STR";
+  ASSERT_FALSE(isNullTerminated(input));
+  input.push_back('\0');
+  ASSERT_TRUE(isNullTerminated(input));
+}
+
+TEST(StringUtil, IsNullTerminatedStrStd) {
+  std::string input = "SOME_STR";
+  ASSERT_FALSE(IsNullTerminatedStr(input.size(), input.c_str()));
+  input.push_back('\0');
   ASSERT_TRUE(IsNullTerminatedStr(input.size(), input.c_str()));
 }
 

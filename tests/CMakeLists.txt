@@ -489,166 +489,166 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
     "one_shot_event_unittest.cc"
     "optional_unittest.cc"
     "parameter_pack_unittest.cc"
-    #"path_service_unittest.cc"
-    #"pickle_unittest.cc"
-    #"power_monitor/power_monitor_device_source_unittest.cc"
-    #"power_monitor/power_monitor_unittest.cc"
-    #"process/environment_internal_unittest.cc"
-    #"process/memory_unittest.cc"
-    #"process/process_metrics_unittest.cc"
-    #"process/process_unittest.cc"
-    #"process/process_util_unittest.cc"
-    #"profiler/arm_cfi_table_unittest.cc"
-    #"profiler/metadata_recorder_unittest.cc"
-    #"profiler/module_cache_unittest.cc"
-    #"profiler/sample_metadata_unittest.cc"
-    #"profiler/stack_copier_suspend_unittest.cc"
-    #"profiler/stack_copier_unittest.cc"
-    #"profiler/stack_sampler_impl_unittest.cc"
-    #"profiler/stack_sampling_profiler_unittest.cc"
-    #"rand_util_unittest.cc"
-    #"ranges/algorithm_unittest.cc"
-    #"ranges/functional_unittest.cc"
-    #"ranges/ranges_unittest.cc"
-    #"run_loop_unittest.cc"
-    #"safe_numerics_unittest.cc"
-    #"sampling_heap_profiler/lock_free_address_hash_set_unittest.cc"
-    #"scoped_clear_last_error_unittest.cc"
-    #"scoped_generic_unittest.cc"
-    #"scoped_multi_source_observation_unittest.cc"
-    #"scoped_observation_unittest.cc"
-    #"security_unittest.cc"
-    #"sequence_checker_unittest.cc"
-    #"sequence_token_unittest.cc"
-    #"sequenced_task_runner_unittest.cc"
-    #"stl_util_unittest.cc"
-    #"strings/abseil_string_conversions_unittest.cc"
-    #"strings/char_traits_unittest.cc"
-    #"strings/escape_unittest.cc"
-    #"strings/no_trigraphs_unittest.cc"
-    #"strings/nullable_string16_unittest.cc"
-    #"strings/pattern_unittest.cc"
-    #"strings/safe_sprintf_unittest.cc"
-    #"strings/strcat_unittest.cc"
-    #"strings/string_number_conversions_unittest.cc"
-    #"strings/string_piece_unittest.cc"
-    #"strings/string_split_unittest.cc"
-    #"strings/string_tokenizer_unittest.cc"
-    #"strings/string_util_unittest.cc"
-    #"strings/stringize_macros_unittest.cc"
-    #"strings/stringprintf_unittest.cc"
-    #"strings/sys_string_conversions_unittest.cc"
-    #"strings/utf_offset_string_conversions_unittest.cc"
-    #"strings/utf_string_conversions_unittest.cc"
-    #"supports_user_data_unittest.cc"
-    #"sync_socket_unittest.cc"
-    #"synchronization/atomic_flag_unittest.cc"
-    #"synchronization/condition_variable_unittest.cc"
-    #"synchronization/lock_unittest.cc"
-    #"synchronization/waitable_event_unittest.cc"
-    #"synchronization/waitable_event_watcher_unittest.cc"
-    #"sys_byteorder_unittest.cc"
-    #"system/sys_info_unittest.cc"
-    #"system/system_monitor_unittest.cc"
-    #"task/cancelable_task_tracker_unittest.cc"
-    #"task/common/checked_lock_unittest.cc"
-    #"task/common/operations_controller_unittest.cc"
-    #"task/common/task_annotator_unittest.cc"
-    #"task/lazy_thread_pool_task_runner_unittest.cc"
-    #"task/post_job_unittest.cc"
-    #"task/post_task_unittest.cc"
-    #"task/scoped_set_task_priority_for_current_thread_unittest.cc"
-    #"task/sequence_manager/atomic_flag_set_unittest.cc"
-    #"task/sequence_manager/lazily_deallocated_deque_unittest.cc"
-    #"task/sequence_manager/sequence_manager_impl_unittest.cc"
-    #"task/sequence_manager/task_queue_selector_unittest.cc"
-    #"task/sequence_manager/task_queue_unittest.cc"
-    #"task/sequence_manager/test/mock_time_message_pump_unittest.cc"
-    #"task/sequence_manager/thread_controller_power_monitor_unittest.cc"
-    #"task/sequence_manager/thread_controller_with_message_pump_impl_unittest.cc"
-    #"task/sequence_manager/time_domain_unittest.cc"
-    #"task/sequence_manager/work_deduplicator_unittest.cc"
-    #"task/sequence_manager/work_queue_sets_unittest.cc"
-    #"task/sequence_manager/work_queue_unittest.cc"
-    #"task/single_thread_task_executor_unittest.cc"
-    #"task/task_traits_extension_unittest.cc"
-    #"task/task_traits_unittest.cc"
-    #"task/thread_pool/delayed_task_manager_unittest.cc"
-    #"task/thread_pool/environment_config_unittest.cc"
-    #"task/thread_pool/job_task_source_unittest.cc"
-    #"task/thread_pool/pooled_single_thread_task_runner_manager_unittest.cc"
-    #"task/thread_pool/priority_queue_unittest.cc"
-    #"task/thread_pool/sequence_unittest.cc"
-    #"task/thread_pool/service_thread_unittest.cc"
-    #"task/thread_pool/task_source_sort_key_unittest.cc"
-    #"task/thread_pool/task_tracker_unittest.cc"
-    #"task/thread_pool/thread_group_impl_unittest.cc"
-    #"task/thread_pool/thread_group_unittest.cc"
-    #"task/thread_pool/thread_pool_impl_unittest.cc"
-    #"task/thread_pool/tracked_ref_unittest.cc"
-    #"task/thread_pool/worker_thread_stack_unittest.cc"
-    #"task/thread_pool/worker_thread_unittest.cc"
-    #"task/thread_pool_unittest.cc"
-    #"task_runner_unittest.cc"
-    #"task_runner_util_unittest.cc"
-    #"template_util_unittest.cc"
-    #"test/gmock_callback_support_unittest.cc"
-    #"test/gmock_move_support_unittest.cc"
-    #"test/gtest_links_unittest.cc"
-    #"test/gtest_xml_unittest_result_printer_unittest.cc"
-    #"test/launcher/test_launcher_unittest.cc"
-    #"test/launcher/test_results_tracker_unittest.cc"
-    #"test/metrics/histogram_enum_reader_unittest.cc"
-    #"test/metrics/histogram_tester_unittest.cc"
-    #"test/metrics/user_action_tester_unittest.cc"
-    #"test/mock_callback_unittest.cc"
-    #"test/scoped_feature_list_unittest.cc"
-    #"test/scoped_logging_settings.h"
-    #"test/scoped_mock_clock_override_unittest.cc"
-    #"test/scoped_mock_time_message_loop_task_runner_unittest.cc"
-    #"test/scoped_run_loop_timeout_unittest.cc"
-    #"test/task_environment_unittest.cc"
-    #"test/test_mock_time_task_runner_unittest.cc"
-    #"test/test_pending_task_unittest.cc"
-    #"test/test_waitable_event_unittest.cc"
-    #"thread_annotations_unittest.cc"
-    #"threading/hang_watcher_unittest.cc"
-    #"threading/platform_thread_unittest.cc"
-    #"threading/post_task_and_reply_impl_unittest.cc"
-    #"threading/scoped_blocking_call_unittest.cc"
-    #"threading/scoped_thread_priority_unittest.cc"
-    #"threading/sequence_bound_unittest.cc"
-    #"threading/sequence_local_storage_map_unittest.cc"
-    #"threading/sequence_local_storage_slot_unittest.cc"
-    #"threading/sequenced_task_runner_handle_unittest.cc"
-    #"threading/simple_thread_unittest.cc"
-    #"threading/thread_checker_unittest.cc"
-    #"threading/thread_collision_warner_unittest.cc"
-    #"threading/thread_id_name_manager_unittest.cc"
-    #"threading/thread_local_storage_unittest.cc"
-    #"threading/thread_local_unittest.cc"
-    #"threading/thread_restrictions_unittest.cc"
-    #"threading/thread_task_runner_handle_unittest.cc"
-    #"threading/thread_unittest.cc"
-    #"threading/watchdog_unittest.cc"
-    #"time/pr_time_unittest.cc"
-    #"time/time_unittest.cc"
-    #"timer/elapsed_timer_unittest.cc"
-    #"timer/hi_res_timer_manager_unittest.cc"
-    #"timer/lap_timer_unittest.cc"
-    #"timer/mock_timer_unittest.cc"
-    #"timer/timer_unittest.cc"
-    #"token_unittest.cc"
-    #"tools_sanity_unittest.cc"
-    #"traits_bag_unittest.cc"
-    #"tuple_unittest.cc"
-    #"types/pass_key_unittest.cc"
-    #"types/strong_alias_unittest.cc"
-    #"unguessable_token_unittest.cc"
-    #"value_iterators_unittest.cc"
-    #"values_unittest.cc"
-    #"version_unittest.cc"
-    #"vlog_unittest.cc"
+    "path_service_unittest.cc"
+    "pickle_unittest.cc"
+    "power_monitor/power_monitor_device_source_unittest.cc"
+    "power_monitor/power_monitor_unittest.cc"
+    "process/environment_internal_unittest.cc"
+    "process/memory_unittest.cc"
+    "process/process_metrics_unittest.cc"
+    "process/process_unittest.cc"
+    "process/process_util_unittest.cc"
+    "profiler/arm_cfi_table_unittest.cc"
+    "profiler/metadata_recorder_unittest.cc"
+    "profiler/module_cache_unittest.cc"
+    "profiler/sample_metadata_unittest.cc"
+    "profiler/stack_copier_suspend_unittest.cc"
+    "profiler/stack_copier_unittest.cc"
+    "profiler/stack_sampler_impl_unittest.cc"
+    "profiler/stack_sampling_profiler_unittest.cc"
+    "rand_util_unittest.cc"
+    "ranges/algorithm_unittest.cc"
+    "ranges/functional_unittest.cc"
+    "ranges/ranges_unittest.cc"
+    "run_loop_unittest.cc"
+    "safe_numerics_unittest.cc"
+    "sampling_heap_profiler/lock_free_address_hash_set_unittest.cc"
+    "scoped_clear_last_error_unittest.cc"
+    "scoped_generic_unittest.cc"
+    "scoped_multi_source_observation_unittest.cc"
+    "scoped_observation_unittest.cc"
+    "security_unittest.cc"
+    "sequence_checker_unittest.cc"
+    "sequence_token_unittest.cc"
+    "sequenced_task_runner_unittest.cc"
+    "stl_util_unittest.cc"
+    "strings/abseil_string_conversions_unittest.cc"
+    "strings/char_traits_unittest.cc"
+    "strings/escape_unittest.cc"
+    "strings/no_trigraphs_unittest.cc"
+    "strings/nullable_string16_unittest.cc"
+    "strings/pattern_unittest.cc"
+    "strings/safe_sprintf_unittest.cc"
+    "strings/strcat_unittest.cc"
+    "strings/string_number_conversions_unittest.cc"
+    "strings/string_piece_unittest.cc"
+    "strings/string_split_unittest.cc"
+    "strings/string_tokenizer_unittest.cc"
+    "strings/string_util_unittest.cc"
+    "strings/stringize_macros_unittest.cc"
+    "strings/stringprintf_unittest.cc"
+    "strings/sys_string_conversions_unittest.cc"
+    "strings/utf_offset_string_conversions_unittest.cc"
+    "strings/utf_string_conversions_unittest.cc"
+    "supports_user_data_unittest.cc"
+    "sync_socket_unittest.cc"
+    "synchronization/atomic_flag_unittest.cc"
+    "synchronization/condition_variable_unittest.cc"
+    "synchronization/lock_unittest.cc"
+    "synchronization/waitable_event_unittest.cc"
+    "synchronization/waitable_event_watcher_unittest.cc"
+    "sys_byteorder_unittest.cc"
+    "system/sys_info_unittest.cc"
+    "system/system_monitor_unittest.cc"
+    "task/cancelable_task_tracker_unittest.cc"
+    "task/common/checked_lock_unittest.cc"
+    "task/common/operations_controller_unittest.cc"
+    "task/common/task_annotator_unittest.cc"
+    "task/lazy_thread_pool_task_runner_unittest.cc"
+    "task/post_job_unittest.cc"
+    "task/post_task_unittest.cc"
+    "task/scoped_set_task_priority_for_current_thread_unittest.cc"
+    "task/sequence_manager/atomic_flag_set_unittest.cc"
+    "task/sequence_manager/lazily_deallocated_deque_unittest.cc"
+    "task/sequence_manager/sequence_manager_impl_unittest.cc"
+    "task/sequence_manager/task_queue_selector_unittest.cc"
+    "task/sequence_manager/task_queue_unittest.cc"
+    "task/sequence_manager/test/mock_time_message_pump_unittest.cc"
+    "task/sequence_manager/thread_controller_power_monitor_unittest.cc"
+    "task/sequence_manager/thread_controller_with_message_pump_impl_unittest.cc"
+    "task/sequence_manager/time_domain_unittest.cc"
+    "task/sequence_manager/work_deduplicator_unittest.cc"
+    "task/sequence_manager/work_queue_sets_unittest.cc"
+    "task/sequence_manager/work_queue_unittest.cc"
+    "task/single_thread_task_executor_unittest.cc"
+    "task/task_traits_extension_unittest.cc"
+    "task/task_traits_unittest.cc"
+    "task/thread_pool/delayed_task_manager_unittest.cc"
+    "task/thread_pool/environment_config_unittest.cc"
+    "task/thread_pool/job_task_source_unittest.cc"
+    "task/thread_pool/pooled_single_thread_task_runner_manager_unittest.cc"
+    "task/thread_pool/priority_queue_unittest.cc"
+    "task/thread_pool/sequence_unittest.cc"
+    "task/thread_pool/service_thread_unittest.cc"
+    "task/thread_pool/task_source_sort_key_unittest.cc"
+    "task/thread_pool/task_tracker_unittest.cc"
+    "task/thread_pool/thread_group_impl_unittest.cc"
+    "task/thread_pool/thread_group_unittest.cc"
+    "task/thread_pool/thread_pool_impl_unittest.cc"
+    "task/thread_pool/tracked_ref_unittest.cc"
+    "task/thread_pool/worker_thread_stack_unittest.cc"
+    "task/thread_pool/worker_thread_unittest.cc"
+    "task/thread_pool_unittest.cc"
+    "task_runner_unittest.cc"
+    "task_runner_util_unittest.cc"
+    "template_util_unittest.cc"
+    "test/gmock_callback_support_unittest.cc"
+    "test/gmock_move_support_unittest.cc"
+    "test/gtest_links_unittest.cc"
+    "test/gtest_xml_unittest_result_printer_unittest.cc"
+    "test/launcher/test_launcher_unittest.cc"
+    "test/launcher/test_results_tracker_unittest.cc"
+    "test/metrics/histogram_enum_reader_unittest.cc"
+    "test/metrics/histogram_tester_unittest.cc"
+    "test/metrics/user_action_tester_unittest.cc"
+    "test/mock_callback_unittest.cc"
+    "test/scoped_feature_list_unittest.cc"
+    "test/scoped_logging_settings.h"
+    "test/scoped_mock_clock_override_unittest.cc"
+    "test/scoped_mock_time_message_loop_task_runner_unittest.cc"
+    "test/scoped_run_loop_timeout_unittest.cc"
+    "test/task_environment_unittest.cc"
+    "test/test_mock_time_task_runner_unittest.cc"
+    "test/test_pending_task_unittest.cc"
+    "test/test_waitable_event_unittest.cc"
+    "thread_annotations_unittest.cc"
+    "threading/hang_watcher_unittest.cc"
+    "threading/platform_thread_unittest.cc"
+    "threading/post_task_and_reply_impl_unittest.cc"
+    "threading/scoped_blocking_call_unittest.cc"
+    "threading/scoped_thread_priority_unittest.cc"
+    "threading/sequence_bound_unittest.cc"
+    "threading/sequence_local_storage_map_unittest.cc"
+    "threading/sequence_local_storage_slot_unittest.cc"
+    "threading/sequenced_task_runner_handle_unittest.cc"
+    "threading/simple_thread_unittest.cc"
+    "threading/thread_checker_unittest.cc"
+    "threading/thread_collision_warner_unittest.cc"
+    "threading/thread_id_name_manager_unittest.cc"
+    "threading/thread_local_storage_unittest.cc"
+    "threading/thread_local_unittest.cc"
+    "threading/thread_restrictions_unittest.cc"
+    "threading/thread_task_runner_handle_unittest.cc"
+    "threading/thread_unittest.cc"
+    "threading/watchdog_unittest.cc"
+    "time/pr_time_unittest.cc"
+    "time/time_unittest.cc"
+    "timer/elapsed_timer_unittest.cc"
+    "timer/hi_res_timer_manager_unittest.cc"
+    "timer/lap_timer_unittest.cc"
+    "timer/mock_timer_unittest.cc"
+    "timer/timer_unittest.cc"
+    "token_unittest.cc"
+    "tools_sanity_unittest.cc"
+    "traits_bag_unittest.cc"
+    "tuple_unittest.cc"
+    "types/pass_key_unittest.cc"
+    "types/strong_alias_unittest.cc"
+    "unguessable_token_unittest.cc"
+    "value_iterators_unittest.cc"
+    "values_unittest.cc"
+    "version_unittest.cc"
+    "vlog_unittest.cc"
   )
   list(APPEND base_unittest_utils
     "allocator/partition_allocator/arm_bti_test_functions.h"
@@ -1070,58 +1070,6 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
     util/memory_pressure/fake_memory_pressure_monitor.h
   )
 
-  list(APPEND extensions_unittests
-    debug/leak_tracker_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    containers/bounded_inline_vector_unittest.cc
-    containers/unique_any_unittest.cc
-    containers/any_internal_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    hash/city_hash_unittest.cc
-    hash/murmurhash_unittest.cc
-    hash/xxhash_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    ranges/enumerated_unittest.cc
-    ranges/pipelined_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    strings/string_number_conversions_unittest.cc
-    strings/substitute_unittest.cc
-    strings/string_util_unittest.cc
-    strings/string_format_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    annnotations/guard_annotations_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    numerics/double_summation_unittest.cc
-    numerics/floating_point_comparison_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    test/test_macros_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    algorithm/top_n_unittest.cc
-  )
-
-  list(APPEND extensions_unittests
-    bit_field/bit_field_unittest.cc
-  )
-
-  list(TRANSFORM extensions_unittests PREPEND "../extensions/basic/")
-  list(APPEND base_unittests ${extensions_unittests})
-
   list(REMOVE_DUPLICATES base_unittests)
   list(TRANSFORM base_unittests PREPEND ${BASE_SOURCES_PATH})
 
@@ -1137,6 +1085,127 @@ if(${ROOT_PROJECT_NAME}_BUILD_TESTS)
     list(REMOVE_DUPLICATES base_unittest_utils)
     get_filename_component(FILENAME_WITHOUT_EXT ${FILEPATH} NAME_WE)
     tests_add_executable(${ROOT_PROJECT_NAME}-${FILENAME_WITHOUT_EXT}
+      "${test_sources}" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
+  endforeach()
+
+  list(APPEND extensions_unittests
+    debug/leak_tracker_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    containers/bounded_inline_vector_unittest.cc
+    containers/unique_any_unittest.cc
+    containers/any_internal_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    files/file_path_util_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    hash/city_hash_unittest.cc
+    hash/murmurhash_unittest.cc
+    hash/xxhash_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    ranges/enumerated_unittest.cc
+    ranges/pipelined_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    strong_types/strong_checked_math_unittest.cc
+    strong_types/strong_alias_unittest.cc
+    strong_types/strong_bool_unittest.cc
+    strong_types/strong_checked_math_unittest.cc
+    strong_types/strong_int_unittest.cc
+    strong_types/strong_string_unittest.cc
+    strong_types/money/money_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    log/spacer_unittest.cc
+    log/table_printer_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    status/status_macros_unittest.cc
+    status/status_unittest.cc
+    status/statusor_unittest.cc
+    status/with_details_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    core/weak_handle_unittest.cc
+    core/observable_unittest.cc
+    core/typed_enum_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    varint/memcmpable_varint_unittest.cc
+    varint/fast_varint_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    strings/string_number_conversions_unittest.cc
+    strings/substitute_unittest.cc
+    strings/string_util_unittest.cc
+    strings/string_format_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    annotations/guard_annotations_unittest.cc
+  )
+
+# TODO
+#numerics/uint256_unittest.cc
+  list(APPEND extensions_unittests
+    numerics/double_summation_unittest.cc
+    numerics/floating_point_comparison_unittest.cc
+    numerics/pack_numbers_unittest.cc
+    numerics/uint128_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    test/test_macros_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    algorithm/top_n_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    bit_field/bit_field_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    bind/bind_to_task_runner_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    backoff_entry/backoff_entry_serializer_unittest.cc
+    backoff_entry/backoff_entry_unittest.cc
+  )
+
+  list(APPEND extensions_unittests
+    bloom_filter/bloom_unittest.cc
+    bloom_filter/counting_bloom_unittest.cc
+    bloom_filter/double_hashing_bloom_unittest.cc
+  )
+
+  list(TRANSFORM extensions_unittests PREPEND "../extensions/basic/")
+
+  list(REMOVE_DUPLICATES extensions_unittests)
+  list(TRANSFORM extensions_unittests PREPEND ${BASE_SOURCES_PATH})
+
+  foreach(FILEPATH ${extensions_unittests})
+    set(test_sources
+      "${FILEPATH}"
+      ${base_unittest_utils}
+    )
+    list(REMOVE_DUPLICATES base_unittest_utils)
+    get_filename_component(FILENAME_WITHOUT_EXT ${FILEPATH} NAME_WE)
+    tests_add_executable(${ROOT_PROJECT_NAME}-basic-${FILENAME_WITHOUT_EXT}
       "${test_sources}" "${GTEST_TEST_ARGS}" "${test_main_gtest}")
   endforeach()
 endif()
