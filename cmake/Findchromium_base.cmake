@@ -25,15 +25,15 @@ find_package(chromium_libxml QUIET)
 
 list(REMOVE_AT CMAKE_MODULE_PATH -1)
 
-set(chromium_base_LIB chromium_base::chromium_base-static)
+set(chromium_base_LIB chromium_base::chromium_base)
 # conan package has '/include' dir
 set(chromium_base_HEADER_DIR
   ${CONAN_CHROMIUM_BASE_ROOT}/include
 )
 # used by https://docs.conan.io/en/latest/developing_packages/workspaces.html
-if(TARGET chromium_base-static)
+if(TARGET chromium_base)
   # name of created target
-  set(chromium_base_LIB chromium_base-static)
+  set(chromium_base_LIB chromium_base)
   # no '/include' dir on local build
   set(chromium_base_HEADER_DIR
     ${CONAN_CHROMIUM_BASE_ROOT}

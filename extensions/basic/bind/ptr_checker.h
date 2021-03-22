@@ -13,7 +13,7 @@ namespace base {
 //
 // {
 //   // ERROR: AddressSanitizer: stack-use-after-scope
-//   ::base::MessageLoop::current().task_runner()->PostTask(
+//   ::base::ThreadTaskRunnerHandle::Get()->PostTask(
 //     FROM_HERE
 //     , ::base::bindCheckedOnce(
 //         DEBUG_BIND_CHECKS(

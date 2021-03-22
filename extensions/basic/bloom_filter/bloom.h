@@ -27,6 +27,8 @@
 
 #include "basic/bloom_filter/filter_policy.h"
 #include "basic/numerics/pack_numbers.h"
+#include "basic/macros.h"
+#include "basic/compiler_specific.h"
 
 #include <string>
 #include <memory>

@@ -15,6 +15,7 @@ namespace i18n {
 FixedPatternStringSearch::FixedPatternStringSearch(const string16& find_this,
                                                    bool case_sensitive)
     : find_this_(find_this) {
+#if !UCONFIG_NO_COLLATION
   // usearch_open requires a valid string argument to be searched, even if we
   // want to set it by usearch_setText afterwards. So, supplying a dummy text.
   const string16& dummy = find_this_;
@@ -38,17 +39,25 @@ FixedPatternStringSearch::FixedPatternStringSearch(const string16& find_this,
     ucol_setStrength(collator, case_sensitive ? UCOL_TERTIARY : UCOL_PRIMARY);
     usearch_reset(search_);
   }
+#else
+    NOTIMPLEMENTED();
+#endif // !UCONFIG_NO_COLLATION
 }
 
 FixedPatternStringSearch::~FixedPatternStringSearch() {
+#if !UCONFIG_NO_COLLATION
   if (search_)
     usearch_close(search_);
+#else
+    NOTIMPLEMENTED();
+#endif // !UCONFIG_NO_COLLATION
 }
 
 bool FixedPatternStringSearch::Search(const string16& in_this,
                                       size_t* match_index,
                                       size_t* match_length,
                                       bool forward_search) {
+#if !UCONFIG_NO_COLLATION
   UErrorCode status = U_ZERO_ERROR;
   usearch_setText(search_, ToUCharPtr(in_this.data()), in_this.size(), &status);
 
@@ -76,6 +85,10 @@ bool FixedPatternStringSearch::Search(const string16& in_this,
   if (match_length)
     *match_length = static_cast<size_t>(usearch_getMatchedLength(search_));
   return true;
+#else
+    NOTIMPLEMENTED();
+    return false;
+#endif // !UCONFIG_NO_COLLATION
 }
 
 FixedPatternStringSearchIgnoringCaseAndAccents::

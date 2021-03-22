@@ -144,7 +144,7 @@ void RetryWithBackoff(bool update_backoff) {
              << " milliseconds.";
     // schedule `RetryWithBackoff` with `update_backoff = false`
     // and delay `GetTimeUntilRelease`
-    base::MessageLoop::current()->PostDelayedTask(
+    ::base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&RetryWithBackoff,
                    weak_ptr_factory_.GetWeakPtr(),

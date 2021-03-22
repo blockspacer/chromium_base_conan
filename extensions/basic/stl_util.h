@@ -4,8 +4,7 @@
 
 // Derived from google3/util/gtl/stl_util.h
 
-#ifndef BASE_STL_UTIL_H_
-#define BASE_STL_UTIL_H_
+#pragma once
 
 #include <algorithm>
 #include <deque>
@@ -832,5 +831,3 @@ auto compose(F&& f, R&&... r)
 }
 
 }  // namespace basic
-
-#endif  // BASE_STL_UTIL_H_

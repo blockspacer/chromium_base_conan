@@ -164,6 +164,12 @@ class LinkedList {
     e->InsertBefore(&root_);
   }
 
+  // Appends |e| to the start of the linked list.
+  void Prepend(LinkNode<T>* e) {
+    e->InsertAfter(&root_);
+    DCHECK(!empty());
+  }
+
   LinkNode<T>* head() const {
     return root_.next();
   }
@@ -177,6 +183,14 @@ class LinkedList {
   }
 
   bool empty() const { return head() == end(); }
+
+  void clear() {
+    while(!empty()) {
+      DCHECK(head());
+      head()->RemoveFromList();
+    }
+    DCHECK(empty());
+  }
 
  private:
   LinkNode<T> root_;

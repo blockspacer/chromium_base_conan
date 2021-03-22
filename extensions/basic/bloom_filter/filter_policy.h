@@ -36,9 +36,10 @@
 #include <string>
 #include <memory>
 
+#include <basic/rvalue_cast.h>
+
 #include <base/macros.h>
 #include <base/logging.h>
-#include <basic/rvalue_cast.h>
 #include <base/bind.h>
 #include <base/strings/string_piece.h>
 

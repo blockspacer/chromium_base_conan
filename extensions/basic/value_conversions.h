@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_VALUE_CONVERSIONS_H_
-#define BASE_VALUE_CONVERSIONS_H_
+#pragma once
 
 // This file contains methods to convert things to a |Value| and back.
 
@@ -51,5 +50,3 @@ BASE_EXPORT bool GetValueAsUnguessableToken(const base::Value& value,
     WARN_UNUSED_RESULT;
 
 }  // namespace basic
-
-#endif  // BASE_VALUE_CONVERSIONS_H_

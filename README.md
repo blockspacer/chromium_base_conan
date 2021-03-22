@@ -4,7 +4,7 @@ Modified `base` library from chromium https://github.com/chromium/chromium/tree/
 
 Modification history in `extensions/PATCH_HISTORY.md` and added files in `extensions/`.
 
-NOTE: Some features or platforms may be not tested. Run unit tests to check support of some feature.
+NOTE: Some features or platforms may be not supported. Run unit tests to check support of some feature.
 
 ## Project goals
 
@@ -25,9 +25,182 @@ See:
 
 ## How to use it?
 
-Before usage set `base::i18n::InitializeICU()`, `setlocale(LC_ALL, "en_US.UTF-8")`, `logging::InitLogging(settings);`, `base::ThreadPoolInstance::CreateAndStartWithDefaultParams`, `base::AtExitManager`, `base::CommandLine::Init`, `base::RunLoop`, `base::ThreadPoolInstance::Get()->Shutdown()`, etc.
+Before usage set:
 
-See as example https://source.chromium.org/chromium/chromium/src/+/b28193d300f6a0853f31d305b3fb917c3a1601b7:remoting/host/it2me/it2me_native_messaging_host_main.cc
+* `base::i18n::InitializeICU()`
+* `setlocale(LC_ALL, "en_US.UTF-8")`
+* `logging::InitLogging(settings);`
+* `base::ThreadPoolInstance::CreateAndStartWithDefaultParams`
+* `base::AtExitManager`
+* `base::CommandLine::Init`
+* `base::RunLoop`
+* `base::ThreadPoolInstance::Get()->Shutdown()`
+* etc.
+
+Usage:
+
+```cpp
+#include "base/at_exit.h"
+#include "base/command_line.h"
+#include "base/debug/stack_trace.h"
+#include "base/message_loop/message_pump_type.h"
+#include "base/task/single_thread_task_executor.h"
+#include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/trace_event/trace_event.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/i18n/icu_util.h"
+#include "base/logging.h"
+#include "base/path_service.h"
+#include "base/bind.h"
+#include "base/run_loop.h"
+#include "base/check.h"
+#include "base/base_switches.h"
+#include "base/threading/thread_task_runner_handle.h"
+
+#include <locale.h>
+
+class AppDemo {
+ public:
+  AppDemo();
+  ~AppDemo();
+
+  void Initialize();
+  void Destroy();
+  void Run();
+
+ private:
+  void OnCloseRequest();
+  void RenderFrame();
+
+private:
+  base::RunLoop* run_loop_ = nullptr;
+  bool is_running_ = false;
+};
+
+AppDemo::AppDemo() = default;
+
+AppDemo::~AppDemo() = default;
+
+AppDemo::~AppDemo() = default;
+
+void AppDemo::OnCloseRequest() {
+  is_running_ = false;
+  if (run_loop_)
+    run_loop_->QuitWhenIdle();
+}
+
+void AppDemo::RenderFrame() {
+  if (!is_running_)
+    return;
+
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&AppDemo::RenderFrame, base::Unretained(this)));
+}
+
+void AppDemo::Destroy() {}
+
+void AppDemo::Run() {
+  DCHECK(!is_running_);
+  DCHECK(!run_loop_);
+  base::RunLoop run_loop;
+  is_running_ = true;
+  run_loop_ = &run_loop;
+  RenderFrame();
+  run_loop.Run();
+  run_loop_ = nullptr;
+}
+
+namespace switches {
+
+const char kLogFile[] = "log-file";
+
+const int kTraceEventAppSortIndex = -1;
+
+} // namespace switches
+
+int main(int argc, const char* argv[]) {
+  setlocale(LC_ALL, "en_US.UTF-8");
+
+  base::EnableTerminationOnHeapCorruption();
+  // Manages the destruction of singletons.
+  base::AtExitManager exit_manager;
+
+  CHECK(base::CommandLine::Init(argc, argv));
+  const base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
+
+#ifndef NDEBUG
+  base::RouteStdioToConsole(false);
+#endif
+
+  base::FilePath log_filename =
+      command_line.GetSwitchValuePath(switches::kLogFile);
+  if (log_filename.empty()) {
+    base::PathService::Get(base::DIR_EXE, &log_filename);
+    log_filename = log_filename.AppendASCII("app_logfile.log");
+  }
+
+// Only use OutputDebugString in debug mode.
+#ifdef NDEBUG
+  logging::LoggingDestination destination = logging::LOG_TO_FILE;
+#else
+  logging::LoggingDestination destination =
+      logging::LOG_TO_ALL;
+#endif
+  settings.logging_dest = destination;
+
+  settings.log_file_path = log_filename.value().c_str();
+  settings.delete_old = logging::DELETE_OLD_LOG_FILE;
+  logging::InitLogging(settings);
+
+  logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
+                       true /* Timestamp */, false /* Tick count */);
+
+  base::i18n::InitializeICU();
+
+#ifndef NDEBUG
+  CHECK(base::debug::EnableInProcessStackDumping());
+#endif
+
+  // Initialize tracing.
+  base::trace_event::TraceLog::GetInstance()->set_process_name("Browser");
+  base::trace_event::TraceLog::GetInstance()->SetProcessSortIndex(
+      kTraceEventAppSortIndex);
+  if (command_line.HasSwitch(switches::kTraceToConsole)) {
+    base::trace_event::TraceConfig trace_config =
+        tracing::GetConfigForTraceToConsole();
+    base::trace_event::TraceLog::GetInstance()->SetEnabled(
+        trace_config, base::trace_event::TraceLog::RECORDING_MODE);
+  }
+
+  // Build UI thread task executor. This is used by platform
+  // implementations for event polling & running background tasks.
+  base::SingleThreadTaskExecutor main_task_executor(base::MessagePumpType::UI);
+
+  // Initialize ThreadPool.
+  constexpr int kMaxForegroundThreads = 6;
+  base::ThreadPoolInstance::InitParams thread_pool_init_params(
+      kMaxForegroundThreads);
+
+  base::ThreadPoolInstance::Create("AppThreadPool");
+  base::ThreadPoolInstance::Get()->Start(thread_pool_init_params);
+
+  AppDemo app_demo;
+  app_demo.Initialize();
+  app_demo.Run();
+  app_demo.Destroy();
+
+  base::ThreadPoolInstance::Get()->Shutdown();
+}
+```
+
+See as example:
+
+* https://source.chromium.org/chromium/chromium/src/+/b28193d300f6a0853f31d305b3fb917c3a1601b7:remoting/host/it2me/it2me_native_messaging_host_main.cc
+* https://source.chromium.org/chromium/chromium/src/+/b28193d300f6a0853f31d305b3fb917c3a1601b7:gpu/vulkan/demo/
+* https://source.chromium.org/chromium/chromium/src/+/b28193d300f6a0853f31d305b3fb917c3a1601b7:content/shell/app/shell_main_delegate.cc
+* https://source.chromium.org/chromium/chromium/src/+/b28193d300f6a0853f31d305b3fb917c3a1601b7:chrome/browser/chrome_browser_main.cc
 
 Run compiled app with arguments:
 
@@ -37,11 +210,19 @@ Run compiled app with arguments:
 
 ## DOCS
 
-The Chromium Projects https://www.chromium.org/developers
+See `./extensions/docs/`
 
-Chromium docs https://chromium.googlesource.com/chromium/src/+/master/docs
+Extra docs:
 
-## Dev build
+* The Chromium Projects https://www.chromium.org/developers
+* Chromium docs https://chromium.googlesource.com/chromium/src/+/master/docs
+* Chromium Chronicle https://developer.chrome.com/tags/chromium-chronicle/
+
+`base` is similar to `abseil`, so you may want to read `abseil` docs:
+
+* https://abseil.io/docs/cpp/guides/
+
+## Dev-only build (local conan flow)
 
 ```bash
 find . -type f -name "*_buildflags.h" -exec rm {} \;
@@ -66,6 +247,7 @@ GIT_SSL_NO_VERIFY=true \
   -s llvm_tools:build_type=Release \
   --profile clang \
   -e chromium_base:enable_tests=True \
+  -o chromium_base:shared=True \
   -e abseil:enable_llvm_tools=True \
   -o perfetto:is_hermetic_clang=False
 
@@ -103,6 +285,7 @@ CONAN_REVISIONS_ENABLED=1 \
         --build cascade \
         -e chromium_base:enable_tests=True \
         -o chromium_base:use_alloc_shim=True \
+        -o chromium_base:shared=True \
         -o chromium_tcmalloc:use_alloc_shim=True \
         -o perfetto:is_hermetic_clang=False \
         -o openssl:shared=True
@@ -135,6 +318,7 @@ CONAN_REVISIONS_ENABLED=1 \
         -o chromium_base:enable_tsan=True \
         -e chromium_base:enable_llvm_tools=True \
         -o chromium_base:use_alloc_shim=False \
+        -o chromium_base:shared=True \
         -o abseil:enable_tsan=True \
         -e abseil:enable_llvm_tools=True \
         -o perfetto:is_hermetic_clang=False \
@@ -142,12 +326,6 @@ CONAN_REVISIONS_ENABLED=1 \
 
 # clean build cache
 conan remove "*" --build --force
-```
-
-## HOW TO INSTALL FROM CONAN
-
-```
-conan install --build=missing --profile clang ..
 ```
 
 ## DEPS
@@ -164,6 +342,11 @@ See https://github.com/chromium/chromium/blob/master/base/DEPS
 - PTHREADS (on UNIX)
 - xdg_mime (on UNIX)
 - xdg_user_dirs (on UNIX)
+
+Extra deps used by `./extensions/basic/`:
+
+- boost preprocessor
+- fmt
 
 ## Used chromium version
 
@@ -190,7 +373,7 @@ Clone latest base:
 cd ~
 git clone https://chromium.googlesource.com/chromium/src/base
 # see https://chromium.googlesource.com/chromium/src/base/+/944910a3c30b76db99a3978f59098e8a33953617
-# and https://source.chromium.org/chromium/chromium/src/base/+/944910a3c30b76db99a3978f59098e8a33953617:
+# see https://source.chromium.org/chromium/chromium/src/base/+/944910a3c30b76db99a3978f59098e8a33953617:
 git checkout 944910a3c30b76db99a3978f59098e8a33953617
 ```
 

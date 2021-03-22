@@ -10,13 +10,13 @@
 // A helper to assert that a call is not recursive.
 /// \note Use `FUNCTION_RECURSION_CHECKER_ONCE` instead.
 #define RECURSION_CHECKER_ONCE(CHECKER_NAME) \
-  base::RecursionChecker \
+  basic::RecursionChecker \
     CHECKER_NAME
 
 // A helper to check recursion limit.
 /// \note Use `FUNCTION_RECURSION_CHECKER_LIMIT` instead.
 #define RECURSION_CHECKER_LIMIT(CHECKER_NAME, count) \
-  base::RecursionChecker \
+  basic::RecursionChecker \
     CHECKER_NAME \
       {count}
 
@@ -26,7 +26,7 @@
 #if !defined(NDEBUG)
 /// \note Use `DCHECK_FUNCTION_RECURSION` instead.
 #define DCHECK_RECURSION(CHECKER_NAME) \
-  base::AutoRecursionChecker \
+  basic::AutoRecursionChecker \
     AUTO_RECURSION_CHECKER_NAME(CHECKER_NAME) \
       (CHECKER_NAME, FROM_HERE)
 #else // !defined(NDEBUG)
@@ -55,7 +55,7 @@
     FUNCTION_RECURSION_CHECKER_NAME(CHECKER_NAME))
 
 #if !defined(NDEBUG)
-// Perform scoped checks for `base::RecursionChecker`
+// Perform scoped checks for `basic::RecursionChecker`
 #define DCHECK_FUNCTION_RECURSION(CHECKER_NAME) \
   DCHECK_RECURSION( \
     FUNCTION_RECURSION_CHECKER_NAME(CHECKER_NAME))

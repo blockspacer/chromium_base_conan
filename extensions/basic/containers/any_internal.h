@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_CONTAINERS_ANY_INTERNAL_H_
-#define BASE_CONTAINERS_ANY_INTERNAL_H_
-
 #include <memory>
 #include <utility>
 
@@ -259,5 +256,3 @@ struct AnyInternal::DeleteHelper<T, /* UseInlineStorage */ false> {
 
 }  // namespace internal
 }  // namespace basic
-
-#endif  // BASE_CONTAINERS_ANY_INTERNAL_H_

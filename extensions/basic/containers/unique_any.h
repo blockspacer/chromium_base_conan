@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_CONTAINERS_UNIQUE_ANY_H_
-#define BASE_CONTAINERS_UNIQUE_ANY_H_
+#pragma once
 
 #include <utility>
 
@@ -331,5 +330,3 @@ ValueType* unique_any_cast(unique_any* any) noexcept {
 }
 
 }  // namespace basic
-
-#endif  // BASE_CONTAINERS_UNIQUE_ANY_H_

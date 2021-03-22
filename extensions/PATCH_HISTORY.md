@@ -12,7 +12,7 @@ BoringSSL replaced by OpenSSL.
 
 Had to add `defined(ENABLE_BORINGSSL)` in `base/hash/md5_boringssl.h`
 
-## perfetto_test_support
+##  disabled `traced_value_support_unittest` due to missing `perfetto_test_support`
 
 chromium includes `component("perfetto_test_support")` directly from subproject `third_party/perfetto/BUILD.gn`.
 
@@ -80,7 +80,7 @@ Changed `build_time_unittest.cc` and created private define `BUILD_DATE=BASE_BUI
 
 ## Tests
 
-Had to add in `main` function used by tests
+Had to add in `main` function used by tests (`run_all_unittests.cc`, `run_all_perftests.cc`, etc.)
 
 ```cpp
 #include "base/test/scoped_locale.h"
@@ -127,3 +127,5 @@ TEST(SpanTest, WithoutPrefix)
 
 TEST(SpanTest, WithoutSuffix)
 ```
+
+Added `void clear()` and `void Prepend` into `base/containers/linked_list.h`

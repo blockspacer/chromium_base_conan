@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_ALLOCATOR_PARTITION_ALLOCATOR_SPIN_LOCK_H_
-#define BASE_ALLOCATOR_PARTITION_ALLOCATOR_SPIN_LOCK_H_
+#pragma once
 
 #include <atomic>
 #include <memory>
@@ -46,5 +45,3 @@ class BASE_EXPORT SpinLock {
 
 }  // namespace subtle
 }  // namespace basic
-
-#endif  // BASE_ALLOCATOR_PARTITION_ALLOCATOR_SPIN_LOCK_H_

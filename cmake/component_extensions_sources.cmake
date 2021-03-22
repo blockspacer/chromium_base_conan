@@ -27,6 +27,142 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   "containers/unique_any.cc"
   "containers/any_internal.h"
   "containers/any_internal.cc"
+  "containers/prioritized_job_dispatcher.h"
+  "containers/prioritized_job_dispatcher.cc"
+  "containers/prioritized_list.h"
+  "containers/prioritized_repeating_task_list.h"
+  "containers/prioritized_repeating_task_list.cc"
+  "containers/seq_num_buffer.h"
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  "decimal/decimal.h"
+  "decimal/decimal_numeric_limits.h"
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  "dependency_hierarchy/dependency_error_space.h"
+  "dependency_hierarchy/dependency_error_space.cc"
+  "dependency_hierarchy/dependency_hierarchy.h"
+  "dependency_hierarchy/dependency_hierarchy.cc"
+  "dependency_hierarchy/dependency_util.h"
+  "dependency_hierarchy/dependency_util.cc"
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  "disjoint_sets/disjoint_sets.h"
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  promise/dependent_list.h
+  promise/promise_value.h
+  promise/abstract_promise.cc
+  promise/abstract_promise.h
+  promise/finally_executor.cc
+  promise/no_op_promise_executor.h
+  promise/dependent_list.cc
+  promise/finally_executor.h
+  promise/no_op_promise_executor.cc
+  promise/do_nothing_promise.cc
+  promise/all_tuple_executor.h
+  promise/all_container_executor.h
+  promise/do_nothing_promise.h
+  promise/helpers.cc
+  promise/helpers.h
+  promise/promise_value.cc
+  promise/race_tuple_executor.h
+  promise/promise_collection.h
+  promise/race_container_executor.h
+  promise/promise_executor.h
+  promise/promise_executor.cc
+  promise/then_and_catch_executor.h
+  promise/then_and_catch_executor.cc
+  promise/promise_result.h
+  promise/post_task_executor.h
+  promise/post_promise.cc
+  promise/promise.h
+  promise/post_promise.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  memory/wrap_unique_ptr_not_array.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  "concurrency/lock_free_producer_consumer_queue.h"
+  "concurrency/lock_free_producer_consumer_queue.cc"
+  "concurrency/concurrent_int64.h"
+  "concurrency/concurrent_int64.cc"
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  term_color/term_color.cc
+  term_color/term_color.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  fail_point/fail_point.cc
+  fail_point/fail_point.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  interval/interval_map.h
+  interval/interval_set.h
+  interval/interval.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  jsonb/jsonb.h
+  jsonb/jsonb.cc
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  lru/estimate_memory_usage_for_lru_cache.h
+  lru/lru_cache.h
+  lru/lru.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  plug_point/plug_point.cc
+  plug_point/plug_point.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  race_sync_point/race_sync_point.cc
+  race_sync_point/race_sync_point.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  token_bucket/token_bucket.cc
+  token_bucket/token_bucket.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  statistics/rate_tracker.h
+  statistics/expandable_statistics_window.h
+  statistics/usage_limiter.h
+  statistics/rate_tracker.cc
+  statistics/quality_threshold.h
+  statistics/usage_limiter.cc
+  statistics/weighted_moving_average.h
+  statistics/moving_average.h
+  statistics/moving_average.cc
+  statistics/percentile_filter.h
+  statistics/quality_threshold.cc
+  statistics/moving_median_filter.h
+  statistics/moving_statistics_window.h
+  statistics/weighted_moving_linear_regression.h
+  statistics/weighted_moving_linear_regression.cc
+  statistics/weighted_moving_average.cc
+  statistics/weighted_mean.h
+  statistics/weighted_mean.cc
+  statistics/hdr_histogram.h
+  statistics/hdr_histogram.cc
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  prometheus_metrics/metrics.cc
+  prometheus_metrics/metrics.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -53,6 +189,7 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   "strong_types/strong_bool.h"
   "strong_types/strong_checked_math.h"
   "strong_types/strong_int.h"
+  "strong_types/strong_double.h"
   "strong_types/strong_string.h"
   "strong_types/metric_units/strong_metric_units.h"
   "strong_types/money/money_util.cc"

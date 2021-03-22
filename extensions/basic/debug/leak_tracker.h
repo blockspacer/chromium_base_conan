@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_DEBUG_LEAK_TRACKER_H_
-#define BASE_DEBUG_LEAK_TRACKER_H_
+#pragma once
 
 #include <stddef.h>
 
@@ -138,5 +137,3 @@ class LeakTracker : public base::LinkNode<LeakTracker<T> > {
 
 }  // namespace debug
 }  // namespace basic
-
-#endif  // BASE_DEBUG_LEAK_TRACKER_H_

@@ -14,7 +14,7 @@ namespace base {
 // USAGE
 //
 // {
-//   ::base::MessageLoop::current().task_runner()->PostTask(
+//   ::base::ThreadTaskRunnerHandle::Get()->PostTask(
 //     FROM_HERE
 //     , ::base::bindCheckedOnce(
 //         DEBUG_BIND_CHECKS(
@@ -41,7 +41,7 @@ namespace base {
 // USAGE
 //
 // {
-//   ::base::MessageLoop::current().task_runner()->PostTask(
+//   ::base::ThreadTaskRunnerHandle::Get()->PostTask(
 //     FROM_HERE
 //     , ::base::bindCheckedOnce(
 //         DEBUG_BIND_CHECKS(
@@ -81,7 +81,7 @@ namespace base {
 //
 //   repCb.Run(FROM_HERE);
 //
-//   ::base::MessageLoop::current().task_runner()->PostTask(
+//   ::base::ThreadTaskRunnerHandle::Get()->PostTask(
 //     FROM_HERE
 //     , ::base::BindOnce(
 //         repCb
@@ -126,7 +126,7 @@ namespace base {
 //
 //   repCb.Run(FROM_HERE);
 //
-//   ::base::MessageLoop::current().task_runner()->PostTask(
+//   ::base::ThreadTaskRunnerHandle::Get()->PostTask(
 //     FROM_HERE
 //     , ::base::BindOnce(
 //         repCb

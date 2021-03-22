@@ -9,7 +9,7 @@ project(${PROJECT_NAME}
   VERSION ${PROJECT_VERSION}
   LANGUAGES CXX C)
 
-set(STATIC_LIB_NAME ${PROJECT_NAME}-static)
+set(BASE_LIB_NAME ${PROJECT_NAME})
 
 set(COBALT_DIR cobalt)
 set(LOCAL_COBALT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${COBALT_DIR}/)
@@ -312,7 +312,7 @@ else()
   message(FATAL_ERROR "platform not supported")
 endif()
 
-add_library(${STATIC_LIB_NAME}-test-includes INTERFACE)
+add_library(${BASE_LIB_NAME}-test-includes INTERFACE)
 
 macro(add_absolute_include_dir TARGET VISIBILITY NEW_ELEM)
   target_include_directories(${TARGET} ${VISIBILITY}
@@ -486,17 +486,19 @@ if(ENABLE_BASE_TRACING)
     TMP_FILE_DIR ${CMAKE_CURRENT_BINARY_DIR}
     INPUT_FILES ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos/chrome_track_event.proto
     INCLUDE_PROTO_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos
-    APPEND_GENERATED_FILES_TO_LIST ${STATIC_LIB_NAME}_GENERATED_FILES
+    APPEND_GENERATED_FILES_TO_LIST ${BASE_LIB_NAME}_GENERATED_FILES
     VERBOSE TRUE
   )
 
   list(APPEND BASE_SOURCES
     ${PERFETTO_SDK_DIR}/perfetto.cc
-    ${${STATIC_LIB_NAME}_GENERATED_FILES}
+    ${${BASE_LIB_NAME}_GENERATED_FILES}
   )
 endif(ENABLE_BASE_TRACING)
 
-add_library(${STATIC_LIB_NAME} STATIC
+# Creates shared or static library depending on BUILD_SHARED_LIBS variable,
+# conan passes the shared option as the BUILD_SHARED_LIBS variable.
+add_library(${BASE_LIB_NAME}
   ${BASE_SOURCES}
 )
 
@@ -534,7 +536,7 @@ elseif(TARGET_LINUX)
     ${libevent_LIB}
     ${modp_b64_LIB}
   )
-  add_dependencies(${STATIC_LIB_NAME}
+  add_dependencies(${BASE_LIB_NAME}
     ${tcmalloc_LIB} # if ALLOCATOR_TCMALLOC
     ${ced_LIB}
     ${modp_b64_LIB}
@@ -546,7 +548,7 @@ elseif(TARGET_WINDOWS)
     #${libevent_LIB}
     ${modp_b64_LIB}
   )
-  add_dependencies(${STATIC_LIB_NAME}
+  add_dependencies(${BASE_LIB_NAME}
     ${ced_LIB}
     ${CUSTOM_ICU_LIB}
     ${modp_b64_LIB}
@@ -619,7 +621,7 @@ if(NOT TARGET CONAN_PKG::fmt)
   message(FATAL_ERROR "not supported ${FMTLIB}: using system provided CONAN_PKG::fmt library")
 endif()
 
-target_link_libraries(${STATIC_LIB_NAME} PRIVATE
+target_link_libraries(${BASE_LIB_NAME} PRIVATE
   ${modp_b64_LIB}
   CONAN_PKG::double-conversion
   CONAN_PKG::openssl
@@ -658,13 +660,13 @@ if(NOT DEFINED build_util_LIB)
 endif(NOT DEFINED build_util_LIB)
 
 if(ENABLE_BORINGSSL)
-  target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
+  target_compile_definitions(${BASE_LIB_NAME} PUBLIC
     ENABLE_BORINGSSL=1
   )
 endif()
 
 if(ENABLE_BASE_TRACING AND USE_PERFETTO_CLIENT_LIBRARY)
-  target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
+  target_compile_definitions(${BASE_LIB_NAME} PUBLIC
     BASE_USE_PERFETTO_CLIENT_LIBRARY=1
   )
 endif()
@@ -685,16 +687,16 @@ if(USE_TEST_SUPPORT)
     CONAN_PKG::conan_gtest
   )
 
-  target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
+  target_compile_definitions(${BASE_LIB_NAME} PRIVATE
     IS_BASE_TEST_IMPL=1
     BUILD_DATE=BASE_BUILD_DATE
   )
 
-  target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
+  target_compile_definitions(${BASE_LIB_NAME} PUBLIC
     UNIT_TEST=1
   )
 
-  target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+  target_link_libraries(${BASE_LIB_NAME} PUBLIC
     ${dynamic_annotations_LIB}
   )
 endif(USE_TEST_SUPPORT)
@@ -703,18 +705,18 @@ list(APPEND USED_3DPARTY_LIBS
   ${build_util_LIB}
 )
 
-target_link_libraries(${STATIC_LIB_NAME} PUBLIC
+target_link_libraries(${BASE_LIB_NAME} PUBLIC
   ${USED_3DPARTY_LIBS}
 )
 
-set_property(TARGET ${STATIC_LIB_NAME} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${BASE_LIB_NAME} PROPERTY CXX_STANDARD 17)
 
 # POSITION_INDEPENDENT_CODE for -fPIC
 # -fPIC may be used to link static library into dynamic one
 # Position-independent code requires special support,
 # and therefore works only on certain machines.
 # see https://akkadia.org/drepper/dsohowto.pdf
-set_property(TARGET ${STATIC_LIB_NAME}
+set_property(TARGET ${BASE_LIB_NAME}
   PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 if(TARGET_LINUX)
@@ -754,21 +756,21 @@ endif(NOT ALLOCATOR_TCMALLOC)
 
 if(ENABLE_BASE_TRACING)
   # path to `protobuf/src/google/protobuf/port_def.inc`
-  add_absolute_include_dir(${STATIC_LIB_NAME} PUBLIC "${PERFETTO_BUILDTOOLS_DIR}/protobuf/src")
+  add_absolute_include_dir(${BASE_LIB_NAME} PUBLIC "${PERFETTO_BUILDTOOLS_DIR}/protobuf/src")
 
   # path to perfetto_build_flags.h
-  add_absolute_include_dir(${STATIC_LIB_NAME} PUBLIC "${PERFETTO_GEN_DIR}/build_config")
+  add_absolute_include_dir(${BASE_LIB_NAME} PUBLIC "${PERFETTO_GEN_DIR}/build_config")
 
   # path to protos/perfetto/trace/track_event/track_event.pbzero.h
-  add_absolute_include_dir(${STATIC_LIB_NAME} PUBLIC "${PERFETTO_GEN_DIR}")
+  add_absolute_include_dir(${BASE_LIB_NAME} PUBLIC "${PERFETTO_GEN_DIR}")
 
   # path to perfetto.h
-  add_absolute_include_dir(${STATIC_LIB_NAME} PUBLIC "${PERFETTO_SDK_DIR}")
+  add_absolute_include_dir(${BASE_LIB_NAME} PUBLIC "${PERFETTO_SDK_DIR}")
 endif(ENABLE_BASE_TRACING)
 
-add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "")
-add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "extensions")
-add_relative_include_dir(${STATIC_LIB_NAME} PUBLIC PUBLIC "extensions/third_party/boost_preprocessor/include")
+add_relative_include_dir(${BASE_LIB_NAME} PUBLIC PUBLIC "")
+add_relative_include_dir(${BASE_LIB_NAME} PUBLIC PUBLIC "extensions")
+add_relative_include_dir(${BASE_LIB_NAME} PUBLIC PUBLIC "extensions/third_party/boost_preprocessor/include")
 
 # path to base/threading/thread.h
 
@@ -796,7 +798,7 @@ elseif(TARGET_WINDOWS)
   endif()
 endif()
 
-target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
+target_compile_definitions(${BASE_LIB_NAME} PUBLIC
   ${BASE_DEFINES}
   ${EXTRA_DEFINES}
   ${LIB_SYMBOLIZE_PUBLIC_DEFINES}
@@ -804,7 +806,7 @@ target_compile_definitions(${STATIC_LIB_NAME} PUBLIC
   ${BASE_EXTRA_DEFINITIONS}
 )
 
-target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
+target_compile_definitions(${BASE_LIB_NAME} PRIVATE
   BASE_IMPLEMENTATION=1
   BASE_I18N_IMPLEMENTATION=1
 )
@@ -812,13 +814,13 @@ target_compile_definitions(${STATIC_LIB_NAME} PRIVATE
 if(TARGET_EMSCRIPTEN)
   # use PROPERTY CXX_STANDARD 17
 else()
-  target_compile_features(${STATIC_LIB_NAME}
+  target_compile_features(${BASE_LIB_NAME}
     PUBLIC cxx_auto_type
     PRIVATE cxx_variadic_templates)
 endif()
 
 if(NOT MSVC OR IS_CLANG_CL)
-  target_compile_options(${STATIC_LIB_NAME} PRIVATE
+  target_compile_options(${BASE_LIB_NAME} PRIVATE
     -Wno-c++11-narrowing
     -Wno-c++98-compat
     -Wno-reserved-id-macro
@@ -844,23 +846,23 @@ if(NOT MSVC OR IS_CLANG_CL)
     # is deprecated because it has a user-declared destructor
     -Wno-deprecated-copy-dtor
   )
-  target_compile_options(${STATIC_LIB_NAME} PUBLIC
+  target_compile_options(${BASE_LIB_NAME} PUBLIC
     # fixes base/logging.h:406:65: warning: token pasting of ',' and __VA_ARGS__ is a GNU extension [-Wgnu-zero-variadic-macro-arguments]
     -Wno-gnu-zero-variadic-macro-arguments
   )
 elseif(MSVC)
-  target_compile_options(${STATIC_LIB_NAME} PRIVATE
+  target_compile_options(${BASE_LIB_NAME} PRIVATE
     /EHs-c- # disabling exceptions
   )
 endif()
 
 set(DEBUG_LIBRARY_SUFFIX "-d")
-set_target_properties(${STATIC_LIB_NAME}
+set_target_properties(${BASE_LIB_NAME}
   PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" # TODO: /lib
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" # TODO: /lib
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" # TODO: /bin
-    OUTPUT_NAME "${STATIC_LIB_NAME}$<$<CONFIG:Debug>:${DEBUG_LIBRARY_SUFFIX}>"
+    OUTPUT_NAME "${BASE_LIB_NAME}$<$<CONFIG:Debug>:${DEBUG_LIBRARY_SUFFIX}>"
 )
 
 ## ---------------------------- valgrind -------------------------------- ##
@@ -877,5 +879,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/setup_sanitizers.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Exports.cmake)
 
 if(ENABLE_TESTS)
+  enable_testing()
+  message( "${PROJECT_NAME} testing enabled" )
   add_subdirectory( ${CMAKE_CURRENT_SOURCE_DIR}/tests )
 endif()

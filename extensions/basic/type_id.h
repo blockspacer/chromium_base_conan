@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_TYPE_ID_H_
-#define BASE_TYPE_ID_H_
+#pragma once
 
 #include <stdint.h>
 #include <string>
@@ -173,5 +172,3 @@ class BASE_EXPORT TypeId {
 BASE_EXPORT std::ostream& operator<<(std::ostream& out, const TypeId& type_id);
 
 }  // namespace basic
-
-#endif  // BASE_TYPE_ID_H_

@@ -1001,6 +1001,16 @@ list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED ${COMPONENT_BASE_NUMERICS_UNPROCE
 #    "timer/hi_res_timer_manager_posix.cc"
 #  ]
 
+list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+  "profiler/stack_sampling_profiler_test_util.cc"
+  "profiler/stack_sampling_profiler_test_util.h"
+)
+
+list(APPEND COMPONENT_BASE_SOURCES_UNPROCESSED
+  "task/test_task_traits_extension.cc"
+  "task/test_task_traits_extension.h"
+)
+
 # Filter resulting COMPONENT_BASE_SOURCES_UNPROCESSED...
 
 if (use_clang_profiling)

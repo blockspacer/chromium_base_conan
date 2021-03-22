@@ -270,7 +270,9 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         cmake.verbose = True
 
         if self.options.shared:
-            cmake.definitions["BUILD_SHARED_LIBS"] = "ON"
+            cmake.definitions["BUILD_SHARED_LIBS"] = "ON" if self.options.shared else "OFF"
+
+        cmake.definitions["CMAKE_BUILD_TYPE"] = self.settings.build_type
 
         self.output.info("PERFETTO_SDK_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_SDK_DIR))
         cmake.definitions['PERFETTO_SDK_DIR'] = self.deps_env_info['perfetto'].PERFETTO_SDK_DIR
@@ -290,25 +292,15 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.output.info("PERFETTO_BUILDTOOLS_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_BUILDTOOLS_DIR))
         cmake.definitions['PERFETTO_BUILDTOOLS_DIR'] = self.deps_env_info['perfetto'].PERFETTO_BUILDTOOLS_DIR
 
-        cmake.definitions["ENABLE_VALGRIND"] = 'ON'
-        if not self.options.enable_valgrind:
-            cmake.definitions["ENABLE_VALGRIND"] = 'OFF'
+        cmake.definitions["ENABLE_VALGRIND"] = "ON" if self.options.enable_valgrind else "OFF"
 
-        cmake.definitions["ENABLE_UBSAN"] = 'ON'
-        if not self.options.enable_ubsan:
-            cmake.definitions["ENABLE_UBSAN"] = 'OFF'
+        cmake.definitions["ENABLE_UBSAN"] = "ON" if self.options.enable_ubsan else "OFF"
 
-        cmake.definitions["ENABLE_ASAN"] = 'ON'
-        if not self.options.enable_asan:
-            cmake.definitions["ENABLE_ASAN"] = 'OFF'
+        cmake.definitions["ENABLE_ASAN"] = "ON" if self.options.enable_asan else "OFF"
 
-        cmake.definitions["ENABLE_MSAN"] = 'ON'
-        if not self.options.enable_msan:
-            cmake.definitions["ENABLE_MSAN"] = 'OFF'
+        cmake.definitions["ENABLE_MSAN"] = "ON" if self.options.enable_msan else "OFF"
 
-        cmake.definitions["ENABLE_TSAN"] = 'ON'
-        if not self.options.enable_tsan:
-            cmake.definitions["ENABLE_TSAN"] = 'OFF'
+        cmake.definitions["ENABLE_TSAN"] = "ON" if self.options.enable_tsan else "OFF"
 
         self.add_cmake_option(cmake, "ENABLE_TESTS", self._is_tests_enabled())
 
@@ -358,7 +350,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         if self._is_tests_enabled():
           self.output.info('Running tests')
-          cmake.test()
+          cmake.test(target="chromium_base_run_unittests", output_on_failure=True)
 
     # Importing files copies files from the local store to your project.
     def imports(self):

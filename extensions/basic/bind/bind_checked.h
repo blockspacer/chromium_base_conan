@@ -83,10 +83,9 @@
 //     );
 // DCHECK(RVALUE_CAST(test1).Run("hi", 2) == 4);
 //
-// DCHECK(base::ThreadPool::GetInstance());
+// DCHECK(::base::ThreadPoolInstance::Get());
 // scoped_refptr<::base::SequencedTaskRunner> task_runner =
-//   ::base::ThreadPool::GetInstance()->
-//   CreateSequencedTaskRunnerWithTraits(
+//   ::base::ThreadPool::CreateSequencedTaskRunner(
 //     ::base::TaskTraits{
 //       ::base::TaskPriority::BEST_EFFORT
 //       , ::base::MayBlock()
@@ -96,7 +95,7 @@
 //
 // TmpClass tmpClass;
 // {
-//   ::base::MessageLoop::current().task_runner()->PostTask(
+//   ::base::ThreadTaskRunnerHandle::Get()->PostTask(
 //     FROM_HERE
 //     , ::base::bindCheckedOnce(
 //         DEBUG_BIND_CHECKS(
@@ -141,7 +140,7 @@
 //
 //   repCb.Run(FROM_HERE);
 //
-//   ::base::MessageLoop::current().task_runner()->PostTask(
+//   ::base::ThreadTaskRunnerHandle::Get()->PostTask(
 //     FROM_HERE
 //     , ::base::BindOnce(
 //         repCb
