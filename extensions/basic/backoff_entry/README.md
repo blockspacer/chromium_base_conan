@@ -49,14 +49,14 @@ Jitter adds randomness to the backoff to spread the retries in time.
 To add backoff during login:
 
 ```cpp
-::basis::BackoffEntry login_backoff_;
+::basic::BackoffEntry login_backoff_;
 ```
 
 To configure backoff:
 
 ```cpp
 
-basis::BackoffEntry::Policy kDefaultBackoffPolicy = {
+basic::BackoffEntry::Policy kDefaultBackoffPolicy = {
   // Number of initial errors (in sequence) to ignore before applying
   // exponential back-off rules.
   5,

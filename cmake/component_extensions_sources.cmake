@@ -16,28 +16,60 @@
   "enum_to_int.h"
   "crc32.h"
   "crc32.cc"
+  "cmd_util.h"
+  "cmd_util.cc"
   "compiler_specific.h"
-  "basictypes.h"
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "containers/bounded_inline_vector_impl.h"
-  "containers/bounded_inline_vector.h"
-  "containers/unique_any.h"
-  "containers/unique_any.cc"
-  "containers/any_internal.h"
-  "containers/any_internal.cc"
-  "containers/prioritized_job_dispatcher.h"
-  "containers/prioritized_job_dispatcher.cc"
-  "containers/prioritized_list.h"
-  "containers/prioritized_repeating_task_list.h"
-  "containers/prioritized_repeating_task_list.cc"
-  "containers/seq_num_buffer.h"
+  portability/basictypes.h
+  portability/c_portability.h
+  portability/config.h
+  portability/constexpr.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  test/test_macros.h
+  test/test_random.h
+  test/type_id_test_support_a.h
+  test/type_id_test_support_a.cc
+  test/type_id_test_support_b.h
+  test/type_id_test_support_b.cc
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  state_machine/state_machine.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  containers/bounded_inline_vector_impl.h
+  containers/bounded_inline_vector.h
+  containers/unique_any.h
+  containers/unique_any.cc
+  containers/any_internal.h
+  containers/any_internal.cc
+  containers/prioritized_job_dispatcher.h
+  containers/prioritized_job_dispatcher.cc
+  containers/prioritized_list.h
+  containers/prioritized_repeating_task_list.h
+  containers/prioritized_repeating_task_list.cc
+  containers/seq_num_buffer.h
+  containers/sparse_byte_set.h
+  containers/indexed_mem_pool.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  portability/sysmman.h
+  portability/sysmman.cc
+  portability/unistd.h
+  portability/unistd.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   "decimal/decimal.h"
-  "decimal/decimal_numeric_limits.h"
+  "decimal/decimal.cc"
+  "decimal/fixed_point.h"
+  "decimal/fixed_point_numeric_limits.h"
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -86,13 +118,39 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   memory/wrap_unique_ptr_not_array.h
+  memory/unowned_ptr.h
+  memory/unowned_ref.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "concurrency/lock_free_producer_consumer_queue.h"
-  "concurrency/lock_free_producer_consumer_queue.cc"
-  "concurrency/concurrent_int64.h"
-  "concurrency/concurrent_int64.cc"
+  json/json_serializers.h
+  json/json_serializers.cc
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  multiconfig/multiconfig.h
+  multiconfig/multiconfig.cc
+  multiconfig/option_parser.h
+  multiconfig/option_parser.cc
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  time/backoff_timer.h
+  time/backoff_timer.cc
+  time/delta_timer.h
+  time/delta_timer.cc
+  time/system_time_change_notifier.h
+  time/system_time_change_notifier.cc
+  time/time_macros.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  concurrency/lock_free_producer_consumer_queue.h
+  concurrency/lock_free_producer_consumer_queue.cc
+  concurrency/concurrent_int64.h
+  concurrency/concurrent_int64.cc
+  concurrency/cache_locality.h
+  concurrency/cache_locality.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -166,12 +224,15 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "hash/city_hash.h"
-  "hash/city_hash.cc"
-  "hash/murmurhash.h"
-  "hash/murmurhash.cc"
-  "hash/xxhash.h"
-  "hash/xxhash.cc"
+  hash/city_hash.h
+  hash/city_hash.cc
+  hash/farmhash.h
+  hash/farmhash.cc
+  hash/murmurhash.h
+  hash/murmurhash.cc
+  hash/xxhash.h
+  hash/xxhash.cc
+  hash/twang_hash.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -200,7 +261,17 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "synchronization/spin_wait.h"
+  synchronization/spin_wait.h
+  synchronization/atomic_struct.h
+  synchronization/atomic_utils.h
+  synchronization/futex.h
+  synchronization/futex.cc
+  synchronization/futex_inl.h
+  synchronization/parking_lot.h
+  synchronization/parking_lot.cc
+  #synchronization/flat_combining.h
+  #synchronization/saturating_semaphore.h
+  synchronization/memory_idler.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -211,6 +282,7 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   "strings/string_format.h"
   "strings/string_util.h"
   "strings/string_util.cc"
+  "strings/fixed_string.h"
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -226,6 +298,20 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   "status/statusor.h"
   "status/statusor.cc"
   "status/with_details.h"
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  tracing/local_trace.h
+  tracing/stats_table.h
+  tracing/stats_table.cc
+  tracing/trace_event_util.h
+  tracing/tracing_util.h
+  tracing/tracing_util.cc
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  static_sequence/static_sequence.h
+  static_sequence/static_sequence.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -250,15 +336,24 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  types_bucket/types_bucket.cc
+  types_bucket/types_bucket.h
+  types_bucket/thread_local_types_bucket.cc
+  types_bucket/thread_local_types_bucket.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   bind/callable_hook.cc
-  bind/delay_time_checker.cc
   bind/verify_nothing.h
-  bind/ptr_checker.h
   bind/callable_hook.h
-  bind/delay_time_checker.h
-  bind/call_count_checker.h
-  bind/ref_checker.h
-  bind/dummy_checker.h
+  bind/bind_ptr_checker.h
+  bind/bind_delay_time_checker.cc
+  bind/bind_exec_time_checker.h
+  bind/bind_exec_time_checker.cc
+  bind/bind_delay_time_checker.h
+  bind/bind_call_count_checker.h
+  bind/bind_ref_checker.h
+  bind/bind_dummy_checker.h
   bind/bind_checked.h
   bind/bind_to_task_runner.h
 )
@@ -341,6 +436,8 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   "numerics/math_utils.h"
   "numerics/pack_numbers.h"
   "numerics/uint128.h"
+  "numerics/uint256.h"
+  "numerics/uint256.cc"
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED

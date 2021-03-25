@@ -8,7 +8,7 @@
 // file.)
 
 // Related files that contain macros:
-// cobalt/base/basictypes.h
+// basictypes.h
 // base/logging.h
 // base/compiler_specific.h
 
@@ -1830,3 +1830,50 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 // Lazily-initialized boolean value.
 // Similar to BOOST_TRIBOOL.
 enum TriBool { kNotSet = -1, kFalse = 0, kTrue = 1 };
+
+#define BASIC_REQUIRES_IMPL(...)                                            \
+  bool BASIC_EXPECTED_ID(Requires) = false,                                 \
+       typename std::enable_if<                                             \
+           (BASIC_EXPECTED_ID(Requires) || static_cast<bool>(__VA_ARGS__)), \
+           int>::type = 0
+
+// USAGE
+//
+// template <
+//     class V,
+//     class E BASIC_REQUIRES_TRAILING(
+//         !std::is_same<Expected<V, E>, Expected>::value &&
+//         std::is_constructible<Value, V&&>::value &&
+//         std::is_constructible<Error, E&&>::value)>
+// Expected(Expected<V, E> that) : Base{expected_detail::EmptyTag{}} {
+//   this->assign(std::move(that));
+// }
+//
+#define BASIC_REQUIRES_TRAILING(...) , BASIC_REQUIRES_IMPL(__VA_ARGS__)
+
+// USAGE
+//
+// template <bool... Bs>
+// struct Bools {
+//   using valid_type = bool;
+//   static constexpr std::size_t size() { return sizeof...(Bs); }
+// };
+//
+// // Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
+// template <class... Ts>
+// struct StrictConjunction
+//     : std::is_same<Bools<Ts::value...>, Bools<(Ts::value || true)...>> {};
+//
+// template <class T>
+// using IsMovable = StrictConjunction<
+//     std::is_move_constructible<T>,
+//     std::is_move_assignable<T>>;
+//
+// BASIC_REQUIRES(expected_detail::IsMovable<Error>::value)
+// Expected& operator=(Unexpected<Error>&& err) noexcept(
+//     expected_detail::IsNothrowMovable<Error>::value) {
+//   this->assignError(std::move(err.error()));
+//   return *this;
+// }
+//
+#define BASIC_REQUIRES(...) template <BASIC_REQUIRES_IMPL(__VA_ARGS__)>

@@ -1,196 +1,205 @@
-/*!
-    \file uint256.cpp
-    \brief Unsigned 256-bit integer type implementation
-    \author Ivan Shynkarenka
-    \date 11.10.2017
-    \copyright MIT License
-*/
+/*
+ * Copyright 2018 Google LLC.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include "common/uint256.h"
+#include "basic/numerics/uint256.h"
 
-namespace CppCommon {
+#include <base/logging.h>
 
-uint256_t operator*(const uint256_t& value1, const uint256_t& value2) noexcept
-{
-    // Split values into four 32-bit parts
-    uint128_t top[4] = { value1.upper().upper(), value1.upper().lower(), value1.lower().upper(), value1.lower().lower() };
-    uint128_t bottom[4] = { value2.upper().upper(), value2.upper().lower(), value2.lower().upper(), value2.lower().lower() };
-    uint128_t products[4][4];
+#include "absl/numeric/int128.h"
 
-    // Multiply each component of the values
-    for (int y = 3; y > -1; --y)
-        for (int x = 3; x > -1; --x)
-            products[3 - x][y] = top[x] * bottom[y];
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 
-    // First row
-    uint128_t fourth64 = uint128_t(products[0][3].lower());
-    uint128_t third64  = uint128_t(products[0][2].lower()) + uint128_t(products[0][3].upper());
-    uint128_t second64 = uint128_t(products[0][1].lower()) + uint128_t(products[0][2].upper());
-    uint128_t first64  = uint128_t(products[0][0].lower()) + uint128_t(products[0][1].upper());
+namespace basic {
 
-    // Second row
-    third64  += uint128_t(products[1][3].lower());
-    second64 += uint128_t(products[1][2].lower()) + uint128_t(products[1][3].upper());
-    first64  += uint128_t(products[1][1].lower()) + uint128_t(products[1][2].upper());
+// Returns the 0-based position of the last set bit (i.e., most significant bit)
+// in the given std::uint64_t. The argument may not be 0.
+//
+// For example:
+//   Given: 5 (decimal) == 101 (binary)
+//   Returns: 2
+#define STEP(T, n, pos, sh)                   \
+  do {                                        \
+    if ((n) >= (static_cast<T>(1) << (sh))) { \
+      (n) = (n) >> (sh);                      \
+      (pos) |= (sh);                          \
+    }                                         \
+  } while (0)
+static inline int Fls64(std::uint64_t n) {
+  //DCHECK_NE(0, n);
+  int pos = 0;
+  STEP(std::uint64_t, n, pos, 0x20);
+  std::uint32_t n32 = n;
+  STEP(std::uint32_t, n32, pos, 0x10);
+  STEP(std::uint32_t, n32, pos, 0x08);
+  STEP(std::uint32_t, n32, pos, 0x04);
+  return pos + ((static_cast<std::uint64_t>(0x3333333322221100) >> (n32 << 2)) & 0x3);
+}
+#undef STEP
 
-    // Third row
-    second64 += uint128_t(products[2][3].lower());
-    first64  += uint128_t(products[2][2].lower()) + uint128_t(products[2][3].upper());
-
-    // Fourth row
-    first64  += uint128_t(products[3][3].lower());
-
-    // Combines the values, taking care of carry over
-    return uint256_t(first64 << 64, 0) + uint256_t(third64.upper(), third64 << 64) + uint256_t(second64, 0) + uint256_t(fourth64);
+// Like Fls64() above, but returns the 0-based position of the last set bit
+// (i.e., most significant bit) in the given uint128. The argument may not be 0.
+static inline int Fls128(absl::uint128 n) {
+  if (std::uint64_t hi = absl::Uint128High64(n)) {
+    return Fls64(hi) + 64;
+  }
+  return Fls64(absl::Uint128Low64(n));
 }
 
-uint256_t operator<<(const uint256_t& value1, const uint256_t& value2) noexcept
-{
-    const uint128_t shift = value2._lower;
-
-    if (((bool)value2._upper) || (shift >= 256))
-        return 0;
-    else if (shift == 128)
-        return uint256_t(value1._lower, 0);
-    else if (shift == 0)
-        return value1;
-    else if (shift < 128)
-        return uint256_t((value1._upper << shift) + (value1._lower >> (128 - shift)), value1._lower << shift);
-    else if ((256 > shift) && (shift > 128))
-        return uint256_t(value1._lower << (shift - 128), 0);
-    else
-        return 0;
+// Like Fls128() above, but returns the 0-based position of the last set bit
+// (i.e., most significant bit) in the given uint256. The argument may not be 0.
+static inline int Fls256(uint256 n) {
+  absl::uint128 hi = Uint256High128(n);
+  if (hi != 0) {
+    return Fls128(hi) + 128;
+  }
+  return Fls128(Uint256Low128(n));
 }
 
-uint256_t operator>>(const uint256_t& value1, const uint256_t& value2) noexcept
-{
-    const uint128_t shift = value2._lower;
+// Long division/modulo for uint256 implemented using the shift-subtract
+// division algorithm adapted from:
+// http://stackoverflow.com/questions/5386377/division-without-using
+void uint256::DivModImpl(uint256 dividend, uint256 divisor,
+                         uint256* quotient_ret, uint256* remainder_ret) {
+  if (divisor == static_cast<uint256>(0)) {
+    LOG(FATAL) << "Division or mod by zero: dividend.hi=" << dividend.hi_
+               << ", lo=" << dividend.lo_;
+  }
 
-    if (((bool)value2._upper) || (shift >= 256))
-        return 0;
-    else if (shift == 128)
-        return uint256_t(value1._upper);
-    else if (shift == 0)
-        return value1;
-    else if (shift < 128)
-        return uint256_t(value1._upper >> shift, (value1._upper << (128 - shift)) + (value1._lower >> shift));
-    else if ((256 > shift) && (shift > 128))
-        return uint256_t(value1._upper >> (shift - 128));
-    else
-        return 0;
-}
+  if (divisor > dividend) {
+    *quotient_ret = 0;
+    *remainder_ret = dividend;
+    return;
+  }
 
-size_t uint256_t::bits() const noexcept
-{
-    size_t result = 0;
+  if (divisor == dividend) {
+    *quotient_ret = 1;
+    *remainder_ret = 0;
+    return;
+  }
 
-    if (_upper)
-    {
-        result = 128;
-        uint128_t upper = _upper;
-        while (upper)
-        {
-            upper >>= 1;
-            ++result;
-        }
+  uint256 denominator = divisor;
+  uint256 quotient = 0;
+
+  // Left aligns the MSB of the denominator and the dividend.
+  const int shift = Fls256(dividend) - Fls256(denominator);
+  denominator <<= shift;
+
+  // Uses shift-subtract algorithm to divide dividend by denominator. The
+  // remainder will be left in dividend.
+  for (int i = 0; i <= shift; ++i) {
+    quotient <<= 1;
+    if (dividend >= denominator) {
+      dividend -= denominator;
+      quotient |= 1;
     }
-    else
-    {
-        uint128_t lower = _lower;
-        while (lower)
-        {
-            lower >>= 1;
-            ++result;
-        }
-    }
+    denominator >>= 1;
+  }
 
-    return result;
+  *quotient_ret = quotient;
+  *remainder_ret = dividend;
 }
 
-std::string uint256_t::string(size_t base, size_t length) const
-{
-    if ((base < 2) || (base > 16))
-        throw std::invalid_argument("Base must be in the range [2, 16]");
-
-    std::string out;
-
-    if (!(*this))
-        out = "0";
-    else
-    {
-        std::pair<uint256_t, uint256_t> qr(*this, 0);
-        do
-        {
-            qr = uint256_t::divmod(qr.first, uint256_t(base));
-            out = "0123456789abcdef"[(uint8_t)qr.second] + out;
-        } while (qr.first != 0);
-    }
-
-    if (out.size() < length)
-        out = std::string(length - out.size(), '0') + out;
-
-    return out;
+uint256& uint256::operator/=(const uint256& divisor) {
+  uint256 quotient = 0;
+  uint256 remainder = 0;
+  DivModImpl(*this, divisor, &quotient, &remainder);
+  *this = quotient;
+  return *this;
+}
+uint256& uint256::operator%=(const uint256& divisor) {
+  uint256 quotient = 0;
+  uint256 remainder = 0;
+  DivModImpl(*this, divisor, &quotient, &remainder);
+  *this = remainder;
+  return *this;
 }
 
-std::wstring uint256_t::wstring(size_t base, size_t length) const
-{
-    if ((base < 2) || (base > 16))
-        throw std::invalid_argument("Base must be in the range [2, 16]");
+std::ostream& operator<<(std::ostream& o, const uint256& b) {
+  std::ios_base::fmtflags flags = o.flags();
 
-    std::wstring out;
+  // Select a divisor which is the largest power of the base < 2^64.
+  uint256 div;
+  std::streamsize div_base_log;
+  switch (flags & std::ios::basefield) {
+    case std::ios::hex:
+      div = static_cast<std::uint64_t>(0x1000000000000000);  // 16^15
+      div_base_log = 15;
+      break;
+    case std::ios::oct:
+      div = static_cast<std::uint64_t>(01000000000000000000000);  // 8^21
+      div_base_log = 21;
+      break;
+    default:                                               // std::ios::dec
+      div = static_cast<std::uint64_t>(10000000000000000000ull);  // 10^19
+      div_base_log = 19;
+      break;
+  }
 
-    if (!(*this))
-        out = L"0";
-    else
-    {
-        std::pair<uint256_t, uint256_t> qr(*this, 0);
-        do
-        {
-            qr = uint256_t::divmod(qr.first, uint256_t(base));
-            out = L"0123456789abcdef"[(uint8_t)qr.second] + out;
-        } while (qr.first != 0);
+  // Now piece together the uint256 representation from five chunks of
+  // the original value, each less than "div" and therefore representable
+  // as a std::uint64_t.
+  std::ostringstream os;
+  std::ios_base::fmtflags copy_mask =
+      std::ios::basefield | std::ios::showbase | std::ios::uppercase;
+  os.setf(flags & copy_mask, copy_mask);
+  uint256 high = b;
+  uint256 low;
+  uint256::DivModImpl(high, div, &high, &low);
+  uint256 mid_low;
+  uint256::DivModImpl(high, div, &high, &mid_low);
+  uint256 mid_mid;
+  uint256::DivModImpl(high, div, &high, &mid_mid);
+  uint256 mid_high;
+  uint256::DivModImpl(high, div, &high, &mid_high);
+  bool print = high.lo_ != 0;
+  if (print) {
+    os << high.lo_;
+    os << std::noshowbase << std::setfill('0') << std::setw(div_base_log);
+  }
+  print |= mid_high.lo_ != 0;
+  if (print) {
+    os << mid_high.lo_;
+    os << std::noshowbase << std::setfill('0') << std::setw(div_base_log);
+  }
+  print |= mid_mid.lo_ != 0;
+  if (print) {
+    os << mid_mid.lo_;
+    os << std::noshowbase << std::setfill('0') << std::setw(div_base_log);
+  }
+  print |= mid_low.lo_ != 0;
+  if (print) {
+    os << mid_low.lo_;
+    os << std::noshowbase << std::setfill('0') << std::setw(div_base_log);
+  }
+  os << low.lo_;
+  std::string rep = os.str();
+
+  // Add the requisite padding.
+  std::streamsize width = o.width(0);
+  if (width > rep.size()) {
+    if ((flags & std::ios::adjustfield) == std::ios::left) {
+      rep.append(width - rep.size(), o.fill());
+    } else {
+      rep.insert(0, width - rep.size(), o.fill());
     }
+  }
 
-    if (out.size() < length)
-        out = std::wstring(length - out.size(), L'0') + out;
-
-    return out;
+  // Stream the final representation in a single "<<" call.
+  return o << rep;
 }
 
-std::pair<uint256_t, uint256_t> uint256_t::divmod(const uint256_t& x, const uint256_t& y)
-{
-    if (y == 0)
-        throw std::domain_error("Division by 0");
-    else if (y == 1)
-        return std::pair<uint256_t, uint256_t>(x, 0);
-    else if (x == y)
-        return std::pair<uint256_t, uint256_t>(1, 0);
-    else if ((x == 0) || (x < y))
-        return std::pair<uint256_t, uint256_t>(0, x);
-
-    std::pair<uint256_t, uint256_t> result(0, x);
-    uint256_t delta = uint256_t(x.bits() - y.bits());
-    uint256_t copyd = y << delta;
-    uint256_t adder = 1 << delta;
-
-    if (copyd > result.second)
-    {
-        copyd >>= 1;
-        adder >>= 1;
-    }
-
-    while (result.second >= y)
-    {
-        if (result.second >= copyd)
-        {
-            result.second -= copyd;
-            result.first |= adder;
-        }
-        copyd >>= 1;
-        adder >>= 1;
-    }
-
-    return result;
-}
-
-} // namespace CppCommon
+}  // namespace basic

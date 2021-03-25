@@ -15,20 +15,20 @@ METRIC_DEFINE_entity(test_entity);
 
 METRIC_DEFINE_counter(test_entity, http_requests_created,
                       "Number of created http requests.",
-                      basis::MetricUnit::kConnections,
+                      basic::MetricUnit::kConnections,
                       "Number of created http requests.");
 
 METRIC_DEFINE_histogram_with_percentiles(test_entity, http_request_processing_duration,
                         "Histogram for http request processing durations",
-                        basis::MetricUnit::kMilliseconds,
+                        basic::MetricUnit::kMilliseconds,
                         "Histogram for http request processing durations",
                         1000000, 3);
 
 class http_worker
 {
   // ...
-  scoped_refptr<basis::Counter> connections_created_ = METRIC_http_requests_created.Instantiate(entity_);
-  scoped_refptr<basis::Histogram> processing_duration_hist_ = METRIC_http_request_processing_duration.Instantiate(entity_);
+  scoped_refptr<basic::Counter> connections_created_ = METRIC_http_requests_created.Instantiate(entity_);
+  scoped_refptr<basic::Histogram> processing_duration_hist_ = METRIC_http_request_processing_duration.Instantiate(entity_);
   // ...
   void read_request()
   {
@@ -45,7 +45,7 @@ class http_worker
   }
 };
 
-NOTE: In production use `SCOPED_LATENCY_METRIC(processing_duration_hist_, basis::Auto::kTrue);` to measure execution time.
+NOTE: In production use `SCOPED_LATENCY_METRIC(processing_duration_hist_, basic::Auto::kTrue);` to measure execution time.
 
 See code in `metrics_demotest.cc`
 
@@ -159,13 +159,13 @@ Click “Add” to test the connection and to save the new data source.
 
 See `Grafana Dashboards from Basic to Advanced` https://www.metricfire.com/blog/grafana-dashboards-from-basic-to-advanced/
 
-Build basis tests and run test for metrics http server:
+Build basic tests and run test for metrics http server:
 
-# Change `$HOME/basis` and `$HOME/chromium_base_conan` directory paths below
-cd ~/basis
+# Change `$HOME/basic` and `$HOME/chromium_base_conan` directory paths below
+cd ~/basic
 dir ~/chromium_base_conan
 gdb -ex r -ex bt -ex q --args \
- $HOME/basis/build/Debug/tests/basis-tests/basis-metrics_demotest \
+ $HOME/basic/build/Debug/tests/basic-tests/basic-metrics_demotest \
   --single-process-tests \
   --test-data-dir=$HOME/chromium_base_conan/tests/data/
 
@@ -255,7 +255,7 @@ To spot sources of performance degradation you can create metrics:
 * Latencies
 * Error rates
 
-For latencies metrics use `SCOPED_LATENCY_METRIC(hist_name_, basis::Auto::kTrue);`
+For latencies metrics use `SCOPED_LATENCY_METRIC(hist_name_, basic::Auto::kTrue);`
 
 ## WRITING CLIENT LIBRARIES
 

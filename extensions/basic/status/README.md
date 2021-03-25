@@ -338,7 +338,7 @@ Example:
   if (!initialized_) {
     return MAKE_ERROR(ERR_NOT_INITIALIZED) << "Not initialized!";
   }
-  const int* unit = gtl::FindOrNull(node_id_to_unit_, node_id);
+  const int* unit = FindOrNull(node_id_to_unit_, node_id);
   CHECK_RETURN_IF_FALSE(unit != nullptr)
       << "Node " << node_id << " is not configured or not known.";
 

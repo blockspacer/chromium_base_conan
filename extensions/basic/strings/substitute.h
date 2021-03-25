@@ -20,7 +20,6 @@ class Location;
 
 } // namespace base
 
-
 namespace basic {
 
 /// \note Argument format starts from $1

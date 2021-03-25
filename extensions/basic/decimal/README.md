@@ -49,6 +49,7 @@ Inspired by:
 * https://en.wikipedia.org/wiki/Decimal_floating_point
 * https://www.crockford.com/dec64.html
 * https://github.com/GaryHughes/stddecimal
+* https://kkimdev.github.io/posts/2018/06/15/IEEE-754-Floating-Point-Type-in-C++.html
 
 ## Do not have false sense of security with decimal
 
@@ -63,7 +64,7 @@ Decimal floating points cannot represent the result of all operations exactly.
 For example, the result of a division with a prime other than 2 and 5 will,
 in general, be rounded.
 
-If you want to avoid rounding errors - use approach similar to `basis/strong_types/money`.
+If you want to avoid rounding errors - use approach similar to `basic/strong_types/money`.
 
 ## Problems of Floating Points (binary floating-point)
 
@@ -112,13 +113,30 @@ when converting between the two. Let's look at a few concrete examples.
   which if using round to even rounds to $0.00. However, in floating-point numbers,
   it is above the halfway point (0.00500000000000000097), so it rounds up.
 
-## decimal32
+## Decimal from `decimal.h`
+
+See https://en.wikipedia.org/wiki/Decimal64_floating-point_format
+
+```cpp
+constexpr int kExponentMax = 1023;
+constexpr int kExponentMin = -1023;
+constexpr int kPrecision = 18;
+
+constexpr uint64_t kMaxCoefficient =
+    UINT64_C(0xDE0B6B3A763FFFF);  // 999999999999999999 == 18 9's
+```
+
+## decimal32 from `fixed_point.h`
+
+See https://en.wikipedia.org/wiki/Decimal32_floating-point_format
 
 decimal32 can precisely represent decimal fractions with 7 decimal places (decimal digits of precision)
 
-See `decimal_numeric_limits.hpp`
+See `fixed_point_numeric_limits.h`
 
-## decimal64
+## decimal64 from `fixed_point.h`
+
+See https://en.wikipedia.org/wiki/Decimal64_floating-point_format
 
 decimal64 can precisely represent decimal fractions with 16 decimal places (decimal digits of precision),
 which makes it very well suited to all applications that are concerned with money.
@@ -129,20 +147,27 @@ or as measly as 1.0E-127, which makes it well suited to most scientific applicat
 decimal64 represents numbers as 64 bit values composed of 2 two’s complement components:
 a 56 bit coefficient and an 8 bit exponent.
 
-See `decimal_numeric_limits.hpp`
+See `fixed_point_numeric_limits.h`
 
-## decimal128
+## decimal128 from `fixed_point.h`
+
+See https://en.wikipedia.org/wiki/Decimal128_floating-point_format
 
 decimal128 can precisely represent decimal fractions with 34 decimal places (decimal digits of precision)
 
-See `decimal_numeric_limits.hpp`
+See `fixed_point_numeric_limits.h`
 
-## BigDecimal
+## BigDecimal from `fixed_point.h`
 
 Do not forget to configure BigDecimal.
 
+```cpp
+using decimal32 = BigDecimal<int32_t>;
+using decimal64 = BigDecimal<int64_t>;
+```
+
 Defaults may be precision of 10 and a scale of 0,
-i.e. 15.37 will be stored as 15!
+i.e. 15.37 will be stored as 15 due to scale of 0!
 
 ## Language-independent testcases for General Decimal Arithmetic
 
@@ -150,6 +175,6 @@ See http://speleotrove.com/decimal/dectest.html
 
 # See also
 
-* `base/numerics/double_summation.h`
-* `base/numerics/floating_point_comparison.h`
+* `basic/numerics/double_summation.h`
+* `basic/numerics/floating_point_comparison.h`
 * banker's rounding stackoverflow.com/questions/45223778/is-bankers-rounding-really-more-numerically-stable

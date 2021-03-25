@@ -3,6 +3,7 @@
 #include "basic/bind/verify_nothing.h"
 #include <basic/core/bitmask.h>
 #include <basic/macros.h>
+#include <basic/logging.h>
 
 #include <base/macros.h>
 #include <base/sequence_checker.h>
@@ -967,7 +968,7 @@ class SCOPED_LOCKABLE
 //
 // USAGE
 //
-//  ::basis::AnnotatedStrand<ExecutorType> perConnectionStrand_
+//  ::basic::AnnotatedStrand<ExecutorType> perConnectionStrand_
 //    GUARD_MEMBER_WITH_CHECK(
 //      perConnectionStrand_
 //      // 1. It safe to read value from any thread
@@ -1147,6 +1148,33 @@ class SCOPED_LOCKABLE
 #define DCHECK_NOT_THREAD_BOUND_METHOD(Name) \
   DCHECK_THREAD_GUARD_SCOPE_ENTER(FUNC_GUARD(Name))
 
+#if !BUILDFLAG(FROM_HERE_USES_LOCATION_BUILTINS)
+
+#if !BUILDFLAG(ENABLE_LOCATION_SOURCE)
+  #define FILE_LOC_HERE() \
+    ::base::Location::CreateFromHere(__FILE__)
+#else
+#define FILE_LOC_HERE() \
+  ::base::Location::CreateFromHere("", __FILE__, 0)
+#endif
+
+#elif (SUPPORTS_LOCATION_BUILTINS && BUILDFLAG(ENABLE_LOCATION_SOURCE))
+
+#define FILE_LOC_HERE() \
+  ::base::Location::Current("", __FILE__, 0)
+
+#elif SUPPORTS_LOCATION_BUILTINS
+
+#define FILE_LOC_HERE() \
+  ::base::Location::Current(__FILE__)
+
+#else
+
+#define FILE_LOC_HERE() \
+  ::base::Location::Current()
+
+#endif
+
 // Will check if pointer is valid on scope exit.
 // Can be used with safety annotations (GUARDED_BY).
 //
@@ -1173,7 +1201,7 @@ class SCOPED_LOCKABLE
     , ::basic::FakeLockCheckExitScope \
   > \
     CGEN_UNIQUE_NAME(auto_lock_ptr_lifetime_checker_)  \
-      { UNOWNED_PTR_LIFETIME_GUARD(Name), ::base::Location::CreateFromHere(__FILE__) }
+      { UNOWNED_PTR_LIFETIME_GUARD(Name), FILE_LOC_HERE() }
 
 // Will check if reference is valid on scope exit.
 // Can be used with safety annotations (GUARDED_BY).
@@ -1200,7 +1228,7 @@ class SCOPED_LOCKABLE
     , ::basic::FakeLockCheckExitScope \
   > \
     CGEN_UNIQUE_NAME(auto_lock_ref_lifetime_checker_) \
-     { UNOWNED_REF_LIFETIME_GUARD(Name), ::base::Location::CreateFromHere(__FILE__) }
+     { UNOWNED_REF_LIFETIME_GUARD(Name), FILE_LOC_HERE() }
 
 #define DCHECK_UNOWNED_REF_LIFETIME_GUARD(Name) \
   ::basic::ScopedFakeLockWithLifetimeCheck<\

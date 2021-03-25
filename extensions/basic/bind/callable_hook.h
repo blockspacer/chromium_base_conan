@@ -19,7 +19,8 @@
 
 namespace basic {
 
-/// \note Prefer `basic/plug_point` instead.
+/// \note `CallableHook` is `map<string, callback>`.
+/// Prefer `basic/plug_point` instead.
 //
 // The `CallableHook` mechanism allows for the creation of
 // "weak-symbol-like" functions  which can have

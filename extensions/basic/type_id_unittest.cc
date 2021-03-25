@@ -6,8 +6,8 @@
 
 #include <memory>
 
-#include "base/test/type_id_test_support_a.h"
-#include "base/test/type_id_test_support_b.h"
+#include "basic/test/type_id_test_support_a.h"
+#include "basic/test/type_id_test_support_b.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 

@@ -1,6 +1,5 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
-#include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <iostream>

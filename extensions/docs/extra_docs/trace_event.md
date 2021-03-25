@@ -85,10 +85,10 @@ First, include some files from `base/trace_event`:
 #include <base/trace_event/memory_dump_manager.h>
 #include <base/trace_event/heap_profiler.h>
 #include <base/trace_event/heap_profiler_allocation_context_tracker.h>
-#include <base/trace_event/heap_profiler_event_filter.h>#include <base/trace_event/malloc_dump_provider.h>
+#include <base/trace_event/heap_profiler_event_filter.h>
+#include <base/trace_event/malloc_dump_provider.h>
 #include <base/trace_event/memory_dump_provider.h>
 #include <base/trace_event/memory_dump_scheduler.h>
-#include <base/trace_event/memory_infra_background_whitelist.h>
 #include <base/trace_event/process_memory_dump.h>
 ```
 

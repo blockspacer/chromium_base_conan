@@ -1,7 +1,6 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
-#include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <iostream>

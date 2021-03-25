@@ -15,7 +15,7 @@
 // https://software.intel.com/en-us/articles/benefitting-power-and-performance-sleep-loops
 
 #if defined(OS_EMSCRIPTEN)
-#define YIELD_PROCESSOR NOTIMPLEMENTED();
+#define YIELD_PROCESSOR NOTIMPLEMENTED()
 #elif defined(ARCH_CPU_X86_64) || defined(ARCH_CPU_X86)
 #define YIELD_PROCESSOR __asm__ __volatile__("pause")
 #elif (defined(ARCH_CPU_ARMEL) && __ARM_ARCH >= 6) || defined(ARCH_CPU_ARM64)

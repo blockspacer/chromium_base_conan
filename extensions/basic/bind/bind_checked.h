@@ -38,12 +38,12 @@
 // EXAMPLE
 //
 // #include <basic/bind/bind_checked.h>
-// #include <basic/bind/dummy_checker.h>
-// #include <basic/bind/ptr_checker.h>
-// #include <basic/bind/ref_checker.h>
-// #include <basic/bind/call_count_checker.h>
-// #include <basic/bind/delay_time_checker.h>
-// #include <basic/bind/exec_time_checker.h>
+// #include <basic/bind/bind_dummy_checker.h>
+// #include <basic/bind/bind_ptr_checker.h>
+// #include <basic/bind/bind_ref_checker.h>
+// #include <basic/bind/bind_call_count_checker.h>
+// #include <basic/bind/bind_delay_time_checker.h>
+// #include <basic/bind/bind_exec_time_checker.h>
 //
 // class TmpClass
 // {

@@ -8,7 +8,6 @@
 
 namespace base {
 
-
 // Check that callback will be executed with delay <= `base::TimeDelta`.
 // Check of delay time will be performed on each call.
 //
@@ -39,7 +38,7 @@ namespace base {
 //
 //   ::base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(2));
 //
-//   repCb.Run(FROM_HERE); // delay check fail, elapsed 4 sec totally
+//   repCb.Run(FROM_HERE); // delay check fail, elapsed 4 sec
 // }
 #define DELAY_TIME_LIMIT_CHECKER(PARAM) \
   ::base::bindDelayTimeChecker(FROM_HERE, PARAM)

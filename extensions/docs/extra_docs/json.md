@@ -15,7 +15,7 @@ std::unique_ptr<base::DictionaryValue> ParseJSONDict(const std::string& data) {
 ```
 
 ```cpp
-basis::StatusOr<base::Value> parseJSONData(
+basic::StatusOr<base::Value> parseJSONData(
   const std::string& json_data)
 {
   // This could be really slow.

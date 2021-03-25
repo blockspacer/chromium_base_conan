@@ -44,7 +44,7 @@ bool read_str_naive(std::istream& in, std::string& out)
 }
 
 // does not have these problems
-bool read_str_better(std::istream& in, base::output_parameter<std::string> out)
+bool read_str_better(std::istream& in, basic::output_parameter<std::string> out)
 {
   std::string result; // no way to access the string directly
   // so need to create new one
@@ -76,8 +76,8 @@ TEST(OutputParameterTest, Simple) {
   {
     std::istringstream in("hello world");
     std::string        str;
-    // use base::out() to create an output_parameter easily
-    bool res = read_str_better(in, base::out(str));
+    // use basic::out() to create an output_parameter easily
+    bool res = read_str_better(in, basic::out(str));
     EXPECT_TRUE(res);
     EXPECT_EQ(str, "helloworld");
   }
@@ -85,14 +85,14 @@ TEST(OutputParameterTest, Simple) {
   // what if std::string had no default constructor?
   {
     // use this one:
-    // base::deferred_construction<T> - create an object without initializing it yet
-    base::deferred_construction<std::string> str;
+    // basic::deferred_construction<T> - create an object without initializing it yet
+    basic::deferred_construction<std::string> str;
     // str is not initialized yet,
     // so it does not require a constructor
     // once you give it a value, it will never be empty again
 
     std::istringstream in("hello world");
-    bool               res = read_str_better(in, base::out(str));
+    bool               res = read_str_better(in, basic::out(str));
     // if the function assigned a value to the output parameter,
     // it will call the constructor and directly initializes it with the correct value
     EXPECT_TRUE(res);

@@ -1,358 +1,497 @@
-/*!
-    \file uint256.h
-    \brief Unsigned 256-bit integer type definition
-    \author Ivan Shynkarenka
-    \date 11.10.2017
-    \copyright MIT License
-*/
+/*
+ * Copyright 2018 Google LLC.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#ifndef CPPCOMMON_UINT256_H
-#define CPPCOMMON_UINT256_H
+#pragma once
 
-#include "uint128.h"
+#include "absl/numeric/int128.h"
 
-namespace CppCommon {
+#include <cstdint>
 
-//! Unsigned 256-bit integer type
-/*!
-    Represents unsigned 256-bit integer type and provides basic arithmetic operations.
-*/
-class uint256_t
-{
-public:
-    uint256_t() noexcept;
-    uint256_t(int8_t value) noexcept;
-    uint256_t(uint8_t value) noexcept;
-    uint256_t(int16_t value) noexcept;
-    uint256_t(uint16_t value) noexcept;
-    uint256_t(int32_t value) noexcept;
-    uint256_t(uint32_t value) noexcept;
-    uint256_t(int64_t value) noexcept;
-    uint256_t(uint64_t value) noexcept;
-    uint256_t(uint128_t value) noexcept;
-    template <typename T>
-    explicit uint256_t(const T& value) noexcept;
-    template <typename TUpper, typename TLower>
-    uint256_t(const TUpper& upper, const TLower& lower) noexcept;
-    template <typename TUpperUpper, typename TUpperLower, typename TLowerUpper, typename TLowerLower>
-    uint256_t(const TUpperUpper& upper_upper, const TUpperLower& upper_lower, const TLowerUpper& lower_upper, const TLowerLower& lower_lower) noexcept;
-    uint256_t(const uint256_t&) noexcept = default;
-    uint256_t(uint256_t&&) noexcept = default;
-    ~uint256_t() noexcept = default;
+namespace basic {
 
-    template <typename T>
-    uint256_t& operator=(const T& value) noexcept;
-    uint256_t& operator=(const uint256_t&) noexcept = default;
-    uint256_t& operator=(uint256_t&&) noexcept = default;
+struct uint256_pod;
 
-    // Arithmetic operators
-    uint256_t operator+() const noexcept { return *this; }
-    uint256_t operator-() const noexcept { return ~*this + 1; }
+// An unsigned 256-bit integer type. Thread-compatible.
+class uint256 {
+ public:
+  constexpr uint256();
+  constexpr uint256(absl::uint128 top, absl::uint128 bottom);
 
-    uint256_t& operator++() noexcept { return *this += 1; }
-    uint256_t operator++(int) noexcept { uint256_t temp(*this); ++*this; return temp; }
-    uint256_t& operator--() noexcept { return *this -= 1; }
-    uint256_t operator--(int) noexcept { uint256_t temp(*this); --*this; return temp; }
+  // Implicit type conversion is allowed so these behave like familiar int types
+#ifndef SWIG
+  constexpr uint256(int bottom);
+  constexpr uint256(std::uint32_t bottom);
+#endif
+  constexpr uint256(std::uint8_t bottom);
+  constexpr uint256(unsigned long bottom);
+  constexpr uint256(unsigned long long bottom);
+  constexpr uint256(absl::uint128 bottom);
+  constexpr uint256(const uint256_pod &val);
 
-    uint256_t& operator+=(const uint256_t& value) noexcept { return *this = *this + value; }
-    uint256_t& operator-=(const uint256_t& value) noexcept { return *this = *this - value; }
-    uint256_t& operator*=(const uint256_t& value) noexcept { return *this = *this * value; }
-    uint256_t& operator/=(const uint256_t& value) { return *this = *this / value; }
-    uint256_t& operator%=(const uint256_t& value) { return *this = *this % value; }
+  // Conversion operators to other arithmetic types
+  constexpr explicit operator bool() const;
+  constexpr explicit operator char() const;
+  constexpr explicit operator signed char() const;
+  constexpr explicit operator unsigned char() const;
+  constexpr explicit operator char16_t() const;
+  constexpr explicit operator char32_t() const;
+  constexpr explicit operator short() const;
 
-    template <typename T>
-    uint256_t& operator+=(const T& value) noexcept { return *this = *this + uint256_t(value); }
-    template <typename T>
-    uint256_t& operator-=(const T& value) noexcept { return *this = *this - uint256_t(value); }
-    template <typename T>
-    uint256_t& operator*=(const T& value) noexcept { return *this = *this * uint256_t(value); }
-    template <typename T>
-    uint256_t& operator/=(const T& value) { return *this = *this / uint256_t(value); }
-    template <typename T>
-    uint256_t& operator%=(const T& value) { return *this = *this % uint256_t(value); }
+  constexpr explicit operator unsigned short() const;
+  constexpr explicit operator int() const;
+  constexpr explicit operator unsigned int() const;
+  constexpr explicit operator long() const;
 
-    friend uint128_t& operator+=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) + value2).lower(); }
-    friend uint128_t& operator-=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) - value2).lower(); }
-    friend uint128_t& operator*=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) * value2).lower(); }
-    friend uint128_t& operator/=(uint128_t& value1, const uint256_t& value2) { return value1 = (uint256_t(value1) / value2).lower(); }
-    friend uint128_t& operator%=(uint128_t& value1, const uint256_t& value2) { return value1 = (uint256_t(value1) % value2).lower(); }
+  constexpr explicit operator unsigned long() const;
 
-    template <typename T>
-    friend T& operator+=(T& value1, const uint256_t& value2) noexcept { return value1 = (T)(uint256_t(value1) + value2); }
-    template <typename T>
-    friend T& operator-=(T& value1, const uint256_t& value2) noexcept { return value1 = (T)(uint256_t(value1) - value2); }
-    template <typename T>
-    friend T& operator*=(T& value1, const uint256_t& value2) noexcept { return value1 = static_cast<T>(uint256_t(value1) * value2); }
-    template <typename T>
-    friend T& operator/=(T& value1, const uint256_t& value2) { return value1 = (T)(uint256_t(value1) / value2); }
-    template <typename T>
-    friend T& operator%=(T& value1, const uint256_t& value2) { return value1 = (T)(uint256_t(value1) % value2); }
+  constexpr explicit operator long long() const;
 
-    template <typename T>
-    friend uint256_t operator+(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) + value2; }
-    template <typename T>
-    friend uint256_t operator+(const uint256_t& value1, const T& value2) noexcept { return value1 + uint256_t(value2); }
-    friend uint256_t operator+(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) + value2; }
-    friend uint256_t operator+(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 + uint256_t(value2); }
-    friend uint256_t operator+(const uint256_t& value1, const uint256_t& value2) noexcept;
+  constexpr explicit operator unsigned long long() const;
+  constexpr explicit operator absl::int128() const;
+  constexpr explicit operator absl::uint128() const;
+  explicit operator float() const;
+  explicit operator double() const;
+  explicit operator long double() const;
 
-    template <typename T>
-    friend uint256_t operator-(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) - value2; }
-    template <typename T>
-    friend uint256_t operator-(const uint256_t& value1, const T& value2) noexcept { return value1 - uint256_t(value2); }
-    friend uint256_t operator-(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) - value2; }
-    friend uint256_t operator-(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 - uint256_t(value2); }
-    friend uint256_t operator-(const uint256_t& value1, const uint256_t& value2) noexcept;
+  // Trivial copy constructor, assignment operator and destructor.
 
-    template <typename T>
-    friend uint256_t operator*(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) * value2; }
-    template <typename T>
-    friend uint256_t operator*(const uint256_t& value1, const T& value2) noexcept { return value1 * uint256_t(value2); }
-    friend uint256_t operator*(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) * value2; }
-    friend uint256_t operator*(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 * uint256_t(value2); }
-    friend uint256_t operator*(const uint256_t& value1, const uint256_t& value2) noexcept;
+  void Initialize(absl::uint128 top, absl::uint128 bottom);
 
-    template <typename T>
-    friend uint256_t operator/(const T& value1, const uint256_t& value2) { return uint256_t(value1) / value2; }
-    template <typename T>
-    friend uint256_t operator/(const uint256_t& value1, const T& value2) { return value1 / uint256_t(value2); }
-    friend uint256_t operator/(const uint128_t& value1, const uint256_t& value2) { return uint256_t(value1) / value2; }
-    friend uint256_t operator/(const uint256_t& value1, const uint128_t& value2) { return value1 / uint256_t(value2); }
-    friend uint256_t operator/(const uint256_t& value1, const uint256_t& value2);
+  // Arithmetic operators.
+  uint256& operator+=(const uint256& b);
+  uint256& operator-=(const uint256& b);
+  uint256& operator*=(const uint256& b);
+  // Long division/modulo for uint256.
+  uint256& operator/=(const uint256& b);
+  uint256& operator%=(const uint256& b);
+  uint256 operator++(int);
+  uint256 operator--(int);
+  uint256& operator<<=(int);
+  uint256& operator>>=(int);
+  uint256& operator&=(const uint256& b);
+  uint256& operator|=(const uint256& b);
+  uint256& operator^=(const uint256& b);
+  uint256& operator++();
+  uint256& operator--();
 
-    template <typename T>
-    friend uint256_t operator%(const T& value1, const uint256_t& value2) { return uint256_t(value1) % value2; }
-    template <typename T>
-    friend uint256_t operator%(const uint256_t& value1, const T& value2) { return value1 % uint256_t(value2); }
-    friend uint256_t operator%(const uint128_t& value1, const uint256_t& value2) { return uint256_t(value1) % value2; }
-    friend uint256_t operator%(const uint256_t& value1, const uint128_t& value2) { return value1 % uint256_t(value2); }
-    friend uint256_t operator%(const uint256_t& value1, const uint256_t& value2);
+  friend absl::uint128 Uint256Low128(const uint256& v);
+  friend absl::uint128 Uint256High128(const uint256& v);
 
-    // Bit operators
-    uint256_t operator~() const noexcept { return uint256_t(~_upper, ~_lower); }
+  // We add "std::" to avoid including all of port.h.
+  friend std::ostream& operator<<(std::ostream& o, const uint256& b);
 
-    uint256_t& operator&=(const uint256_t& value) noexcept { return *this = *this & value; }
-    uint256_t& operator|=(const uint256_t& value) noexcept { return *this = *this | value; }
-    uint256_t& operator^=(const uint256_t& value) noexcept { return *this = *this ^ value; }
+ private:
+  static void DivModImpl(uint256 dividend, uint256 divisor,
+                         uint256* quotient_ret, uint256* remainder_ret);
 
-    template <typename T>
-    uint256_t& operator&=(const T& value) noexcept { return *this = *this & uint256_t(value); }
-    template <typename T>
-    uint256_t& operator|=(const T& value) noexcept { return *this = *this | uint256_t(value); }
-    template <typename T>
-    uint256_t& operator^=(const T& value) noexcept { return *this = *this ^ uint256_t(value); }
+  // Little-endian memory order optimizations can benefit from
+  // having lo_ first, hi_ last.
+  // See util/endian/endian.h and Load256/Store256 for storing a uint256.
+  // Adding any new members will cause sizeof(uint256) tests to fail.
+  absl::uint128 lo_;
+  absl::uint128 hi_;
 
-    friend uint128_t& operator&=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) & value2).lower(); }
-    friend uint128_t& operator|=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) | value2).lower(); }
-    friend uint128_t& operator^=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) ^ value2).lower(); }
+  // Uint256Max()
+  //
+  // Returns the highest value for a 256-bit unsigned integer.
+  friend constexpr uint256 Uint256Max();
 
-    template <typename T>
-    friend T& operator&=(T& value1, const uint256_t& value2) noexcept { return value1 = (T)(uint256_t(value1) & value2); }
-    template <typename T>
-    friend T& operator|=(T& value1, const uint256_t& value2) noexcept { return value1 = (T)(uint256_t(value1) | value2); }
-    template <typename T>
-    friend T& operator^=(T& value1, const uint256_t& value2) noexcept { return value1 = (T)(uint256_t(value1) ^ value2); }
-
-    template <typename T>
-    friend uint256_t operator&(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) & value2; }
-    template <typename T>
-    friend uint256_t operator&(const uint256_t& value1, const T& value2) noexcept { return value1 & uint256_t(value2); }
-    friend uint256_t operator&(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) & value2; }
-    friend uint256_t operator&(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 & uint256_t(value2); }
-    friend uint256_t operator&(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend uint256_t operator|(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) | value2; }
-    template <typename T>
-    friend uint256_t operator|(const uint256_t& value1, const T& value2) noexcept { return value1 | uint256_t(value2); }
-    friend uint256_t operator|(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) | value2; }
-    friend uint256_t operator|(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 | uint256_t(value2); }
-    friend uint256_t operator|(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend uint256_t operator^(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) ^ value2; }
-    template <typename T>
-    friend uint256_t operator^(const uint256_t& value1, const T& value2) noexcept { return value1 ^ uint256_t(value2); }
-    friend uint256_t operator^(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) ^ value2; }
-    friend uint256_t operator^(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 ^ uint256_t(value2); }
-    friend uint256_t operator^(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    // Comparison operators
-    template <typename T>
-    friend bool operator==(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) == value2; }
-    template <typename T>
-    friend bool operator==(const uint256_t& value1, const T& value2) noexcept { return value1 == uint256_t(value2); }
-    friend bool operator==(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) == value2; }
-    friend bool operator==(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 == uint256_t(value2); }
-    friend bool operator==(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend bool operator!=(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) != value2; }
-    template <typename T>
-    friend bool operator!=(const uint256_t& value1, const T& value2) noexcept { return value1 != uint256_t(value2); }
-    friend bool operator!=(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) != value2; }
-    friend bool operator!=(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 != uint256_t(value2); }
-    friend bool operator!=(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend bool operator<(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) < value2; }
-    template <typename T>
-    friend bool operator<(const uint256_t& value1, const T& value2) noexcept { return value1 < uint256_t(value2); }
-    friend bool operator<(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) < value2; }
-    friend bool operator<(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 < uint256_t(value2); }
-    friend bool operator<(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend bool operator>(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) > value2; }
-    template <typename T>
-    friend bool operator>(const uint256_t& value1, const T& value2) noexcept { return value1 > uint256_t(value2); }
-    friend bool operator>(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) > value2; }
-    friend bool operator>(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 > uint256_t(value2); }
-    friend bool operator>(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend bool operator<=(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) <= value2; }
-    template <typename T>
-    friend bool operator<=(const uint256_t& value1, const T& value2) noexcept { return value1 <= uint256_t(value2); }
-    friend bool operator<=(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) <= value2; }
-    friend bool operator<=(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 <= uint256_t(value2); }
-    friend bool operator<=(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend bool operator>=(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) >= value2; }
-    template <typename T>
-    friend bool operator>=(const uint256_t& value1, const T& value2) noexcept { return value1 >= uint256_t(value2); }
-    friend bool operator>=(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) >= value2; }
-    friend bool operator>=(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 >= uint256_t(value2); }
-    friend bool operator>=(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    // Logical operators
-    bool operator!() const noexcept { return !(bool)(_upper | _lower); }
-
-    template <typename T>
-    friend bool operator&&(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) && value2; }
-    template <typename T>
-    friend bool operator&&(const uint256_t& value1, const T& value2) noexcept { return value1 && uint256_t(value2); }
-    friend bool operator&&(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) && value2; }
-    friend bool operator&&(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 && uint256_t(value2); }
-    friend bool operator&&(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend bool operator||(const T& value1, const uint256_t& value2) noexcept { return uint256_t(value1) || value2; }
-    template <typename T>
-    friend bool operator||(const uint256_t& value1, const T& value2) noexcept { return value1 || uint256_t(value2); }
-    friend bool operator||(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) || value2; }
-    friend bool operator||(const uint256_t& value1, const uint128_t& value2) noexcept { return value1 || uint256_t(value2); }
-    friend bool operator||(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    // Shift operators
-    uint256_t& operator<<=(const uint256_t& value) noexcept { return *this = *this << value; }
-    uint256_t& operator>>=(const uint256_t& value) noexcept { return *this = *this >> value; }
-
-    template <typename T>
-    uint256_t& operator<<=(const T& value) noexcept { return *this = *this << uint256_t(value); }
-    template <typename T>
-    friend T& operator<<=(T& value1, const uint256_t& value2) noexcept { return value1 = (T)(uint256_t(value1) << value2); }
-
-    friend uint128_t& operator<<=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) << value2).lower(); }
-    friend uint128_t& operator>>=(uint128_t& value1, const uint256_t& value2) noexcept { return value1 = (uint256_t(value1) >> value2).lower(); }
-
-    template <typename T>
-    uint256_t& operator>>=(const T& value) noexcept { return *this = *this >> uint256_t(value); }
-    template <typename T>
-    friend T& operator>>=(T& value1, const uint256_t& value2) noexcept { return value1 = (T)(uint256_t(value1) >> value2); }
-
-    template <typename T>
-    friend uint256_t operator<<(const uint256_t& value1, const T& value2) noexcept { return value1 << uint256_t(value2); }
-    friend uint256_t operator<<(bool value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(int8_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(int16_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(int32_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(int64_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(uint8_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(uint16_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(uint32_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(uint64_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) << value2; }
-    friend uint256_t operator<<(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    template <typename T>
-    friend uint256_t operator>>(const uint256_t& value1, const T& value2) noexcept { return value1 >> uint256_t(value2); }
-    friend uint256_t operator>>(bool value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(int8_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(int16_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(int32_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(int64_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(uint8_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(uint16_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(uint32_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(uint64_t value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(const uint128_t& value1, const uint256_t& value2) noexcept { return uint256_t(value1) >> value2; }
-    friend uint256_t operator>>(const uint256_t& value1, const uint256_t& value2) noexcept;
-
-    // Type cast
-    operator bool() const noexcept { return (bool)(_upper | _lower); }
-    operator uint8_t() const noexcept { return (uint8_t)_lower; }
-    operator uint16_t() const noexcept { return (uint16_t)_lower; }
-    operator uint32_t() const noexcept { return (uint32_t)_lower; }
-    operator uint64_t() const noexcept { return (uint64_t)_lower; }
-    operator uint128_t() const noexcept { return _lower; }
-
-    //! Get the upper part of the 256-bit integer
-    uint128_t upper() const noexcept { return _upper; }
-    //! Get the lower part of the 256-bit integer
-    uint128_t lower() const noexcept { return _lower; }
-
-    //! Get the count of bits
-    size_t bits() const noexcept;
-
-    //! Get string from the current 128-bit integer
-    /*!
-        \param base - Conversion base in range [2, 16] (default is 10)
-        \param length - Minimal string length (default is 0)
-        \return Result string
-    */
-    std::string string(size_t base = 10, size_t length = 0) const;
-    //! Get wide string from the current 128-bit integer
-    /*!
-        \param base - Conversion base in range [2, 16] (default is 10)
-        \param length - Minimal string length (default is 0)
-        \return Result wide string
-    */
-    std::wstring wstring(size_t base = 10, size_t length = 0) const;
-
-    //! Calculate quotient and remainder when dividing X by Y
-    /*!
-        \param x - X value
-        \param y - Y value
-        \return Quotient and remainder pair
-    */
-    static std::pair<uint256_t, uint256_t> divmod(const uint256_t& x, const uint256_t& y);
-
-    //! Input instance from the given input stream
-    friend std::istream& operator>>(std::istream& is, uint256_t& value)
-    { is >> value._upper >> value._lower; return is; }
-    //! Input instance from the given wide input stream
-    friend std::wistream& operator>>(std::wistream& is, uint256_t& value)
-    { is >> value._upper >> value._lower; return is; }
-    //! Output instance into the given output stream
-    friend std::ostream& operator<<(std::ostream& os, const uint256_t& value);
-    //! Output instance into the given wide output stream
-    friend std::wostream& operator<<(std::wostream& os, const uint256_t& value);
-
-    //! Swap two instances
-    void swap(uint256_t& value) noexcept;
-    friend void swap(uint256_t& value1, uint256_t& value2) noexcept;
-
-private:
-    uint128_t _upper;
-    uint128_t _lower;
+  // Not implemented, just declared for catching automatic type conversions.
+  uint256(std::uint16_t);
+  uint256(float v);
+  uint256(double v);
 };
 
-/*! \example common_uint256.cpp Unsigned 256-bit integer type example */
+constexpr uint256 Uint256Max() {
+  return uint256((std::numeric_limits<absl::uint128>::max)(),
+                 (std::numeric_limits<absl::uint128>::max)());
+}
 
-} // namespace CppCommon
+// This is a POD form of uint256 which can be used for static variables which
+// need to be operated on as uint256.
+struct uint256_pod {
+  // Note: The ordering of fields is different than 'class uint256' but the
+  // same as its 2-arg constructor.  This enables more obvious initialization
+  // of static instances, which is the primary reason for this struct in the
+  // first place.  This does not seem to defeat any optimizations wrt
+  // operations involving this struct.
+  absl::uint128 hi;
+  absl::uint128 lo;
+};
 
-#include "uint256.inl"
+constexpr uint256_pod kuint256max = {absl::Uint128Max(), absl::Uint128Max()};
 
-#endif // CPPCOMMON_UINT256_H
+// allow uint256 to be logged
+extern std::ostream& operator<<(std::ostream& o, const uint256& b);
+
+// Methods to access low and high pieces of 256-bit value.
+// Defined externally from uint256 to facilitate conversion
+// to native 256-bit types when compilers support them.
+inline absl::uint128 Uint256Low128(const uint256& v) { return v.lo_; }
+inline absl::uint128 Uint256High128(const uint256& v) { return v.hi_; }
+
+// --------------------------------------------------------------------------
+//                      Implementation details follow
+// --------------------------------------------------------------------------
+inline bool operator==(const uint256& lhs, const uint256& rhs) {
+  return (Uint256Low128(lhs) == Uint256Low128(rhs) &&
+          Uint256High128(lhs) == Uint256High128(rhs));
+}
+inline bool operator!=(const uint256& lhs, const uint256& rhs) {
+  return !(lhs == rhs);
+}
+
+inline constexpr uint256::uint256() : lo_(0), hi_(0) {}
+inline constexpr uint256::uint256(absl::uint128 top, absl::uint128 bottom)
+    : lo_(bottom), hi_(top) {}
+inline constexpr uint256::uint256(const uint256_pod& v)
+    : lo_(v.lo), hi_(v.hi) {}
+inline constexpr uint256::uint256(absl::uint128 bottom) : lo_(bottom), hi_(0) {}
+#ifndef SWIG
+inline constexpr uint256::uint256(int bottom)
+      : lo_(bottom), hi_((bottom < 0) ? -1 : 0) {}
+inline constexpr uint256::uint256(std::uint32_t bottom) : lo_(bottom), hi_(0) {}
+#endif
+inline constexpr uint256::uint256(std::uint8_t bottom) : lo_(bottom), hi_(0) {}
+
+inline constexpr uint256::uint256(unsigned long bottom)
+    : lo_(bottom), hi_(0) {}
+
+inline constexpr uint256::uint256(unsigned long long bottom)
+    : lo_(bottom), hi_(0) {}
+
+inline void uint256::Initialize(absl::uint128 top, absl::uint128 bottom) {
+  hi_ = top;
+  lo_ = bottom;
+}
+
+// Conversion operators to integer types.
+
+constexpr uint256::operator bool() const { return lo_ || hi_; }
+
+constexpr uint256::operator char() const { return static_cast<char>(lo_); }
+
+constexpr uint256::operator signed char() const {
+  return static_cast<signed char>(lo_);
+}
+
+constexpr uint256::operator unsigned char() const {
+  return static_cast<unsigned char>(lo_);
+}
+
+constexpr uint256::operator char16_t() const {
+  return static_cast<char16_t>(lo_);
+}
+
+constexpr uint256::operator char32_t() const {
+  return static_cast<char32_t>(lo_);
+}
+
+
+constexpr uint256::operator short() const { return static_cast<short>(lo_); }
+
+constexpr uint256::operator unsigned short() const {
+  return static_cast<unsigned short>(lo_);
+}
+
+constexpr uint256::operator int() const { return static_cast<int>(lo_); }
+
+constexpr uint256::operator unsigned int() const {
+  return static_cast<unsigned int>(lo_);
+}
+
+
+constexpr uint256::operator long() const { return static_cast<long>(lo_); }
+
+constexpr uint256::operator unsigned long() const {
+  return static_cast<unsigned long>(lo_);
+}
+
+constexpr uint256::operator long long() const {
+  return static_cast<long long>(lo_);
+}
+
+constexpr uint256::operator unsigned long long() const {
+  return static_cast<unsigned long long>(lo_);
+}
+
+
+constexpr uint256::operator absl::uint128() const { return lo_; }
+constexpr uint256::operator absl::int128() const {
+  return static_cast<absl::int128>(lo_);
+}
+
+// Conversion operators to floating point types.
+
+inline uint256::operator float() const {
+  return static_cast<float>(lo_) + std::ldexp(static_cast<float>(hi_), 128);
+}
+
+inline uint256::operator double() const {
+  return static_cast<double>(lo_) + std::ldexp(static_cast<double>(hi_), 128);
+}
+
+inline uint256::operator long double() const {
+  return static_cast<long double>(lo_) +
+         std::ldexp(static_cast<long double>(hi_), 128);
+}
+
+// Comparison operators.
+
+#define CMP256(op)                                                  \
+  inline bool operator op(const uint256& lhs, const uint256& rhs) { \
+    return (Uint256High128(lhs) == Uint256High128(rhs))             \
+               ? (Uint256Low128(lhs) op Uint256Low128(rhs))         \
+               : (Uint256High128(lhs) op Uint256High128(rhs));      \
+  }
+
+CMP256(<)
+CMP256(>)
+CMP256(>=)
+CMP256(<=)
+
+#undef CMP256
+
+// Unary operators
+
+inline uint256 operator-(const uint256& val) {
+  const absl::uint128 hi_flip = ~Uint256High128(val);
+  const absl::uint128 lo_flip = ~Uint256Low128(val);
+  const absl::uint128 lo_add = lo_flip + 1;
+  if (lo_add < lo_flip) {
+    return uint256(hi_flip + 1, lo_add);
+  }
+  return uint256(hi_flip, lo_add);
+}
+
+inline bool operator!(const uint256& val) {
+  return !Uint256High128(val) && !Uint256Low128(val);
+}
+
+// Logical operators.
+
+inline uint256 operator~(const uint256& val) {
+  return uint256(~Uint256High128(val), ~Uint256Low128(val));
+}
+
+#define LOGIC256(op)                                                   \
+  inline uint256 operator op(const uint256& lhs, const uint256& rhs) { \
+    return uint256(Uint256High128(lhs) op Uint256High128(rhs),         \
+                   Uint256Low128(lhs) op Uint256Low128(rhs));          \
+  }
+
+LOGIC256(|)
+LOGIC256(&)
+LOGIC256(^)
+
+#undef LOGIC256
+
+#define LOGICASSIGN256(op)                                 \
+  inline uint256& uint256::operator op(const uint256& b) { \
+    hi_ op b.hi_;                                          \
+    lo_ op b.lo_;                                          \
+    return *this;                                          \
+  }
+
+LOGICASSIGN256(|=)
+LOGICASSIGN256(&=)
+LOGICASSIGN256(^=)
+
+#undef LOGICASSIGN256
+
+// Shift operators.
+
+inline uint256 operator<<(const uint256& val, int amount) {
+  uint256 out(val);
+  out <<= amount;
+  return out;
+}
+
+inline uint256 operator>>(const uint256& val, int amount) {
+  uint256 out(val);
+  out >>= amount;
+  return out;
+}
+
+inline uint256& uint256::operator<<=(int amount) {
+  // uint128 shifts of >= 128 are undefined, so we will need some special-casing
+  if (amount < 128) {
+    if (amount != 0) {
+      hi_ = (hi_ << amount) | (lo_ >> (128 - amount));
+      lo_ = lo_ << amount;
+    }
+  } else if (amount < 256) {
+    hi_ = lo_ << (amount - 128);
+    lo_ = 0;
+  } else {
+    hi_ = 0;
+    lo_ = 0;
+  }
+  return *this;
+}
+
+inline uint256& uint256::operator>>=(int amount) {
+  // uint128 shifts of >= 128 are undefined, so we will need some special-casing
+  if (amount < 128) {
+    if (amount != 0) {
+      lo_ = (lo_ >> amount) | (hi_ << (128 - amount));
+      hi_ = hi_ >> amount;
+    }
+  } else if (amount < 256) {
+    lo_ = hi_ >> (amount - 128);
+    hi_ = 0;
+  } else {
+    lo_ = 0;
+    hi_ = 0;
+  }
+  return *this;
+}
+
+inline uint256 operator+(const uint256& lhs, const uint256& rhs) {
+  return uint256(lhs) += rhs;
+}
+
+inline uint256 operator-(const uint256& lhs, const uint256& rhs) {
+  return uint256(lhs) -= rhs;
+}
+
+inline uint256 operator*(const uint256& lhs, const uint256& rhs) {
+  return uint256(lhs) *= rhs;
+}
+
+inline uint256 operator/(const uint256& lhs, const uint256& rhs) {
+  return uint256(lhs) /= rhs;
+}
+
+inline uint256 operator%(const uint256& lhs, const uint256& rhs) {
+  return uint256(lhs) %= rhs;
+}
+
+inline uint256& uint256::operator+=(const uint256& b) {
+  hi_ += b.hi_;
+  absl::uint128 lolo = lo_ + b.lo_;
+  if (lolo < lo_)
+    ++hi_;
+  lo_ = lolo;
+  return *this;
+}
+
+inline uint256& uint256::operator-=(const uint256& b) {
+  hi_ -= b.hi_;
+  if (b.lo_ > lo_)
+    --hi_;
+  lo_ -= b.lo_;
+  return *this;
+}
+
+inline uint256& uint256::operator*=(const uint256& b) {
+  // Computes the product c = a * b modulo 2^256.
+  //
+  // We have that
+  //   a = [a.hi_ || a.lo_] and b = [b.hi_ || b.lo_]
+  // where hi_, lo_ are 128-bit numbers. Further, we have that
+  //   a.lo_ = [a64 || a00] and b.lo_ = [b64 || b00]
+  // where a64, a00, b64, b00 are 64-bit numbers.
+  //
+  // The product c = (a * b mod 2^256) is equal to
+  //   (a.hi_ * b.lo_ + a64 * b64 + b.hi_ * a.lo_ mod 2^128) * 2^128 +
+  //   (a64 * b00 + a00 * b64) * 2^64 +
+  //   (a00 * b00)
+  //
+  // The first and last lines can be computed without worrying about the
+  // carries, and then we add the two elements from the second line.
+  absl::uint128 a64 = absl::Uint128High64(lo_);
+  absl::uint128 a00 = absl::Uint128Low64(lo_);
+  absl::uint128 b64 = absl::Uint128High64(b.lo_);
+  absl::uint128 b00 = absl::Uint128Low64(b.lo_);
+
+  // Compute the high order and low order part of c (safe to ignore carry bits).
+  this->hi_ = hi_ * b.lo_ + a64 * b64 + lo_ * b.hi_;
+  this->lo_ = a00 * b00;
+
+  // add middle term and capture carry
+  uint256 middle_term = uint256(a64 * b00) + uint256(a00 * b64);
+  *this += middle_term << 64;
+  return *this;
+}
+
+inline uint256 uint256::operator++(int) {
+  uint256 tmp(*this);
+  lo_++;
+  if (lo_ == 0) hi_++;  // If there was a wrap around, increase the high word.
+  return tmp;
+}
+
+inline uint256 uint256::operator--(int) {
+  uint256 tmp(*this);
+  if (lo_ == 0) hi_--;  // If it wraps around, decrease the high word.
+  lo_--;
+  return tmp;
+}
+
+inline uint256& uint256::operator++() {
+  lo_++;
+  if (lo_ == 0) hi_++;  // If there was a wrap around, increase the high word.
+  return *this;
+}
+
+inline uint256& uint256::operator--() {
+  if (lo_ == 0) hi_--;  // If it wraps around, decrease the high word.
+  lo_--;
+  return *this;
+}
+
+}  // namespace basic
+
+// Specialized numeric_limits for uint256.
+namespace std {
+template <>
+class numeric_limits<basic::uint256> {
+ public:
+  static constexpr bool is_specialized = true;
+  static constexpr bool is_signed = false;
+  static constexpr bool is_integer = true;
+  static constexpr bool is_exact = true;
+  static constexpr bool has_infinity = false;
+  static constexpr bool has_quiet_NaN = false;
+  static constexpr bool has_signaling_NaN = false;
+  static constexpr float_denorm_style has_denorm = denorm_absent;
+  static constexpr bool has_denorm_loss = false;
+  static constexpr float_round_style round_style = round_toward_zero;
+  static constexpr bool is_iec559 = false;
+  static constexpr bool is_bounded = true;
+  static constexpr bool is_modulo = true;
+  static constexpr int digits = 256;
+  static constexpr int digits10 = 77;
+  static constexpr int max_digits10 = 0;
+  static constexpr int radix = 2;
+  static constexpr int min_exponent = 0;
+  static constexpr int min_exponent10 = 0;
+  static constexpr int max_exponent = 0;
+  static constexpr int max_exponent10 = 0;
+  static constexpr bool traps = numeric_limits<absl::uint128>::traps;
+  static constexpr bool tinyness_before = false;
+
+  static constexpr basic::uint256(min)() { return 0; }
+  static constexpr basic::uint256 lowest() { return 0; }
+  static constexpr basic::uint256(max)() { return basic::Uint256Max(); }
+  static constexpr basic::uint256 epsilon() { return 0; }
+  static constexpr basic::uint256 round_error() { return 0; }
+  static constexpr basic::uint256 infinity() { return 0; }
+  static constexpr basic::uint256 quiet_NaN() { return 0; }
+  static constexpr basic::uint256 signaling_NaN() { return 0; }
+  static constexpr basic::uint256 denorm_min() { return 0; }
+};
+}  // namespace std

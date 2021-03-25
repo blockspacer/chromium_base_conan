@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-namespace base {
+namespace basic {
 
 // Helper to transfer ownership of a raw pointer to a std::unique_ptr<T>.
 // Note that std::unique_ptr<T> has very different semantics from
@@ -17,4 +17,4 @@ std::unique_ptr<T> WrapUniqueNotArray(T* ptr) {
   return std::unique_ptr<T>(ptr);
 }
 
-}  // namespace base
+}  // namespace basic

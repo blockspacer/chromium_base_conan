@@ -1,4 +1,4 @@
-#include "basic/bind/delay_time_checker.h" // IWYU pragma: associated
+#include "basic/bind/bind_delay_time_checker.h" // IWYU pragma: associated
 
 namespace base {
 

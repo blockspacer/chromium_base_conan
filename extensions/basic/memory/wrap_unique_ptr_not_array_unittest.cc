@@ -4,7 +4,7 @@
 
 #include <cstddef>
 
-namespace base {
+namespace basic {
 
 namespace {
 
@@ -33,4 +33,4 @@ TEST(PtrUtilTest, WrapUniqueNotArray) {
   EXPECT_EQ(0u, DeleteCounter::count());
 }
 
-}  // namespace base
+}  // namespace basic

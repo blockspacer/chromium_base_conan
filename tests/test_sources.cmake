@@ -816,6 +816,14 @@ foreach(FILEPATH ${base_unittests})
 endforeach()
 
 list(APPEND extensions_unittests
+  crc32_unittest.cc
+  output_parameter_unittest.cc
+  spin_lock_unittest.cc
+  stl_util_unittest.cc
+  type_id_unittest.cc
+)
+
+list(APPEND extensions_unittests
   debug/leak_tracker_unittest.cc
 )
 
@@ -826,20 +834,33 @@ list(APPEND extensions_unittests
   containers/prioritized_job_dispatcher_unittest.cc
   containers/prioritized_list_unittest.cc
   containers/prioritized_repeating_task_list_unittest.cc
+  containers/sparse_byte_set_unittest.cc
+  containers/indexed_mem_pool_unittest.cc
 )
 
 list(APPEND extensions_unittests
-  files/file_path_util_unittest.cc
+  synchronization/futex_unittest.cc
+  synchronization/parking_lot_unittest.cc
+  #synchronization/flat_combining_unittest.cc
+  #synchronization/saturating_semaphore_unittest.cc
+  #synchronization/memory_idler_unittest.cc
+)
+
+list(APPEND extensions_unittests
+  state_machine/state_machine_unittest.cc
 )
 
 list(APPEND extensions_unittests
   decimal/decimal_unittest.cc
+  decimal/fixed_point_unittest.cc
 )
 
 list(APPEND extensions_unittests
   hash/city_hash_unittest.cc
+  hash/farmhash_unittest.cc
   hash/murmurhash_unittest.cc
   hash/xxhash_unittest.cc
+  hash/twang_hash_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -916,6 +937,31 @@ list(APPEND extensions_unittests
 
 list(APPEND extensions_unittests
   memory/wrap_unique_ptr_not_array_unittest.cc
+  memory/unowned_ptr_unittest.cc
+  memory/unowned_ref_unittest.cc
+)
+
+list(APPEND extensions_unittests
+  multiconfig/multiconfig_unittest.cc
+)
+
+list(APPEND extensions_unittests
+  json/json_serializers_unittest.cc
+)
+
+list(APPEND extensions_unittests
+  types_bucket/types_bucket_unittest.cc
+  types_bucket/thread_local_types_bucket_unittest.cc
+)
+
+list(APPEND extensions_unittests
+  static_sequence/static_sequence_unittest.cc
+)
+
+list(APPEND extensions_unittests
+  time/backoff_timer_unittest.cc
+  time/system_time_change_notifier_unittest.cc
+  time/time_macros_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -957,6 +1003,7 @@ list(APPEND extensions_unittests
   strings/substitute_unittest.cc
   strings/string_util_unittest.cc
   strings/string_format_unittest.cc
+  strings/fixed_string_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -970,6 +1017,7 @@ list(APPEND extensions_unittests
   numerics/floating_point_comparison_unittest.cc
   numerics/pack_numbers_unittest.cc
   numerics/uint128_unittest.cc
+  numerics/uint256_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -995,6 +1043,7 @@ list(APPEND extensions_unittests
 
 list(APPEND extensions_unittests
   concurrency/concurrent_int64_unittest.cc
+  concurrency/lock_free_producer_consumer_queue_unittest.cc
 )
 
 list(APPEND extensions_unittests

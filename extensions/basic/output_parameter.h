@@ -5,6 +5,7 @@
 #pragma once
 
 #include <base/logging.h>
+#include <base/check.h>
 
 #include <new>
 #include <type_traits>
@@ -12,7 +13,7 @@
 
 // EXAMPLE
 //
-// bool read_str_better(std::istream& in, base::output_parameter<std::string> out)
+// bool read_str_better(std::istream& in, basic::output_parameter<std::string> out)
 // {
 //     std::string result = ...;
 //     auto empty = result.empty();    // we need to query here, because after move it might be empty
@@ -23,7 +24,7 @@
 // {
 //     std::istringstream in("hello world");
 //     std::string        str;
-//     auto res = read_str_better(in, base::out(str));
+//     auto res = read_str_better(in, basic::out(str));
 //     std::cout << res << ' ' << str << '\n';
 // }
 //
@@ -34,13 +35,13 @@ namespace basic
 //
 // This is useful if you have a type that is default constructible,
 // but can't be initialized properly - yet.
-// It works especially well with [base::output_parameter]().
+// It works especially well with [basic::output_parameter]().
 //
 // It has two states:
 // Either it is *initialized* in which case you can get its value,
 // or it is *un-initialized* in which case you cannot get its value.
 // All objects start out un-initialized.
-// For consistency with [base::basic_optional]() it provides a similar interface,
+// For consistency with [basic::basic_optional]() it provides a similar interface,
 // yet it is not as flexible and does not allow to reset it to the uninitialized state,
 // once initialized.
 //
@@ -200,7 +201,7 @@ private:
 // If you use this class as your output parameter type,
 // you do not have these disadvantages.
 // The creation is explicit, you cannot read the value,
-// and it works with [base::deferred_construction]().
+// and it works with [basic::deferred_construction]().
 //
 // \notes While you could use this class in other locations besides parameters,
 // this is not recommended.
@@ -224,7 +225,7 @@ public:
   /// \group delete_val
   output_parameter(const T&&) = delete;
 
-  /// \effects Creates it from a [base::deferred_construction]() object.
+  /// \effects Creates it from a [basic::deferred_construction]() object.
   /// All output will be assigned or created in the storage of the defer construction object,
   /// depending on wheter it is initialized.
   /// \requires The referred object must live as long as the function has not returned.
@@ -322,14 +323,14 @@ private:
   bool  is_normal_ptr_;
 };
 
-/// \returns A new [base::output_parameter]() using the reference `obj` as output.
+/// \returns A new [basic::output_parameter]() using the reference `obj` as output.
 template <typename T>
 output_parameter<T> out(T& obj) noexcept
 {
   return output_parameter<T>(obj);
 }
 
-/// \returns A new [base::output_parameter]() using the [base::deferred_construction]() as output.
+/// \returns A new [basic::output_parameter]() using the [basic::deferred_construction]() as output.
 template <typename T>
 output_parameter<T> out(deferred_construction<T>& o) noexcept
 {
