@@ -39,6 +39,12 @@ build/*
 local_build
 *.pyc
 tmp/
+/_deps
+/CMakeFiles
+/conan_auto_install
+/cmake_utils
+/conan_workspace/*
+!/conan_workspace/CMakeLists.txt
 
 # IDE
 .idea/*

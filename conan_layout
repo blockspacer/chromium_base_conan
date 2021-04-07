@@ -1,0 +1,9 @@
+# This helps to define the location of CMakeLists.txt within package
+
+[source_folder]
+.
+
+# This defines where the conanbuildinfo.cmake will be written to
+
+[build_folder]
+build/{{settings.build_type}}

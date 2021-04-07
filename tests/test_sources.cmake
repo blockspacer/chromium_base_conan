@@ -8,6 +8,12 @@ add_custom_command( TARGET ${ROOT_PROJECT_NAME}-i18n POST_BUILD
                         ${CMAKE_CURRENT_SOURCE_DIR}/data
                         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME} )
 
+if (NOT CMAKE_BUILD_TYPE MATCHES "Debug" )
+  list(APPEND base_unittests
+    "build_time_unittest.cc"
+  )
+endif()
+
 # TODO undefined reference to `g_native_library_exported_value'
 # "scoped_native_library_unittest.cc"
 # "native_library_unittest.cc"
@@ -95,7 +101,6 @@ list(APPEND base_unittests
   "bind_unittest.cc"
   "bit_cast_unittest.cc"
   "bits_unittest.cc"
-  "build_time_unittest.cc"
   "callback_helpers_unittest.cc"
   "callback_list_unittest.cc"
   "callback_unittest.cc"

@@ -371,11 +371,17 @@ if(ENABLE_BASE_TRACING)
     endif()
     #
     if(${ARGUMENTS_VERBOSE})
+      set_if_not_empty(PERFETTO_protozero_plugin_BIN "$ENV{PERFETTO_protozero_plugin_BIN}")
       message(STATUS "PERFETTO_protozero_plugin_BIN=${PERFETTO_protozero_plugin_BIN}")
+      set_if_not_empty(PERFETTO_PROTOC_BIN "$ENV{PERFETTO_PROTOC_BIN}")
       message(STATUS "PERFETTO_PROTOC_BIN=${PERFETTO_PROTOC_BIN}")
+      set_if_not_empty(PERFETTO_SDK_DIR "$ENV{PERFETTO_SDK_DIR}")
       message(STATUS "PERFETTO_SDK_DIR=${PERFETTO_SDK_DIR}")
+      set_if_not_empty(PERFETTO_GEN_DIR "$ENV{PERFETTO_GEN_DIR}")
       message(STATUS "PERFETTO_GEN_DIR=${PERFETTO_GEN_DIR}")
+      set_if_not_empty(PERFETTO_PROTOS_DIR "$ENV{PERFETTO_PROTOS_DIR}")
       message(STATUS "PERFETTO_PROTOS_DIR=${PERFETTO_PROTOS_DIR}")
+      set_if_not_empty(PERFETTO_BUILDTOOLS_DIR "$ENV{PERFETTO_BUILDTOOLS_DIR}")
       message(STATUS "PERFETTO_BUILDTOOLS_DIR=${PERFETTO_BUILDTOOLS_DIR}")
     endif()
     #
@@ -462,7 +468,7 @@ if(ENABLE_BASE_TRACING)
       )
       foreach(GENERATED_FILE_PATH ${protoc_generated_files})
         if(NOT EXISTS "${GENERATED_FILE_PATH}")
-          message(FATAL_ERROR "Unable to find required file: ${GENERATED_FILE_PATH}")
+          message(STATUS "Generating protozero file: ${GENERATED_FILE_PATH}")
         endif()
       endforeach()
       # Set GENERATED properties of your generated source file.
@@ -482,7 +488,7 @@ if(ENABLE_BASE_TRACING)
   endfunction(generate_pbzero)
 
   generate_pbzero(
-    OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos/
+    OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos
     TMP_FILE_DIR ${CMAKE_CURRENT_BINARY_DIR}
     INPUT_FILES ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos/chrome_track_event.proto
     INCLUDE_PROTO_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/base/tracing/protos
@@ -490,6 +496,7 @@ if(ENABLE_BASE_TRACING)
     VERBOSE TRUE
   )
 
+  set_if_not_empty(PERFETTO_SDK_DIR "$ENV{PERFETTO_SDK_DIR}")
   list(APPEND BASE_SOURCES
     ${PERFETTO_SDK_DIR}/perfetto.cc
     ${${BASE_LIB_NAME}_GENERATED_FILES}
@@ -755,6 +762,8 @@ if(NOT ALLOCATOR_TCMALLOC)
 endif(NOT ALLOCATOR_TCMALLOC)
 
 if(ENABLE_BASE_TRACING)
+  set_if_not_empty(PERFETTO_SDK_DIR "$ENV{PERFETTO_SDK_DIR}")
+
   # path to `protobuf/src/google/protobuf/port_def.inc`
   add_absolute_include_dir(${BASE_LIB_NAME} PUBLIC "${PERFETTO_BUILDTOOLS_DIR}/protobuf/src")
 

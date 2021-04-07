@@ -25,6 +25,7 @@ class PlugPointSingleCallbackTest : public testing::Test {
  public:
   void SetUp() override {
     PLUG_POINT(testPoint_) = PLUG_POINT_INSTANCE(PP_TestPointSingleCallback);
+    PLUG_POINT(testPoint_)->disable();
   }
 
   basic::Status testFunc(const std::string& err_message) {
@@ -157,6 +158,7 @@ class PlugPointVoidCallbacksTest : public testing::Test {
  public:
   void SetUp() override {
     PLUG_POINT(testPoint_) = PLUG_POINT_INSTANCE(PP_TestPointNotifier);
+    PLUG_POINT(testPoint_)->disable();
   }
 
   basic::Status testFunc(const std::string& err_message) {

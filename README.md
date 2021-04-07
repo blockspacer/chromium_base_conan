@@ -222,6 +222,25 @@ Extra docs:
 
 * https://abseil.io/docs/cpp/guides/
 
+## Before build (dependencies)
+
+Create clang conan profile https://docs.conan.io/en/1.34/reference/profiles.html#examples
+
+Re-build dependencies:
+
+```bash
+git clone https://github.com/blockspacer/conan_github_downloader.git ~/conan_github_downloader
+
+cmake \
+  -DSCRIPT_PATH="$PWD/get_conan_dependencies.cmake"\
+  -DEXTRA_CONAN_OPTS="--profile;clang\
+;-s;build_type=Debug\
+;-s;cling_conan:build_type=Release\
+;-s;llvm_tools:build_type=Release\
+;--build;missing" \
+  -P ~/conan_github_downloader/conan_github_downloader.cmake
+```
+
 ## Dev-only build (local conan flow)
 
 ```bash
@@ -234,12 +253,13 @@ mkdir local_build
 
 cd local_build
 
-CONAN_REVISIONS_ENABLED=1 \
-CONAN_VERBOSE_TRACEBACK=1 \
-CONAN_PRINT_RUN_COMMANDS=1 \
-CONAN_LOGGING_LEVEL=10 \
-GIT_SSL_NO_VERIFY=true \
-  cmake -E time \
+export CONAN_REVISIONS_ENABLED=1
+export CONAN_VERBOSE_TRACEBACK=1
+export CONAN_PRINT_RUN_COMMANDS=1
+export CONAN_LOGGING_LEVEL=10
+export GIT_SSL_NO_VERIFY=true
+
+cmake -E time \
   conan install .. \
   --install-folder . \
   -s build_type=Debug \
@@ -442,6 +462,27 @@ gn gen out/config --args='is_debug=false is_official_build=true' --ide=json
 ```
 
 Follow `extensions/README.md`
+
+## Conan workspace
+
+```bash
+rm -rf build/Debug
+
+find conan_workspace ! -name 'CMakeLists.txt' -type f -exec rm -f {} +
+
+cd conan_workspace
+
+conan workspace install \
+  ../conan_workspace.yml \
+  --profile=clang \
+  -s build_type=Debug \
+  -s cling_conan:build_type=Release \
+  -s llvm_tools:build_type=Release \
+  -o openssl:shared=True
+
+cmake -E time \
+  conan build .. --build-folder=../build/Debug
+```
 
 ## Disclaimer
 

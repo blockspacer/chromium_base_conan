@@ -25,6 +25,9 @@ class FailPointTest : public testing::Test {
  public:
   void SetUp() override {
     FAIL_POINT(testPoint_) = FAIL_POINT_INSTANCE(FP_TestPoint);
+    FAIL_POINT(testPoint_)->disable();
+    FAIL_POINT(testPoint_)->unsetFailure();
+    FAIL_POINT(testPoint_)->clearData();
   }
 
   basic::Status testFunc(const std::string& err_message) {
