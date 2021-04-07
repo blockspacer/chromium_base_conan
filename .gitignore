@@ -45,6 +45,8 @@ tmp/
 /cmake_utils
 /conan_workspace/*
 !/conan_workspace/CMakeLists.txt
+!/conan_workspace/conan_workspace.yml
+!/conan_workspace/conan_layout
 
 # IDE
 .idea/*

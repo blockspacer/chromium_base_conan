@@ -1,6 +1,6 @@
 editables:
     chromium_base/master@conan/stable:
-        path: .
+        path: ..
 layout: conan_layout
 workspace_generator: cmake
 root:

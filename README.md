@@ -463,17 +463,20 @@ gn gen out/config --args='is_debug=false is_official_build=true' --ide=json
 
 Follow `extensions/README.md`
 
-## Conan workspace
+## Conan workspace and QT Creator
 
 ```bash
-rm -rf build/Debug
-
-find conan_workspace ! -name 'CMakeLists.txt' -type f -exec rm -f {} +
+find conan_workspace\
+  \! -name 'conan_workspace' \
+  \! -name 'conan_workspace.yml' \
+  \! -name 'conan_layout' \
+  \! -name 'CMakeLists.txt' \
+  -exec rm -rf {} +
 
 cd conan_workspace
 
 conan workspace install \
-  ../conan_workspace.yml \
+  ./conan_workspace.yml \
   --profile=clang \
   -s build_type=Debug \
   -s cling_conan:build_type=Release \
@@ -481,8 +484,21 @@ conan workspace install \
   -o openssl:shared=True
 
 cmake -E time \
-  conan build .. --build-folder=../build/Debug
+  conan build .. --build-folder=.
 ```
+
+We need to run QT Creator from terminal that used environment variables from  `activate.sh`:
+
+```bash
+source activate.sh
+
+# run new QtCreator window
+qtcreator
+```
+
+Create kit in QT Creator with same compiler version as in conan profile.
+
+Open `conan_workspace/CMakelists.txt` file in QT Creator, but enable only `Debug` output directory and set `Debug` output directory to `conan_workspace` (replace with full path to build folder that used `conan build` above).
 
 ## Disclaimer
 
