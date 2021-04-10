@@ -305,7 +305,9 @@ class MUST_USE_RESULT Status final {
   void SetCanonicalCode(int canonical_code);
 
   bool operator==(const Status& x) const;
+#if __cplusplus <= 201703L
   bool operator!=(const Status& x) const;
+#endif
 
   // Returns true iff this->CanonicalCode() == expected.
   MUST_USE_RETURN_VALUE
@@ -539,7 +541,9 @@ inline bool Status::operator==(const Status& x) const {
   return (this->rep_ == x.rep_) || EqualsSlow(*this, x);
 }
 
+#if __cplusplus <= 201703L
 inline bool Status::operator!=(const Status& x) const { return !(*this == x); }
+#endif
 
 inline bool Status::Matches(::basic::error::Code expected) const {
   return CanonicalCode() == expected;

@@ -204,9 +204,11 @@ class RangeCheck {
     return is_underflow_ == rhs.is_underflow_ &&
            is_overflow_ == rhs.is_overflow_;
   }
+#if __cplusplus <= 201703L
   constexpr bool operator!=(const RangeCheck rhs) const {
     return !(*this == rhs);
   }
+#endif
 
  private:
   // Do not change the order of these member variables. The integral conversion

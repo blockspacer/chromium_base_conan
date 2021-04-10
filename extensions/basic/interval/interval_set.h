@@ -263,9 +263,11 @@ class IntervalSet {
   // Equality for IntervalSet<T>. Delegates to Equals().
   bool operator==(const IntervalSet& other) const { return Equals(other); }
 
+#if __cplusplus <= 201703L
   // Inequality for IntervalSet<T>. Delegates to Equals() (and returns its
   // negation).
   bool operator!=(const IntervalSet& other) const { return !Equals(other); }
+#endif
 
 // TODO(rtenneti): Implement after suupport for std::initializer_list.
 #if 0

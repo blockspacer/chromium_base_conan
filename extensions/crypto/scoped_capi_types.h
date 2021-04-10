@@ -74,9 +74,11 @@ class ScopedCAPIHandle {
     return handle_ == handle;
   }
 
+#if __cplusplus <= 201703L
   bool operator!=(CAPIHandle handle) const {
     return handle_ != handle;
   }
+#endif
 
   void swap(ScopedCAPIHandle& b) {
     CAPIHandle tmp = b.handle_;
@@ -101,10 +103,12 @@ bool operator==(CH h, const ScopedCAPIHandle<CH, FP>& b) {
   return h == b.get();
 }
 
+#if __cplusplus <= 201703L
 template<class CH, typename FP> inline
 bool operator!=(CH h, const ScopedCAPIHandle<CH, FP>& b) {
   return h != b.get();
 }
+#endif
 
 typedef ScopedCAPIHandle<
     HCRYPTPROV,

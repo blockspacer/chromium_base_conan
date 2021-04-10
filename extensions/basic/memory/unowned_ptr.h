@@ -144,11 +144,13 @@ public:
     return Get() == that.Get();
   }
 
+#if __cplusplus <= 201703L
   bool operator!=(
     const UnownedPtr& that) const
   {
     return !(*this == that);
   }
+#endif
 
   bool operator<(
     const UnownedPtr& that) const
@@ -163,12 +165,14 @@ public:
     return Get() == that;
   }
 
+#if __cplusplus <= 201703L
   template <typename U>
   bool operator!=(
     const U* that) const
   {
     return !(*this == that);
   }
+#endif
 
   /// \note Does not call `checkForLifetimeIssues`,
   /// so call it manually.
@@ -246,10 +250,12 @@ inline bool operator==(const U* lhs, const UnownedPtr<Type>& rhs)
   return rhs == lhs;
 }
 
+#if __cplusplus <= 201703L
 template <typename Type, typename U>
 inline bool operator!=(const U* lhs, const UnownedPtr<Type>& rhs)
 {
   return rhs != lhs;
 }
+#endif
 
 }  // namespace basic

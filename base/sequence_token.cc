@@ -33,9 +33,11 @@ bool SequenceToken::operator==(const SequenceToken& other) const {
   return token_ == other.token_ && IsValid();
 }
 
+#if __cplusplus <= 201703L
 bool SequenceToken::operator!=(const SequenceToken& other) const {
   return !(*this == other);
 }
+#endif
 
 bool SequenceToken::IsValid() const {
   return token_ != kInvalidSequenceToken;
@@ -59,9 +61,11 @@ bool TaskToken::operator==(const TaskToken& other) const {
   return token_ == other.token_ && IsValid();
 }
 
+#if __cplusplus <= 201703L
 bool TaskToken::operator!=(const TaskToken& other) const {
   return !(*this == other);
 }
+#endif
 
 bool TaskToken::IsValid() const {
   return token_ != kInvalidTaskToken;

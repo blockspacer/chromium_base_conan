@@ -273,6 +273,9 @@ class WrappedPromise;
 
 namespace internal {
 
+template <typename ResolveTypeT, typename RejectTypeT>
+class AbstractPromiseAwaiter;
+
 template <typename T, typename... Args>
 class PromiseCallbackHelper;
 
@@ -537,6 +540,9 @@ class BASE_EXPORT AbstractPromise
   friend ::base::RefCountedThreadSafe<AbstractPromise>;
 
   friend class AbstractPromiseTest;
+
+  template <typename A, typename B>
+  friend class internal::AbstractPromiseAwaiter;
 
   template <typename ResolveType, typename RejectType>
   friend class ::base::ManualPromiseResolver;
@@ -877,6 +883,9 @@ class BASE_EXPORT WrappedPromise {
   }
 
  private:
+  template <typename A, typename B>
+  friend class internal::AbstractPromiseAwaiter;
+
   template <typename ResolveType, typename RejectType>
   friend class Promise;
 

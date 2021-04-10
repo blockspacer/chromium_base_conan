@@ -37,6 +37,13 @@ namespace basic {
 // ZigZag Transform:  Encodes signed integers so that they can be
 // effectively used with varint encoding.
 //
+// ZigZag encoding maps signed integers with a small absolute value
+// to unsigned integers with a small (positive) values. Without this,
+// encoding negative values using Varint would use up 9 or 10 bytes.
+//
+// if x >= 0, encodeZigZag(x) == 2*x
+// if x <  0, encodeZigZag(x) == -2*x + 1
+//
 // varint operates on unsigned integers, encoding smaller numbers into
 // fewer bytes.  If you try to use it on a signed integer, it will treat
 // this number as a very large unsigned integer, which means that even
@@ -72,7 +79,9 @@ inline int32_t ZigZagDecode32(uint32_t n) {
 inline uint64_t ZigZagEncode64(int64_t n) {
   // Note:  the right-shift must be arithmetic
   // Note:  left shift must be unsigned because of overflow
-  return (static_cast<uint64_t>(n) << 1) ^ static_cast<uint64_t>(n >> 63);
+  return (static_cast<uint64_t>(n) << 1)
+    // val >> 63 is an arithmetic shift because val is signed
+    ^ static_cast<uint64_t>(n >> 63);
 }
 
 inline int64_t ZigZagDecode64(uint64_t n) {

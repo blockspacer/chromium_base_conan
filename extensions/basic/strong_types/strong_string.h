@@ -156,12 +156,14 @@ public:
     return x.value_ == y.value_;
   }
 
+#if __cplusplus <= 201703L
   /// Not-equal-to operator.
   friend bool operator!=(
     const StrongString& x, const StrongString& y) NO_EXCEPTION
   {
     return x.value_ != y.value_;
   }
+#endif
 
   /// Prints StrongString value to an output stream.
   friend std::ostream& operator<<(
@@ -487,11 +489,13 @@ public:
     return x == y.value_;
   }
 
+#if __cplusplus <= 201703L
   friend bool operator!=(
     const std::string& x, const StrongString& y) NO_EXCEPTION
   {
     return x != y.value_;
   }
+#endif
 
   template<
     typename charT
@@ -502,6 +506,7 @@ public:
     return x == y.value_;
   }
 
+#if __cplusplus <= 201703L
   template<
     typename charT
   >
@@ -510,6 +515,7 @@ public:
   {
     return x != y.value_;
   }
+#endif
 
 private:
   std::string value_;

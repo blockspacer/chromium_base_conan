@@ -246,7 +246,7 @@
 #include "basic/status/status_macros.h"
 #include "basic/concurrency/concurrent_int64.h"
 #include "basic/core/polymorphic_downcast.h"
-#include <basic/spin_lock.h>
+#include <basic/synchronization/spin_lock.h>
 #include <basic/macros.h>
 #include <basic/stl_util.h>
 

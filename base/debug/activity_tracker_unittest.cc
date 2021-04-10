@@ -43,7 +43,6 @@ class TestActivityTracker : public ThreadActivityTracker {
 
 }  // namespace
 
-
 class ActivityTrackerTest : public testing::Test {
  public:
   const int kMemorySize = 1 << 20;  // 1MiB

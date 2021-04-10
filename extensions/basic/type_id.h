@@ -151,8 +151,9 @@ class BASE_EXPORT TypeId {
   bool operator==(TypeId other) const {
     return unique_type_id_ == other.unique_type_id_;
   }
-
+#if __cplusplus <= 201703L
   bool operator!=(TypeId other) const { return !(*this == other); }
+#endif
 
   std::string ToString() const;
 

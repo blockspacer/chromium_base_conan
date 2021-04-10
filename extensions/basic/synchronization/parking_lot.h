@@ -26,8 +26,6 @@
 
 #include <base/check.h>
 
-// #include <folly/lang/SafeAssert.h>
-
 namespace basic {
 
 namespace parking_lot_detail {

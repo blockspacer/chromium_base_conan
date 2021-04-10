@@ -84,6 +84,8 @@ TEST(CheckedContiguousIterator, ConvertingComparisonOperators) {
 
 }  // namespace base
 
+#if TODO
+
 // ChromeOS does not use the in-tree libc++, but rather a shared library that
 // lags a bit behind.
 // TODO(crbug.com/1166360): Enable this test on ChromeOS once the shared libc++
@@ -152,6 +154,8 @@ TEST(CheckedContiguousIterator, OptimizedCopy) {
   EXPECT_TRUE(std::equal(std::begin(arr_in), std::end(arr_in),
                          std::begin(arr_out), std::end(arr_out)));
 }
+
+#endif // TODO
 
 }  // namespace base
 

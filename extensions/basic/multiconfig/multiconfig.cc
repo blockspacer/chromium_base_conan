@@ -136,7 +136,6 @@ basic::StatusOr<std::string> EnvMultiConf::tryLoadString(
 }
 
 CmdMultiConf::CmdMultiConf()
-  : command_line_{base::CommandLine::ForCurrentProcess()}
 {}
 
 CmdMultiConf& CmdMultiConf::GetInstance() {
@@ -163,9 +162,10 @@ basic::StatusOr<std::string> CmdMultiConf::tryLoadString(
   /// \note command line switches will `DCHECK` if switch is not lowercase.
   const std::string key_lower = base::ToLowerASCII(key);
 
-  if(command_line_->HasSwitch(key_lower))
-  {
-    return command_line_->GetSwitchValueASCII(key_lower);
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  if(command_line->HasSwitch(key_lower)) {
+    return command_line->GetSwitchValueASCII(key_lower);
   }
 
   RETURN_ERROR().with_dvlog(99)

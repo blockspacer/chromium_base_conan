@@ -16,8 +16,11 @@
 
 #pragma once
 
+#include "build/build_config.h"
+
 #include <base/callback.h>
-#include <base/allocator/partition_allocator/yield_processor.h>
+#include <base/check.h>
+#include <basic/synchronization/yield_processor.h>
 
 #include <basic/concurrency/cache_locality.h>
 #include <basic/containers/indexed_mem_pool.h>
@@ -26,7 +29,6 @@
 #include <basic/synchronization/saturating_semaphore.h>
 
 #include <atomic>
-#include <cassert>
 #include <mutex>
 #include <thread>
 
@@ -111,6 +113,7 @@ template <
     typename Req = /* default dummy type */ bool>
 class FlatCombining {
   using SavedFn = base::RepeatingCallback<void()>;
+  using OpFunc = base::RepeatingCallback<void()>;
 
  public:
   /// Combining request record.
@@ -165,8 +168,13 @@ class FlatCombining {
 
     Req& getReq() { return req_; }
 
+    void setFn(SavedFn&& fn) {
+      fn_ = std::forward<SavedFn>(fn);
+      DCHECK(fn_);
+    }
+
     template <typename Func>
-    void setFn(Func&& fn) {
+    void setFnCallback(Func&& fn) {
       static_assert(
           std::is_nothrow_constructible<
               base::RepeatingCallback<void()>,
@@ -176,13 +184,13 @@ class FlatCombining {
           "manage the requested function's arguments and results explicitly "
           "in a custom request structure without allocation.");
       fn_ = std::forward<Func>(fn);
-      assert(fn_);
+      DCHECK(fn_);
     }
 
     void clearFn() {
       fn_.Reset();
 
-      assert(!fn_);
+      DCHECK(!fn_);
     }
 
     SavedFn& getFn() { return fn_; }
@@ -216,6 +224,7 @@ class FlatCombining {
         recsPool_(numRecs_) {
     if (dedicated_) {
       // dedicated combiner thread
+      /// \todo use base::Thread
       combiner_ = std::thread([this] { dedicatedCombining(); });
     }
   }
@@ -267,10 +276,10 @@ class FlatCombining {
   }
 
   // Execute an operation without combining
-  template <typename OpFunc>
+  //template <typename OpFunc>
   void requestNoFC(OpFunc& opFn) {
     std::lock_guard<Mutex> guard(m_);
-    opFn();
+    opFn.Run();
   }
 
   // This function first tries to execute the operation without
@@ -295,7 +304,7 @@ class FlatCombining {
   //     requestFC(opFn, fillFn, rec, syncop)
   //     requestFC(opFn, fillFn, resFn)
   //     requestFC(opFn, fillFn, resFn, rec)
-  template <typename OpFunc>
+  //template <typename OpFunc>
   void requestFC(OpFunc&& opFn, Rec* rec = nullptr, bool syncop = true) {
     auto dummy = [](Req&) {};
     requestOp(
@@ -306,7 +315,7 @@ class FlatCombining {
         syncop,
         false /* simple */);
   }
-  template <typename OpFunc, typename FillFunc>
+  template </*typename OpFunc,*/ typename FillFunc>
   void requestFC(
       OpFunc&& opFn,
       const FillFunc& fillFn,
@@ -321,7 +330,7 @@ class FlatCombining {
         syncop,
         true /* custom */);
   }
-  template <typename OpFunc, typename FillFunc, typename ResFn>
+  template </*typename OpFunc,*/ typename FillFunc, typename ResFn>
   void requestFC(
       OpFunc&& opFn,
       const FillFunc& fillFn,
@@ -393,7 +402,7 @@ class FlatCombining {
   uint64_t passes_ = 0;
   uint64_t sessions_ = 0;
 
-  template <typename OpFunc, typename FillFunc, typename ResFn>
+  template </*typename OpFunc,*/ typename FillFunc, typename ResFn>
   void requestOp(
       OpFunc&& opFn,
       const FillFunc& fillFn,
@@ -406,7 +415,7 @@ class FlatCombining {
       // No contention
       ++uncombined_;
       tryCombining();
-      opFn();
+      opFn.Run();
       return;
     }
 
@@ -423,7 +432,7 @@ class FlatCombining {
       l.lock();
       ++uncombined_;
       tryCombining();
-      opFn();
+      opFn.Run();
       return;
     }
 
@@ -441,7 +450,7 @@ class FlatCombining {
       rec->setFn(std::forward<OpFunc>(opFn));
     }
     // Indicate that record is valid
-    assert(!rec->isValid());
+    DCHECK(!rec->isValid());
     rec->setValid();
     // end of combining critical path
     setPending();
@@ -545,7 +554,7 @@ class FlatCombining {
   /// acquire the lock and to do combining. Used only in the absence
   /// of a dedicated combiner.
   void awaitDoneTryLock(Rec& rec) {
-    assert(!dedicated_);
+    DCHECK(!dedicated_);
     int count = 0;
     while (!rec.isDone()) {
       if (count == 0) {
@@ -556,7 +565,7 @@ class FlatCombining {
         }
       } else {
         // asm_volatile_pause
-        YIELD_PROCESSOR
+        YIELD_PROCESSOR;
         if (++count == 1000) {
           count = 0;
         }

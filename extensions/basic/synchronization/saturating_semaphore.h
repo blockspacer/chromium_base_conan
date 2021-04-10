@@ -22,8 +22,7 @@
 #include <base/macros.h>
 
 #include <basic/synchronization/futex.h>
-// #include <basic/portability/asm.h>
-#include <basic/detail/memory_idler.h>
+#include <basic/synchronization/memory_idler.h>
 #include <basic/synchronization/atomic_util.h>
 #include <basic/synchronization/wait_options.h>
 #include <basic/synchronization/spin.h>
@@ -128,7 +127,7 @@ class SaturatingSemaphore {
   };
 
  public:
-  FOLLY_ALWAYS_INLINE static constexpr WaitOptions wait_options() { return {}; }
+  ALWAYS_INLINE static constexpr WaitOptions wait_options() { return {}; }
 
   /** constructor */
   constexpr SaturatingSemaphore() noexcept : state_(NOTREADY) {}
@@ -137,7 +136,7 @@ class SaturatingSemaphore {
   ~SaturatingSemaphore() {}
 
   /** ready */
-  FOLLY_ALWAYS_INLINE bool ready() const noexcept {
+  ALWAYS_INLINE bool ready() const noexcept {
     return state_.load(std::memory_order_acquire) == READY;
   }
 
@@ -145,7 +144,7 @@ class SaturatingSemaphore {
   void reset() noexcept { state_.store(NOTREADY, std::memory_order_relaxed); }
 
   /** post */
-  FOLLY_ALWAYS_INLINE void post() noexcept {
+  ALWAYS_INLINE void post() noexcept {
     if (!MayBlock) {
       state_.store(READY, std::memory_order_release);
     } else {
@@ -154,17 +153,17 @@ class SaturatingSemaphore {
   }
 
   /** wait */
-  FOLLY_ALWAYS_INLINE
+  ALWAYS_INLINE
   void wait(const WaitOptions& opt = wait_options()) noexcept {
     try_wait_until(std::chrono::steady_clock::time_point::max(), opt);
   }
 
   /** try_wait */
-  FOLLY_ALWAYS_INLINE bool try_wait() noexcept { return ready(); }
+  ALWAYS_INLINE bool try_wait() noexcept { return ready(); }
 
   /** try_wait_until */
   template <typename Clock, typename Duration>
-  FOLLY_ALWAYS_INLINE bool try_wait_until(
+  ALWAYS_INLINE bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline,
       const WaitOptions& opt = wait_options()) noexcept {
     if (LIKELY(try_wait())) {
@@ -175,7 +174,7 @@ class SaturatingSemaphore {
 
   /** try_wait_for */
   template <class Rep, class Period>
-  FOLLY_ALWAYS_INLINE bool try_wait_for(
+  ALWAYS_INLINE bool try_wait_for(
       const std::chrono::duration<Rep, Period>& duration,
       const WaitOptions& opt = wait_options()) noexcept {
     if (LIKELY(try_wait())) {
@@ -186,7 +185,7 @@ class SaturatingSemaphore {
   }
 
  private:
-  FOLLY_ALWAYS_INLINE void postFastWaiterMayBlock() noexcept {
+  ALWAYS_INLINE void postFastWaiterMayBlock() noexcept {
     uint32_t before = NOTREADY;
     if (LIKELY(state_.compare_exchange_strong(
             before,
@@ -212,7 +211,7 @@ class SaturatingSemaphore {
 
 /** postSlowWaiterMayBlock */
 template <bool MayBlock, template <typename> class Atom>
-FOLLY_NOINLINE void SaturatingSemaphore<MayBlock, Atom>::postSlowWaiterMayBlock(
+NOINLINE void SaturatingSemaphore<MayBlock, Atom>::postSlowWaiterMayBlock(
     uint32_t before) noexcept {
   while (true) {
     if (before == NOTREADY) {
@@ -272,7 +271,7 @@ FOLLY_NOINLINE void SaturatingSemaphore<MayBlock, Atom>::postSlowWaiterMayBlock(
 /** tryWaitSlow */
 template <bool MayBlock, template <typename> class Atom>
 template <typename Clock, typename Duration>
-FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
+NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
     const std::chrono::time_point<Clock, Duration>& deadline,
     const WaitOptions& opt) noexcept {
   switch (detail::spin_pause_until(deadline, opt, [=] { return ready(); })) {
@@ -297,7 +296,7 @@ FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
 
   auto before = state_.load(std::memory_order_relaxed);
   while (before == NOTREADY &&
-         !folly::atomic_compare_exchange_weak_explicit<Atom>(
+         !basic::atomic_compare_exchange_weak_explicit<Atom>(
              &state_,
              &before,
              static_cast<std::uint32_t>(BLOCKED),

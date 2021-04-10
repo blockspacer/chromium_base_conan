@@ -2517,6 +2517,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return b == a;
   }
 
+#if __cplusplus <= 201703L
   friend constexpr bool operator!=(
       const Char* a, const BasicFixedString& b) noexcept {
     return !(a == b);
@@ -2545,6 +2546,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const BasicFixedString& a, base::StringPiece b) noexcept {
     return !(a == b);
   }
+#endif
 
   friend constexpr bool operator<(
       const Char* a, const BasicFixedString& b) noexcept {
@@ -2749,11 +2751,13 @@ constexpr bool operator==(
       b.size());
 }
 
+#if __cplusplus <= 201703L
 template <class Char, std::size_t A, std::size_t B>
 constexpr bool operator!=(
     const BasicFixedString<Char, A>& a, const BasicFixedString<Char, B>& b) {
   return !(a == b);
 }
+#endif
 
 template <class Char, std::size_t A, std::size_t B>
 constexpr bool operator<(

@@ -32,16 +32,15 @@
 #include <base/check.h>
 #include <base/memory/aligned_memory.h>
 #include <base/no_destructor.h>
+#include <base/threading/platform_thread.h>
 
 #include <basic/portability/constexpr.h>
 #include <basic/portability/portability.h>
 #include <basic/portability/ordering.h>
 #include <basic/portability/utility.h>
 #include <basic/portability/align.h>
-#include <basic/memory/memory.h>
-
-// #include <folly/hash/Hash.h>
-// #include <folly/system/ThreadId.h>
+#include <basic/core/memory.h>
+#include <basic/hash/twang_hash.h>
 
 #if !BASIC_MOBILE && defined(BASIC_TLS)
 #define BASIC_CL_USE_BASIC_TLS 1
@@ -182,11 +181,12 @@ BASIC_TLS unsigned SequentialThreadId<Atom>::currentId(0);
 extern template struct SequentialThreadId<std::atomic>;
 #endif
 
-#if TODO
 struct HashingThreadId {
-  static unsigned get() { return hash::twang_32from64(getCurrentThreadID()); }
+  static unsigned get() {
+    return hash::twang_32from64(
+      static_cast<uint64_t>(base::PlatformThread::CurrentId()));
+  }
 };
-#endif
 
 /// A class that lazily binds a unique (for each implementation of Atom)
 /// identifier to a thread.  This is a fallback mechanism for the access

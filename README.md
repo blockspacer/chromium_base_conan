@@ -1,19 +1,20 @@
 # About
 
-Modified `base` library from chromium https://github.com/chromium/chromium/tree/master/base
+Modified `base` library from chromium, see https://github.com/chromium/chromium/tree/master/base
 
 Modification history in `extensions/PATCH_HISTORY.md` and added files in `extensions/`.
 
-NOTE: Some features or platforms may be not supported. Run unit tests to check support of some feature.
+NOTE: Some features or platforms may be not supported.
+Run unit tests to check support of some feature.
 
 ## Project goals
 
-* Easy integration with open-source projectes that use `CMake` and `conan`
+* Easy integration with open-source projects that use `CMake` and `conan`
 * Provide codebase similar to `chromium/base`, `libchrome`, `mini_chromium` etc.
 * Make library cross-platform (add browser support etc.)
 * Extend `base` library from chromium with extra general-purpose functionality
 
-## What is it?
+## What is `base` library?
 
 Base, libchrome and mini_chromium are general utility libraries from chromium.
 
@@ -23,12 +24,25 @@ See:
 * https://chromium.googlesource.com/chromiumos/docs/+/master/packages/libchrome.md
 * https://chromium.googlesource.com/chromium/mini_chromium/
 
+## What is `basic` library?
+
+In `./extensions/basic/` you can find code that extends `base` library.
+
+For example, `basic` adopts some code from `facebook/folly` library.
+
+Some changes made in `facebook/folly`:
+
+* Exceptions replaced with `StatusOr` or `CHECK`.
+* `std::thread` replaced with `base::Thread` or `base::PlatformThread`.
+* Removed already existing functionality (avoids code duplication).
+* Ported to more platforms (Android, browser, etc.)
+
 ## How to use it?
 
 Before usage set:
 
-* `base::i18n::InitializeICU()`
 * `setlocale(LC_ALL, "en_US.UTF-8")`
+* `base::i18n::InitializeICU()`
 * `logging::InitLogging(settings);`
 * `base::ThreadPoolInstance::CreateAndStartWithDefaultParams`
 * `base::AtExitManager`
@@ -222,6 +236,14 @@ Extra docs:
 
 * https://abseil.io/docs/cpp/guides/
 
+`basic` is similar to `folly`, so you may want to read `folly` docs:
+
+* https://github.com/facebook/folly/tree/master/folly/docs
+* https://engineering.fb.com/2012/06/02/developer-tools/folly-the-facebook-open-source-library/
+* https://engineering.fb.com/2015/06/19/developer-tools/futures-for-c-11-at-facebook/
+* https://engineering.fb.com/2019/04/25/developer-tools/f14/
+* https://groups.google.com/g/facebook-folly
+
 ## Before build (dependencies)
 
 Create clang conan profile https://docs.conan.io/en/1.34/reference/profiles.html#examples
@@ -268,7 +290,6 @@ cmake -E time \
   --profile clang \
   -e chromium_base:enable_tests=True \
   -o chromium_base:shared=True \
-  -e abseil:enable_llvm_tools=True \
   -o perfetto:is_hermetic_clang=False
 
 (rm CMakeCache.txt || true)
@@ -365,8 +386,9 @@ See https://github.com/chromium/chromium/blob/master/base/DEPS
 
 Extra deps used by `./extensions/basic/`:
 
-- boost preprocessor
+- header-only boost libraries
 - fmt
+- abseil
 
 ## Used chromium version
 
@@ -466,6 +488,7 @@ Follow `extensions/README.md`
 ## Conan workspace and QT Creator
 
 ```bash
+# remove old build files, but keep conan workspace layout
 find conan_workspace\
   \! -name 'conan_workspace' \
   \! -name 'conan_workspace.yml' \
@@ -481,13 +504,15 @@ conan workspace install \
   -s build_type=Debug \
   -s cling_conan:build_type=Release \
   -s llvm_tools:build_type=Release \
-  -o openssl:shared=True
+  -o openssl:shared=True \
+  -e chromium_base:enable_tests=True \
+  -o chromium_base:shared=True
 
 cmake -E time \
   conan build .. --build-folder=.
 ```
 
-We need to run QT Creator from terminal that used environment variables from  `activate.sh`:
+We need to run QT Creator from terminal that uses environment variables from `activate.sh`:
 
 ```bash
 source activate.sh
@@ -499,6 +524,59 @@ qtcreator
 Create kit in QT Creator with same compiler version as in conan profile.
 
 Open `conan_workspace/CMakelists.txt` file in QT Creator, but enable only `Debug` output directory and set `Debug` output directory to `conan_workspace` (replace with full path to build folder that used `conan build` above).
+
+## Coroutines support
+
+Used conan profile:
+
+```txt
+[settings]
+# We are building in Ubuntu Linux
+os_build=Linux
+os=Linux
+arch_build=x86_64
+arch=x86_64
+
+compiler=clang
+compiler.version=11
+compiler.libcxx=libc++
+compiler.cppstd=20
+
+[env]
+CC=/usr/bin/clang-11
+CXX=/usr/bin/clang++-11
+CXXFLAGS="-v"
+
+[build_requires]
+cmake_installer/3.15.5@conan/stable
+```
+
+Used clang version:
+
+```bash
+# LLVM
+sudo apt-get install libllvm-11-ocaml-dev libllvm11 llvm-11 llvm-11-dev llvm-11-doc llvm-11-examples llvm-11-runtime
+# Clang and co
+sudo apt-get install clang-11 clang-tools-11 clang-11-doc libclang-common-11-dev libclang-11-dev libclang1-11 clang-format-11 clangd-11
+# libfuzzer
+sudo apt-get install libfuzzer-11-dev
+# lldb
+sudo apt-get install lldb-11
+# lld (linker)
+sudo apt-get install lld-11
+# libc++
+sudo apt-get install libc++-11-dev libc++abi-11-dev
+# OpenMP
+sudo apt-get install libomp-11-dev
+# clang-tidy
+sudo apt-get install clang-tidy-11
+# libunwind
+sudo apt-get install -y libunwind-dev
+```
+
+Re-install conan workspace with `--build=missing`.
+
+NOTE: You can use `-e chromium_base:compile_with_llvm_tools=True` instead.
 
 ## Disclaimer
 

@@ -22,7 +22,9 @@
 
 #include <basic/synchronization/flat_combining.h>
 
-//#include <folly/synchronization/Baton.h>
+#include <base/notreached.h>
+#include <base/bind.h>
+#include <base/test/bind.h>
 
 namespace basic {
 
@@ -95,25 +97,28 @@ class FcSimpleExample
   }
 
   void add(uint64_t val, Rec* rec = nullptr) {
-    auto opFn = [&, val] { // asynchronous -- capture val by value
-      data_.add(val);
-    };
-    this->requestFC(opFn, rec, false);
+    base::RepeatingCallback<void()> opFn = base::BindLambdaForTesting(
+      [&, val] { // asynchronous -- capture val by value
+        data_.add(val);
+      });
+    this->requestFC(std::move(opFn), rec, false);
   }
 
   // fetchAdd
 
   uint64_t fetchAddNoFC(uint64_t val) {
     uint64_t res;
-    auto opFn = [&] { res = data_.fetchAdd(val); };
+    base::RepeatingCallback<void()> opFn = base::BindLambdaForTesting(
+      [&] { res = data_.fetchAdd(val); });
     this->requestNoFC(opFn);
     return res;
   }
 
   uint64_t fetchAdd(uint64_t val, Rec* rec = nullptr) {
     uint64_t res;
-    auto opFn = [&] { res = data_.fetchAdd(val); };
-    this->requestFC(opFn, rec);
+    base::RepeatingCallback<void()> opFn = base::BindLambdaForTesting(
+      [&] { res = data_.fetchAdd(val); });
+    this->requestFC(std::move(opFn), rec);
     return res;
   }
 
@@ -174,32 +179,35 @@ class FcCustomExample : public FlatCombining<
   }
 
   void add(uint64_t val, Rec* rec = nullptr) {
-    auto opFn = [&, val] { data_.add(val); };
+    base::RepeatingCallback<void()> opFn = base::BindLambdaForTesting(
+      [&, val] { data_.add(val); });
     auto fillFn = [&](Req& req) {
       req.setType(Req::Type::ADD);
       req.setVal(val);
     };
-    this->requestFC(opFn, fillFn, rec, false); // asynchronous
+    this->requestFC(std::move(opFn), fillFn, rec, false); // asynchronous
   }
 
   // fetchAdd
 
   uint64_t fetchAddNoFC(uint64_t val) {
     uint64_t res;
-    auto opFn = [&] { res = data_.fetchAdd(val); };
+    base::RepeatingCallback<void()> opFn = base::BindLambdaForTesting(
+      [&] { res = data_.fetchAdd(val); });
     this->requestNoFC(opFn);
     return res;
   }
 
   uint64_t fetchAdd(uint64_t val, Rec* rec = nullptr) {
     uint64_t res;
-    auto opFn = [&] { res = data_.fetchAdd(val); };
+    base::RepeatingCallback<void()> opFn = base::BindLambdaForTesting(
+      [&] { res = data_.fetchAdd(val); });
     auto fillFn = [&](Req& req) {
       req.setType(Req::Type::FETCHADD);
       req.setVal(val);
     };
     auto resFn = [&](Req& req) { res = req.getRes(); };
-    this->requestFC(opFn, fillFn, resFn, rec);
+    this->requestFC(std::move(opFn), fillFn, resFn, rec);
     return res;
   }
 
@@ -213,7 +221,7 @@ class FcCustomExample : public FlatCombining<
         req.setRes(data_.fetchAdd(req.getVal()));
         return;
     }
-    assume_unreachable();
+    NOTREACHED();
   }
 
  private:

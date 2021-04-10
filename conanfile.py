@@ -203,7 +203,6 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.build_requires("cmake_platform_detection/master@conan/stable")
         self.build_requires("cmake_build_options/master@conan/stable")
         self.build_requires("cmake_helper_utils/master@conan/stable")
-        self.build_requires("abseil/lts_2020_09_23@conan/stable")
         # see https://chromium.googlesource.com/linux-syscall-support/+archive/29f7c7e018f4ce706a709f0b0afbf8bacf869480.tar.gz
 
         if self.options.enable_tsan \
@@ -250,10 +249,22 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         # to make smaller binary
         self.requires("chromium_compact_enc_det/master@conan/stable")
 
+        # NOTE: also update headers in `extensions/third_party/perfetto`
         self.requires("perfetto/v13.0@conan/stable")
+
+        # NOTE: also update headers in `extensions/third_party/boringssl/src/include/openssl`
         self.requires("openssl/OpenSSL_1_1_1-stable@conan/stable")
 
         self.requires("fmt/master@dev/stable")
+
+        self.requires("boost_iterator/1.69.0@bincrafters/stable")
+
+        self.requires("boost_intrusive/1.69.0@bincrafters/stable")
+
+        self.requires("boost_preprocessor/1.69.0@bincrafters/testing")
+
+        # NOTE: also update headers in `extensions/third_party/abseil-cpp`
+        self.requires("abseil/lts_2020_09_23@conan/stable")
 
         if self.options.enable_protoc_autoinstall:
             # TODO: https://github.com/gaeus/conan-grpc
@@ -273,24 +284,6 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             cmake.definitions["BUILD_SHARED_LIBS"] = "ON" if self.options.shared else "OFF"
 
         cmake.definitions["CMAKE_BUILD_TYPE"] = self.settings.build_type
-
-        self.output.info("PERFETTO_SDK_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_SDK_DIR))
-        cmake.definitions['PERFETTO_SDK_DIR'] = self.deps_env_info['perfetto'].PERFETTO_SDK_DIR
-
-        self.output.info("PERFETTO_GEN_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_GEN_DIR))
-        cmake.definitions['PERFETTO_GEN_DIR'] = self.deps_env_info['perfetto'].PERFETTO_GEN_DIR
-
-        self.output.info("PERFETTO_protozero_plugin_BIN={}".format(self.deps_env_info['perfetto'].PERFETTO_protozero_plugin_BIN))
-        cmake.definitions['PERFETTO_protozero_plugin_BIN'] = self.deps_env_info['perfetto'].PERFETTO_protozero_plugin_BIN
-
-        self.output.info("PERFETTO_PROTOC_BIN={}".format(self.deps_env_info['perfetto'].PERFETTO_PROTOC_BIN))
-        cmake.definitions['PERFETTO_PROTOC_BIN'] = self.deps_env_info['perfetto'].PERFETTO_PROTOC_BIN
-
-        self.output.info("PERFETTO_PROTOS_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_PROTOS_DIR))
-        cmake.definitions['PERFETTO_PROTOS_DIR'] = self.deps_env_info['perfetto'].PERFETTO_PROTOS_DIR
-
-        self.output.info("PERFETTO_BUILDTOOLS_DIR={}".format(self.deps_env_info['perfetto'].PERFETTO_BUILDTOOLS_DIR))
-        cmake.definitions['PERFETTO_BUILDTOOLS_DIR'] = self.deps_env_info['perfetto'].PERFETTO_BUILDTOOLS_DIR
 
         cmake.definitions["ENABLE_VALGRIND"] = "ON" if self.options.enable_valgrind else "OFF"
 
@@ -316,7 +309,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         self.add_cmake_option(cmake, "COMPILE_WITH_LLVM_TOOLS", self._is_compile_with_llvm_tools_enabled())
 
-        cmake.configure(build_folder=self._build_subfolder)
+        cmake.configure(build_folder=self._build_subfolder, args=['--debug-trycompile'])
 
         return cmake
 
@@ -340,7 +333,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         #cmake.definitions["CMAKE_TOOLCHAIN_FILE"] = 'conan_paths.cmake'
 
         # The CMakeLists.txt file must be in `source_folder`
-        cmake.configure(source_folder=".")
+        cmake.configure(source_folder=".", args=['--trace', '--debug-trycompile', '--debug-output'])
 
         cpu_count = tools.cpu_count()
         self.output.info('Detected %s CPUs' % (cpu_count))

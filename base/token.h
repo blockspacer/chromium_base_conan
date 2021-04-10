@@ -49,9 +49,11 @@ class BASE_EXPORT Token {
     return high_ == other.high_ && low_ == other.low_;
   }
 
+#if __cplusplus <= 201703L
   constexpr bool operator!=(const Token& other) const {
     return !(*this == other);
   }
+#endif
 
   constexpr bool operator<(const Token& other) const {
     return std::tie(high_, low_) < std::tie(other.high_, other.low_);

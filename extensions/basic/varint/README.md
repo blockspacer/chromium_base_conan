@@ -4,7 +4,7 @@ Varints are a method of serializing integers using one or more bytes i.e. way of
 
 By default, computers use fixed length integers for reasons of hardware efficiency.
 
-However, when transmitting or storing integers, it’s important to compress them down in order to save bandwidth.
+However, when transmitting or storing integers, it is important to compress them down in order to save bandwidth.
 
 Varints are based on the idea that most numbers are not uniformly distributed.
 
@@ -16,9 +16,9 @@ For example, a 64 bit integer that is almost always less than 256 would be wasti
 
 The two common ways of encoding varints are length prefixed, and continuation bits.
 
-Google’s Protobuf use the latter technique, using the top bit of each byte to indicate whether or not there are more bytes coming.
+Google Protobuf use the latter technique, using the top bit of each byte to indicate whether or not there are more bytes coming.
 
-Google’s Protobuf uses zigzag encoding (also described there) for signed integer representation described at https://developers.google.com/protocol-buffers/docs/encoding
+Google Protobuf uses zigzag encoding (also described there) for signed integer representation described at https://developers.google.com/protocol-buffers/docs/encoding
 
 ZigZag encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small varint encoded value too.
 
@@ -49,29 +49,29 @@ See:
 
 Smaller numbers take a smaller number of bytes.
 
-Each byte in a varint, except the last byte, has the most significant bit (msb) set – this indicates that there are further bytes to come.
+Each byte in a varint, except the last byte, has the most significant bit (msb) set - this indicates that there are further bytes to come.
 
 The lower 7 bits of each byte are used to store the two's complement representation of the number in groups of 7 bits, least significant group first.
 
-So, for example, here is the number 1 – it's a single byte, so the msb is not set:
+So, for example, here is the number 1 - it's a single byte, so the msb is not set:
 
 0000 0001
 
-And here is 300 – this is a bit more complicated:
+And here is 300 - this is a bit more complicated:
 
 1010 1100 0000 0010
 
 How do you figure out that this is 300? First you drop the msb from each byte, as this is just there to tell us whether we've reached the end of the number (as you can see, it's set in the first byte as there is more than one byte in the varint):
 
- 1010 1100 0000 0010
-? 010 1100  000 0010
+   1010 1100 0000 0010
+-> 010 1100  000 0010
 
 You reverse the two groups of 7 bits because, as you remember, varints store numbers with the least significant group first. Then you concatenate them to get your final value:
 
-000 0010  010 1100
-?  000 0010 ++ 010 1100
-?  100101100
-?  256 + 32 + 8 + 4 = 300
+    000 0010  010 1100
+->  000 0010 ++ 010 1100
+->  100101100
+->  256 + 32 + 8 + 4 = 300
 
 ## NOTE
 

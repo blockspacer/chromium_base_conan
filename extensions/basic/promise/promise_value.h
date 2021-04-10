@@ -12,6 +12,8 @@
 #include "basic/rvalue_cast.h"
 #include "basic/macros.h"
 
+#include <ostream>
+
 namespace base {
 
 namespace internal {

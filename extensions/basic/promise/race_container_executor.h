@@ -16,20 +16,6 @@ public:
  static constexpr PromiseExecutor::PrerequisitePolicy kPrerequisitePolicy =
      PromiseExecutor::PrerequisitePolicy::kAny;
 
- struct VoidResolveType {};
- struct NonVoidResolveType {};
-
- using ResolveTypeTag = std::conditional_t<std::is_void<ResolveType>::value,
-                                           VoidResolveType,
-                                           NonVoidResolveType>;
-
- struct VoidRejectType {};
- struct NonVoidRejectType {};
-
- using RejectTypeTag = std::conditional_t<std::is_void<RejectType>::value,
-                                           VoidRejectType,
-                                           NonVoidRejectType>;
-
  public:
  void Execute(AbstractPromise* promise) {
    AbstractPromise* first_settled = promise->GetFirstSettledPrerequisite();

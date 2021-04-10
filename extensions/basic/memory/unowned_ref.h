@@ -149,10 +149,12 @@ public:
     return Get() == that.Get();
   }
 
+#if __cplusplus <= 201703L
   bool operator!=(const UnownedRef& that) const
   {
     return !(*this == that);
   }
+#endif
 
   bool operator<(const UnownedRef& that) const
   {
@@ -165,11 +167,13 @@ public:
     return Get() == &that;
   }
 
+#if __cplusplus <= 201703L
   template <typename U>
   bool operator!=(const U& that) const
   {
     return !(*this == &that);
   }
+#endif
 
   // implicit conversion
   operator Type&() NO_EXCEPTION
@@ -235,10 +239,12 @@ inline bool operator==(const U& lhs, const UnownedRef<Type>& rhs)
   return rhs == lhs;
 }
 
+#if __cplusplus <= 201703L
 template <typename Type, typename U>
 inline bool operator!=(const U& lhs, const UnownedRef<Type>& rhs)
 {
   return rhs != lhs;
 }
+#endif
 
 }  // namespace basic

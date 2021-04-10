@@ -331,11 +331,13 @@ public:
     return x.value_ == y.value_;
   }
 
+#if __cplusplus <= 201703L
   friend bool operator!=(
     const StrongCheckedNumeric& x, const StrongCheckedNumeric& y) NO_EXCEPTION
   {
     return x.value_ != y.value_;
   }
+#endif
 
   template <
     typename Src

@@ -32,9 +32,11 @@ class BASE_EXPORT TaskSourceSortKey final {
            worker_count_ == other.worker_count_ &&
            ready_time_ == other.ready_time_;
   }
+#if __cplusplus <= 201703L
   bool operator!=(const TaskSourceSortKey& other) const {
     return !(other == *this);
   }
+#endif
 
  private:
   // The private section allows this class to keep its immutable property while

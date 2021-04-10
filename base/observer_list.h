@@ -169,7 +169,9 @@ class ObserverList {
              (list_.get() == other.list_.get() && index_ == other.index_);
     }
 
+#if __cplusplus <= 201703L
     bool operator!=(const Iter& other) const { return !(*this == other); }
+#endif
 
     Iter& operator++() {
       if (list_) {

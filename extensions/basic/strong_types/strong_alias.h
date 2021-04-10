@@ -561,6 +561,7 @@ class StrongAlias
     return value_ == other.value_;
   }
 
+#if __cplusplus <= 201703L
   template<typename T = UnderlyingType>
   constexpr
   typename std::enable_if<
@@ -572,6 +573,7 @@ class StrongAlias
   {
     return value_ != other.value_;
   }
+#endif
 
   template<typename T = UnderlyingType>
   constexpr

@@ -3,6 +3,24 @@
 #include "build/build_config.h"
 #include "basic/wasm_util.h"
 
+#ifndef __has_attribute
+#define BASIC_HAS_ATTRIBUTE(x) 0
+#else
+#define BASIC_HAS_ATTRIBUTE(x) __has_attribute(x)
+#endif
+
+#ifndef __has_cpp_attribute
+#define BASIC_HAS_CPP_ATTRIBUTE(x) 0
+#else
+#define BASIC_HAS_CPP_ATTRIBUTE(x) __has_cpp_attribute(x)
+#endif
+
+#ifndef __has_extension
+#define BASIC_HAS_EXTENSION(x) 0
+#else
+#define BASIC_HAS_EXTENSION(x) __has_extension(x)
+#endif
+
 #if defined(COMPILER_MSVC)
 
 // For _Printf_format_string_.
@@ -242,4 +260,75 @@
   do {                                  \
     static_cast<void>(false && (cond)); \
   } while (0)
+#endif
+
+/**
+ * Nullable indicates that a return value or a parameter may be a `nullptr`,
+ * e.g.
+ *
+ * int* BASIC_NULLABLE foo(int* a, int* BASIC_NULLABLE b) {
+ *   if (*a > 0) {  // safe dereference
+ *     return nullptr;
+ *   }
+ *   if (*b < 0) {  // unsafe dereference
+ *     return *a;
+ *   }
+ *   if (b != nullptr && *b == 1) {  // safe checked dereference
+ *     return new int(1);
+ *   }
+ *   return nullptr;
+ * }
+ *
+ * Ignores Clang's -Wnullability-extension since it correctly handles the case
+ * where the extension is not present.
+ */
+#if BASIC_HAS_EXTENSION(nullability)
+#define BASIC_NULLABLE                                   \
+  BASIC_PUSH_WARNING                                     \
+  BASIC_CLANG_DISABLE_WARNING("-Wnullability-extension") \
+  _Nullable BASIC_POP_WARNING
+#define BASIC_NONNULL                                    \
+  BASIC_PUSH_WARNING                                     \
+  BASIC_CLANG_DISABLE_WARNING("-Wnullability-extension") \
+  _Nonnull BASIC_POP_WARNING
+#else
+#define BASIC_NULLABLE
+#define BASIC_NONNULL
+#endif
+
+/**
+ * "Cold" indicates to the compiler that a function is only expected to be
+ * called from unlikely code paths. It can affect decisions made by the
+ * optimizer both when processing the function body and when analyzing
+ * call-sites.
+ */
+#if __GNUC__
+#define BASIC_COLD __attribute__((__cold__))
+#else
+#define BASIC_COLD
+#endif
+
+/**
+ *  no_unique_address indicates that a member variable can be optimized to
+ * occupy no space, rather than the minimum 1-byte used by default.
+ *
+ *  class Empty {};
+ *
+ *  class NonEmpty1 {
+ *    BASIC_NO_UNIQUE_ADDRESS Empty e;
+ *    int f;
+ *  };
+ *
+ *  class NonEmpty2 {
+ *    Empty e;
+ *    int f;
+ *  };
+ *
+ *  sizeof(NonEmpty1); // may be == sizeof(int)
+ *  sizeof(NonEmpty2); // must be > sizeof(int)
+ */
+#if BASIC_HAS_CPP_ATTRIBUTE(no_unique_address)
+#define BASIC_ATTR_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#else
+#define BASIC_ATTR_NO_UNIQUE_ADDRESS
 #endif

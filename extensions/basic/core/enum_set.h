@@ -120,7 +120,9 @@ class EnumSet {
 
     bool operator==(const Iterator& other) const { return i_ == other.i_; }
 
+#if __cplusplus <= 201703L
     bool operator!=(const Iterator& other) const { return !(*this == other); }
+#endif
 
     E operator*() const {
       DCHECK(Good());

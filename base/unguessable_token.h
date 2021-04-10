@@ -98,9 +98,11 @@ class BASE_EXPORT UnguessableToken {
     return token_ == other.token_;
   }
 
+#if __cplusplus <= 201703L
   constexpr bool operator!=(const UnguessableToken& other) const {
     return !(*this == other);
   }
+#endif
 
  private:
   friend struct UnguessableTokenHash;

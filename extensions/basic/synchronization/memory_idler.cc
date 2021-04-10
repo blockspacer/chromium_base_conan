@@ -14,24 +14,27 @@
  * limitations under the License.
  */
 
-#include <folly/detail/MemoryIdler.h>
+#include <basic/synchronization/memory_idler.h>
+#include <basic/logging.h>
+#include <basic/portability/portability.h>
+#include <basic/portability/sysmman.h>
+#include <basic/portability/unistd.h>
+#include <basic/concurrency/cache_locality.h>
+#include <basic/macros.h>
 
 #include <climits>
 #include <cstdio>
 #include <cstring>
 #include <utility>
 
-#include <folly/GLog.h>
-#include <folly/Portability.h>
-#include <folly/ScopeGuard.h>
-#include <folly/concurrency/CacheLocality.h>
-#include <folly/memory/MallctlHelper.h>
-#include <folly/memory/Malloc.h>
-#include <folly/portability/PThread.h>
-#include <folly/portability/SysMman.h>
-#include <folly/portability/Unistd.h>
+#include <base/callback_helpers.h>
+#include <base/bind.h>
+#include <base/logging.h>
 
-namespace folly {
+#include <basic/memory/mallctl_helper.h>
+#include <basic/memory/malloc.h>
+
+namespace basic {
 namespace detail {
 
 AtomicStruct<std::chrono::steady_clock::duration>
@@ -42,11 +45,13 @@ void MemoryIdler::flushLocalMallocCaches() {
     return;
   }
   if (!mallctl || !mallctlnametomib || !mallctlbymib) {
-    FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl* weak link failed";
+    LOG_EVERY_N_MS(ERROR, 10000) << "mallctl* weak link failed";
     return;
   }
 
-  try {
+  /// \todo check memory allocation status
+  /// LOG_EVERY_N_MS(WARNING, 10000) << what();
+  {
     // Not using mallctlCall as this will fail if tcache is disabled.
     mallctl("thread.tcache.flush", nullptr, nullptr, nullptr, 0);
 
@@ -72,19 +77,17 @@ void MemoryIdler::flushLocalMallocCaches() {
       mib[1] = static_cast<size_t>(arenaForCurrent);
       mallctlbymib(mib, miblen, nullptr, nullptr, nullptr, 0);
     }
-  } catch (const std::runtime_error& ex) {
-    FB_LOG_EVERY_MS(WARNING, 10000) << ex.what();
   }
 }
 
 // Stack madvise isn't Linux or glibc specific, but the system calls
 // and arithmetic (and bug compatibility) are not portable.  The set of
 // platforms could be increased if it was useful.
-#if (FOLLY_X64 || FOLLY_PPC64) && defined(_GNU_SOURCE) && \
-    defined(__linux__) && !FOLLY_MOBILE && !FOLLY_SANITIZE_ADDRESS
+#if (BASIC_X64 || BASIC_PPC64) && defined(_GNU_SOURCE) && \
+    defined(__linux__) && !BASIC_MOBILE && !BASIC_SANITIZE_ADDRESS
 
-static FOLLY_TLS uintptr_t tls_stackLimit;
-static FOLLY_TLS size_t tls_stackSize;
+static BASIC_TLS uintptr_t tls_stackLimit;
+static BASIC_TLS size_t tls_stackSize;
 
 static size_t pageSize() {
   static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
@@ -96,17 +99,22 @@ static void fetchStackLimits() {
   pthread_attr_t attr;
   if ((err = pthread_getattr_np(pthread_self(), &attr))) {
     // some restricted environments can't access /proc
-    LOG_FIRST_N(WARNING, 1) << "pthread_getaddr_np failed errno=" << err;
+    LOG_FIRST_N_TIMES(WARNING, 1) << "pthread_getaddr_np failed errno=" << err;
     tls_stackSize = 1;
     return;
   }
-  SCOPE_EXIT { pthread_attr_destroy(&attr); };
+
+  base::ScopedClosureRunner scoped_destroy(
+    base::BindOnce([](pthread_attr_t& pthread_attr){
+      pthread_attr_destroy(&pthread_attr);
+    }, REFERENCED(attr))
+  );
 
   void* addr;
   size_t rawSize;
   if ((err = pthread_attr_getstack(&attr, &addr, &rawSize))) {
     // unexpected, but it is better to continue in prod than do nothing
-    FB_LOG_EVERY_MS(ERROR, 10000) << "pthread_attr_getstack error " << err;
+    LOG_EVERY_N_MS(ERROR, 10000) << "pthread_attr_getstack error " << err;
     assert(false);
     tls_stackSize = 1;
     return;
@@ -122,7 +130,7 @@ static void fetchStackLimits() {
     //
     // Very large stack size is a bug (hence the assert), but we can
     // carry on if we are in prod.
-    FB_LOG_EVERY_MS(ERROR, 10000)
+    LOG_EVERY_N_MS(ERROR, 10000)
         << "pthread_attr_getstack returned insane stack size " << rawSize;
     assert(false);
     tls_stackSize = 1;
@@ -146,7 +154,7 @@ static void fetchStackLimits() {
   assert((tls_stackLimit & (pageSize() - 1)) == 0);
 }
 
-FOLLY_NOINLINE static uintptr_t getStackPtr() {
+BASIC_NOINLINE static uintptr_t getStackPtr() {
   char marker;
   auto rv = reinterpret_cast<uintptr_t>(&marker);
   return rv;
@@ -194,4 +202,4 @@ void MemoryIdler::unmapUnusedStack(size_t /* retain */) {}
 #endif
 
 } // namespace detail
-} // namespace folly
+} // namespace basic

@@ -243,6 +243,7 @@ public:
         return &lhs.pool_ == &rhs.pool_;
     }
 
+#if __cplusplus <= 201703L
     template<class U>
     friend
     bool
@@ -252,6 +253,7 @@ public:
     {
         return ! (lhs == rhs);
     }
+#endif
 };
 
 #include <boost/beast/core.hpp>

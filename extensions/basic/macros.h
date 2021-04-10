@@ -6,13 +6,28 @@
 // are commonly used throughout Chromium source. (It may also contain things
 // that are closely related to things that are commonly used that belong in this
 // file.)
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
 
 // Related files that contain macros:
 // basictypes.h
 // base/logging.h
 // base/compiler_specific.h
-
-#pragma once
 
 #include <base/macros.h>
 
@@ -1823,8 +1838,37 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 #define GEN_CAT_II(p, res) res
 #endif
 
+// GEN_UNIQUE_NAME(str) introduces an identifier starting with
+// str and ending with a number that varies with the counter.
+//
+/// \see BASIC_ANONYMOUS_VARIABLE(base)
+//
 #ifndef GEN_UNIQUE_NAME
 #define GEN_UNIQUE_NAME(base) GEN_CAT(base, __COUNTER__)
+#endif
+
+// BASIC_ANONYMOUS_VARIABLE(str) introduces an identifier starting with
+// str and ending with a number that varies with the line.
+//
+/// \see GEN_UNIQUE_NAME(base)
+//
+#ifndef BASIC_ANONYMOUS_VARIABLE
+#define BASIC_CONCATENATE_IMPL(s1, s2) s1##s2
+#define BASIC_CONCATENATE(s1, s2) BASIC_CONCATENATE_IMPL(s1, s2)
+#ifdef __COUNTER__
+// Modular builds build each module with its own preprocessor state, meaning
+// `__COUNTER__` no longer provides a unique number across a TU.  Instead of
+// calling back to just `__LINE__`, use a mix of `__COUNTER__` and `__LINE__`
+// to try provide as much uniqueness as possible.
+#if HAVE_FEATURE(modules)
+#define BASIC_ANONYMOUS_VARIABLE(str) \
+  BASIC_CONCATENATE(BASIC_CONCATENATE(BASIC_CONCATENATE(str, __COUNTER__), _), __LINE__)
+#else
+#define BASIC_ANONYMOUS_VARIABLE(str) BASIC_CONCATENATE(str, __COUNTER__)
+#endif
+#else
+#define BASIC_ANONYMOUS_VARIABLE(str) BASIC_CONCATENATE(str, __LINE__)
+#endif
 #endif
 
 // Lazily-initialized boolean value.
@@ -1877,3 +1921,105 @@ enum TriBool { kNotSet = -1, kFalse = 0, kTrue = 1 };
 // }
 //
 #define BASIC_REQUIRES(...) template <BASIC_REQUIRES_IMPL(__VA_ARGS__)>
+
+#define BASIC_PP_DETAIL_NARGS_1( \
+    dummy,                       \
+    _15,                         \
+    _14,                         \
+    _13,                         \
+    _12,                         \
+    _11,                         \
+    _10,                         \
+    _9,                          \
+    _8,                          \
+    _7,                          \
+    _6,                          \
+    _5,                          \
+    _4,                          \
+    _3,                          \
+    _2,                          \
+    _1,                          \
+    _0,                          \
+    ...)                         \
+  _0
+#define BASIC_PP_DETAIL_NARGS(...) \
+  BASIC_PP_DETAIL_NARGS_1(         \
+      dummy,                       \
+      ##__VA_ARGS__,               \
+      15,                          \
+      14,                          \
+      13,                          \
+      12,                          \
+      11,                          \
+      10,                          \
+      9,                           \
+      8,                           \
+      7,                           \
+      6,                           \
+      5,                           \
+      4,                           \
+      3,                           \
+      2,                           \
+      1,                           \
+      0)
+
+#define BASIC_PP_DETAIL_FOR_EACH_REC_0(fn, ...)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_1(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_0(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_2(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_1(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_3(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_2(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_4(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_3(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_5(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_4(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_6(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_5(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_7(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_6(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_8(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_7(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_9(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_8(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_10(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_9(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_11(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_10(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_12(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_11(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_13(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_12(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_14(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_13(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_REC_15(fn, a, ...) \
+  fn(a) BASIC_PP_DETAIL_FOR_EACH_REC_14(fn, __VA_ARGS__)
+
+#define BASIC_PP_DETAIL_FOR_EACH_2(fn, n, ...) \
+  BASIC_PP_DETAIL_FOR_EACH_REC_##n(fn, __VA_ARGS__)
+#define BASIC_PP_DETAIL_FOR_EACH_1(fn, n, ...) \
+  BASIC_PP_DETAIL_FOR_EACH_2(fn, n, __VA_ARGS__)
+
+/**
+ *  BASIC_PP_FOR_EACH
+ *
+ *  Used to invoke a preprocessor macro, the name of which is passed as the
+ *  first argument, once for each subsequent variadic argument.
+ *
+ *  At present, supports [0, 16) arguments.
+ *
+ *  This input:
+ *
+ *    #define DOIT(a) go_do_it(a);
+ *    BASIC_PP_FOR_EACH(DOIT, 3, 5, 7)
+ *    #undef DOIT
+ *
+ *  Expands to this output (with whitespace adjusted for clarity):
+ *
+ *    go_do_it(3);
+ *    go_do_it(5);
+ *    go_do_it(7);
+ */
+#define BASIC_PP_FOR_EACH(fn, ...) \
+  BASIC_PP_DETAIL_FOR_EACH_1(      \
+      fn, BASIC_PP_DETAIL_NARGS(__VA_ARGS__), __VA_ARGS__)

@@ -142,6 +142,8 @@ TEST(TimeFormattingTest, TimeFormatTimeOfDayDefault24h) {
                                                  kDropAmPm));
 }
 
+/// \todo C++20 support
+#if __cplusplus <= 201703L
 TEST(TimeFormattingTest, TimeFormatTimeOfDayJP) {
   // Test for a locale that uses different mark than "AM" and "PM".
   // As an instance, we use third_party/icu/source/data/locales/ja.txt.
@@ -169,6 +171,7 @@ TEST(TimeFormattingTest, TimeFormatTimeOfDayJP) {
   EXPECT_EQ(clock12h, TimeFormatTimeOfDayWithHourClockType(time, k12HourClock,
                                                            kDropAmPm));
 }
+#endif
 
 TEST(TimeFormattingTest, TimeFormatTimeOfDayDE) {
   // German uses 24h by default, but uses 'AM', 'PM' for 12h format.
@@ -285,6 +288,8 @@ TEST(TimeFormattingTest, TimeFormatDateGB) {
             TimeFormatFriendlyDate(time));
 }
 
+/// \todo C++20 support
+#if __cplusplus <= 201703L
 TEST(TimeFormattingTest, TimeFormatWithPattern) {
   test::ScopedRestoreICUDefaultLocale restore_locale;
   test::ScopedRestoreDefaultTimezone la_time("America/Los_Angeles");
@@ -442,6 +447,7 @@ TEST(TimeFormattingTest, TimeIntervalFormat) {
       UTF8ToUTF16(u8"5月16日(月曜日)～28日(土曜日)"),
       DateIntervalFormat(begin_time, end_time, DATE_FORMAT_MONTH_WEEKDAY_DAY));
 }
+#endif
 
 }  // namespace
 }  // namespace base

@@ -16,6 +16,17 @@ C++ Promises for Chromium - Google Docs https://docs.google.com/document/d/1l12P
 
 Tracking bug for all promises related patches - https://bugs.chromium.org/p/chromium/issues/detail?id=906125
 
+## Motivation
+
+See how to rewrite `PostTaskAndReplyWithResult` using `PostPromise` https://chromium-review.googlesource.com/c/chromium/src/+/1061516/1/storage/browser/quota/quota_manager.cc#b979
+
+## Major changes from chromium promises
+
+* Added co_await support for promises based on https://chromium-review.googlesource.com/c/chromium/src/+/1070970
+* Added `race_container_executor.h` support for promises based on https://chromium-review.googlesource.com/c/chromium/src/+/1087954 and https://chromium-review.googlesource.com/c/chromium/src/+/1085066 and https://chromium-review.googlesource.com/c/chromium/src/+/1070969 and https://chromium-review.googlesource.com/c/chromium/src/+/1111851
+* Added `PostPromise`. `PostTask` does not return promise (as before).
+* Added `::base::IsNestedPromise` and `ThenNestedPromiseOn`. Nested promises may result in not obvious code, so made their usage explicit.
+
 ## Performance
 
 Designed for NOT performance-critical code.

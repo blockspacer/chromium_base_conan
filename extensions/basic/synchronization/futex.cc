@@ -21,9 +21,6 @@
 #include <cstdint>
 #include <cstring>
 
-// #include <folly/ScopeGuard.h>
-// #include <folly/hash/Hash.h>
-
 #include <basic/portability/sys_syscall.h>
 #include <basic/synchronization/parking_lot.h>
 

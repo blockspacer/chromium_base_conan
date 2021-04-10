@@ -11,8 +11,8 @@ namespace basic {
  * with message containing provided type.
  * See an example with dependent_false at https://en.cppreference.com/w/cpp/language/if
  *
- * if constexpr (std::is_same<T, someType1>) {
- * } else if constexpr (std::is_same<T, someType2>) {
+ * if constexpr (std::is_same<T, someType1>::value) {
+ * } else if constexpr (std::is_same<T, someType2>::value) {
  * } else {
  *     static_assert(dependent_false<T>::value, "unknown type");
  * }

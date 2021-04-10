@@ -92,6 +92,8 @@ TEST(NumberFormattingTest, FormatDouble) {
   }
 }
 
+/// \todo C++20 support
+#if __cplusplus <= 201703L
 TEST(NumberFormattingTest, FormatPercent) {
   static const struct {
     int64_t number;
@@ -130,6 +132,7 @@ TEST(NumberFormattingTest, FormatPercent) {
     EXPECT_EQ(UTF8ToUTF16(i.expected_arabic_egypt), FormatPercent(i.number));
   }
 }
+#endif
 
 }  // namespace
 }  // namespace base

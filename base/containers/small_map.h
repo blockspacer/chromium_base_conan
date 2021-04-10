@@ -240,13 +240,16 @@ class small_map {
       }
     }
 
+#if __cplusplus <= 201703L
     inline bool operator!=(const iterator& other) const {
       return !(*this == other);
     }
+#endif
 
     bool operator==(const const_iterator& other) const;
+#if __cplusplus <= 201703L
     bool operator!=(const const_iterator& other) const;
-
+#endif
    private:
     friend class small_map;
     friend class const_iterator;
@@ -319,9 +322,11 @@ class small_map {
       return other.array_iter_ == nullptr && map_iter_ == other.map_iter_;
     }
 
+#if __cplusplus <= 201703L
     inline bool operator!=(const const_iterator& other) const {
       return !(*this == other);
     }
+#endif
 
    private:
     friend class small_map;
@@ -610,9 +615,17 @@ template <typename NormalMap,
           typename Functor>
 inline bool small_map<NormalMap, kArraySize, EqualKey, Functor>::iterator::
 operator==(const const_iterator& other) const {
+#if __cplusplus <= 201703L
   return other == *this;
+#else
+  if (array_iter_ != nullptr) {
+    return array_iter_ == other.array_iter_;
+  }
+  return other.array_iter_ == nullptr && map_iter_ == other.map_iter_;
+#endif
 }
 
+#if __cplusplus <= 201703L
 template <typename NormalMap,
           size_t kArraySize,
           typename EqualKey,
@@ -621,6 +634,7 @@ inline bool small_map<NormalMap, kArraySize, EqualKey, Functor>::iterator::
 operator!=(const const_iterator& other) const {
   return other != *this;
 }
+#endif
 
 }  // namespace base
 

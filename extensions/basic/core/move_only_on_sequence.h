@@ -10,14 +10,14 @@
 
 #include <type_traits>
 
-/// \note Avoid `MoveOnly` if you can.
+/// \note Avoid `MoveOnlyOnSequence` if you can.
 /// You can use `RVALUE_CAST` to guarantee that value will be moved
 /// (remember that `RVALUE_CAST` may copy const value without moving!).
 //
-/// \note Sometimes `MoveOnly<T>` is better than `optional<T>` because `optional<T>`
+/// \note Sometimes `MoveOnlyOnSequence<T>` is better than `optional<T>` because `optional<T>`
 /// has not obvious behavior after you move out stored value
 /// ( do not use `optional<T>` to represent ownership ).
-/// Also `MoveOnly` able to do custom checks (like thread-safety checks)
+/// Also `MoveOnlyOnSequence` able to do custom checks (like thread-safety checks)
 /// unlike `optional<T>`.
 //
 // Why `optional<T>` bad if you want to move value out? See code below:
@@ -115,9 +115,9 @@
 // {
 //     MyObj obj("HI!");
 //
-//     basic::MoveOnly<MyObj> myObj = basic::MoveOnly<MyObj>::moveFrom(RVALUE_CAST(obj));
+//     basic::MoveOnlyOnSequence<MyObj> myObj = basic::MoveOnlyOnSequence<MyObj>::moveFrom(RVALUE_CAST(obj));
 //
-//     basic::MoveOnly<MyObj> movedOut = basic::MoveOnly<MyObj>::moveFrom(myObj.Take());
+//     basic::MoveOnlyOnSequence<MyObj> movedOut = basic::MoveOnlyOnSequence<MyObj>::moveFrom(myObj.Take());
 //
 //     // Uncomment to get SEGV: ASAN detects problem and crashes as expected
 //     // std::cout << "myObj says " << myObj.Take().val << std::endl;
@@ -128,27 +128,27 @@
 // }
 namespace basic {
 
-// Use it to make sure that you `copy-only-once` (see `MoveOnly::copyFrom`)
-// or only `move` (see `MoveOnly::moveFrom` and all operators).
+// Use it to make sure that you `copy-only-once` (see `MoveOnlyOnSequence::copyFrom`)
+// or only `move` (see `MoveOnlyOnSequence::moveFrom` and all operators).
 // It is good practice to document `copy-only-once-or-only-move` operation
-// via |MoveOnly| for large data types.
-/// \note |MoveOnly| made movable but NOT copiable
+// via |MoveOnlyOnSequence| for large data types.
+/// \note |MoveOnlyOnSequence| made movable but NOT copiable
 /// to ensure that large data type will be copied ONLY ONCE!
 template <
   class T
   , typename = void
   >
-class MoveOnly
+class MoveOnlyOnSequence
 {
   static_assert(
     typename_false<T>::value
-    , "unable to find MoveOnly implementation");
+    , "unable to find MoveOnlyOnSequence implementation");
 };
 
 template <
   class T
   >
-class MoveOnly<
+class MoveOnlyOnSequence<
   T
   , std::enable_if_t<
       !std::is_const<T> {}
@@ -163,7 +163,7 @@ private:
   // Made private bacause it makes
   // `move` operation implicit.
   // Use |moveFrom| instead.
-  explicit MoveOnly(T&& scoper)
+  explicit MoveOnlyOnSequence(T&& scoper)
     : is_valid_(true)
     , scoper_(RVALUE_CAST(scoper))
   {
@@ -171,20 +171,20 @@ private:
 
 public:
   // We want to explicitly document that `copy` operation will happen
-  static MoveOnly copyFrom(COPIED(const T & scoper))
+  static MoveOnlyOnSequence copyFrom(COPIED(const T & scoper))
   {
     T tmp = scoper;
-    return MoveOnly(RVALUE_CAST(tmp));
+    return MoveOnlyOnSequence(RVALUE_CAST(tmp));
   }
 
   // We want to explicitly document that `move` operation will happen
-  static MoveOnly moveFrom(T&& scoper)
+  static MoveOnlyOnSequence moveFrom(T&& scoper)
   {
-    return MoveOnly(RVALUE_CAST(scoper));
+    return MoveOnlyOnSequence(RVALUE_CAST(scoper));
   }
 
-  /// \note |MoveOnly| must be movable but NOT copiable
-  MoveOnly(MoveOnly&& other)
+  /// \note |MoveOnlyOnSequence| must be movable but NOT copiable
+  MoveOnlyOnSequence(MoveOnlyOnSequence&& other)
     : is_valid_(other.is_valid_)
     , scoper_(RVALUE_CAST(other.scoper_))
   {
@@ -200,9 +200,9 @@ public:
     return RVALUE_CAST(scoper_);
   }
 
-  MoveOnly(MoveOnly const&) = delete;
+  MoveOnlyOnSequence(MoveOnlyOnSequence const&) = delete;
 
-  MoveOnly& operator=(MoveOnly const&) = delete;
+  MoveOnlyOnSequence& operator=(MoveOnlyOnSequence const&) = delete;
 
 private:
   // is_valid_ is distinct from NULL
@@ -212,14 +212,14 @@ private:
 
   SEQUENCE_CHECKER(sequence_checker_);
 
-  DISALLOW_NEW_OPERATOR(MoveOnly);
+  DISALLOW_NEW_OPERATOR(MoveOnlyOnSequence);
 };
 
-// version of |MoveOnly| for `const T` data types
+// version of |MoveOnlyOnSequence| for `const T` data types
 template <
   class T
   >
-class MoveOnly<
+class MoveOnlyOnSequence<
   const T
   , std::enable_if_t<
       // you may want to use |UnownedPtr|
@@ -233,7 +233,7 @@ private:
   // Made private bacause it makes
   // `move` operation implicit.
   // Use |moveFrom| instead.
-  explicit MoveOnly(T&& scoper)
+  explicit MoveOnlyOnSequence(T&& scoper)
     : is_valid_(true)
     , scoper_(RVALUE_CAST(scoper))
   {
@@ -241,20 +241,20 @@ private:
 
 public:
   // We want to explicitly document that `copy` operation will happen
-  static MoveOnly copyFrom(COPIED(const T & scoper))
+  static MoveOnlyOnSequence copyFrom(COPIED(const T & scoper))
   {
     T tmp = scoper;
-    return MoveOnly(RVALUE_CAST(tmp));
+    return MoveOnlyOnSequence(RVALUE_CAST(tmp));
   }
 
   // We want to explicitly document that `move` operation will happen
-  static MoveOnly moveFrom(T&& scoper)
+  static MoveOnlyOnSequence moveFrom(T&& scoper)
   {
-    return MoveOnly(RVALUE_CAST(scoper));
+    return MoveOnlyOnSequence(RVALUE_CAST(scoper));
   }
 
-  /// \note |MoveOnly| must be movable but NOT copiable
-  MoveOnly(MoveOnly&& other)
+  /// \note |MoveOnlyOnSequence| must be movable but NOT copiable
+  MoveOnlyOnSequence(MoveOnlyOnSequence&& other)
     : is_valid_(other.is_valid_)
     , scoper_(RVALUE_CAST(other.scoper_))
   {
@@ -270,9 +270,9 @@ public:
     return RVALUE_CAST(scoper_);
   }
 
-  MoveOnly(MoveOnly const&) = delete;
+  MoveOnlyOnSequence(MoveOnlyOnSequence const&) = delete;
 
-  MoveOnly& operator=(MoveOnly const&) = delete;
+  MoveOnlyOnSequence& operator=(MoveOnlyOnSequence const&) = delete;
 
 private:
   // is_valid_ is distinct from NULL
@@ -282,7 +282,7 @@ private:
 
   SEQUENCE_CHECKER(sequence_checker_);
 
-  DISALLOW_NEW_OPERATOR(MoveOnly);
+  DISALLOW_NEW_OPERATOR(MoveOnlyOnSequence);
 };
 
 } // namespace basic

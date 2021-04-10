@@ -85,7 +85,11 @@ class BASE_EXPORT CheckError {
   // Stream for adding optional details to the error message.
   std::ostream& stream();
 
-  NOMERGE ~CheckError();
+  /// \todo 'nomerge' attribute cannot be applied to a declaration
+#if __cplusplus <= 201703L
+  NOMERGE
+#endif
+  ~CheckError();
 
   CheckError(const CheckError& other) = delete;
   CheckError& operator=(const CheckError& other) = delete;

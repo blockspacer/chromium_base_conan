@@ -48,7 +48,9 @@ class BASE_EXPORT ProcessMemoryDump {
  public:
   struct BASE_EXPORT MemoryAllocatorDumpEdge {
     bool operator==(const MemoryAllocatorDumpEdge&) const;
+#if __cplusplus <= 201703L
     bool operator!=(const MemoryAllocatorDumpEdge&) const;
+#endif
 
     MemoryAllocatorDumpGuid source;
     MemoryAllocatorDumpGuid target;

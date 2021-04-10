@@ -6,4 +6,4 @@
 # This defines where the conanbuildinfo.cmake will be written to
 
 [build_folder]
-.
+conan_workspace

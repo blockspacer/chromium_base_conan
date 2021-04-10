@@ -22,6 +22,11 @@
 
 namespace base {
 
+namespace internal {
+template <typename ResolveTypeT, typename RejectTypeT>
+class AbstractPromiseAwaiter;
+} // namespace internal
+
 // Used by `ThenOn` and `ThenNestedPromiseOn`
 struct IsNestedPromise
 {
@@ -97,6 +102,7 @@ class Promise : public internal::BasePromise {
   T TakeResolveValueForTesting() {
     static_assert(!std::is_same<NoResolve, T>::value,
                   "A NoResolve promise can't resolve.");
+    DCHECK(abstract_promise_->IsSettled());
     if (!abstract_promise_->IsSettled()) {
       RunLoop run_loop;
       FinallyHere(FROM_HERE, run_loop.QuitClosure());
@@ -118,6 +124,7 @@ class Promise : public internal::BasePromise {
   T TakeRejectValueForTesting() {
     static_assert(!std::is_same<NoReject, T>::value,
                   "A NoReject promise can't reject.");
+    DCHECK(abstract_promise_->IsSettled());
     if (!abstract_promise_->IsSettled()) {
       RunLoop run_loop;
       FinallyHere(FROM_HERE, run_loop.QuitClosure());
@@ -739,6 +746,9 @@ class Promise : public internal::BasePromise {
 
   template <typename Container, typename ContainerT>
   friend struct internal::RaceContainerHelper;
+
+  template <typename ResolveTypeT, typename RejectTypeT>
+  friend class internal::AbstractPromiseAwaiter;
 
   template <typename RejectStorage, typename ResultStorage>
   friend struct internal::EmplaceHelper;

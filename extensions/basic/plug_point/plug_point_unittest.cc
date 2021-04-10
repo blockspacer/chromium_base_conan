@@ -296,6 +296,7 @@ class PlugPointCallbacksTest : public testing::Test {
  public:
   void SetUp() override {
     PLUG_POINT(testPoint_) = PLUG_POINT_INSTANCE(PP_TestPointRunner);
+    PLUG_POINT(testPoint_)->disable();
   }
 
   basic::Status testFunc(const std::string& err_message) {

@@ -3,14 +3,14 @@
 #include <bitset>
 #include <string>
 
-#include <third_party/boost_preprocessor/include/boost/preprocessor/cat.hpp>
-#include <third_party/boost_preprocessor/include/boost/preprocessor/expr_if.hpp>
-#include <third_party/boost_preprocessor/include/boost/preprocessor/if.hpp>
-#include <third_party/boost_preprocessor/include/boost/preprocessor/stringize.hpp>
-#include <third_party/boost_preprocessor/include/boost/preprocessor/facilities/apply.hpp>
-#include <third_party/boost_preprocessor/include/boost/preprocessor/punctuation/is_begin_parens.hpp>
-#include <third_party/boost_preprocessor/include/boost/preprocessor/seq/for_each.hpp>
-#include <third_party/boost_preprocessor/include/boost/preprocessor/seq/fold_left.hpp>
+#include <boost/preprocessor/cat.hpp>
+#include <boost/preprocessor/expr_if.hpp>
+#include <boost/preprocessor/if.hpp>
+#include <boost/preprocessor/stringize.hpp>
+#include <boost/preprocessor/facilities/apply.hpp>
+#include <boost/preprocessor/punctuation/is_begin_parens.hpp>
+#include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/seq/fold_left.hpp>
 
 #include <base/macros.h>
 #include <base/notreached.h>
@@ -486,12 +486,14 @@ class TypedEnumBitSetIterator {
     }
   }
 
+#if __cplusplus <= 201703L
   friend bool operator!=(
     const TypedEnumBitSetIterator<EnumType>& lhs
     , const TypedEnumBitSetIterator<EnumType>& rhs)
   {
     return lhs.iter_ != rhs.iter_;
   }
+#endif
 
   ImplIterator iter_;
   const BitSet* set_;
@@ -605,9 +607,11 @@ class TypedEnumBitSet {
     return impl_ == rhs.impl_;
   }
 
+#if __cplusplus <= 201703L
   bool operator!=(const TypedEnumBitSet<EnumType>& rhs) const {
     return impl_ != rhs.impl_;
   }
+#endif
 
   bool operator<(const TypedEnumBitSet<EnumType>& rhs) const {
     return impl_.to_ullong() < rhs.impl_.to_ullong();

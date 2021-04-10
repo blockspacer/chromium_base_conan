@@ -176,21 +176,25 @@ TEST(SubstituteTest, SubstituteAndAppend) {
 TEST(SubstituteTest, VectorBoolRef) {
   std::vector<bool> v = {true, false};
   const auto& cv = v;
-  EXPECT_EQ("1 0 true false",
-            basic::Substitute("$1 $2 $3 $4", v[0], v[1], cv[0], cv[1]));
+  std::set<std::string> strings1{"1 0 true false", "1 0 1 0"};
+  std::string str1 = basic::Substitute("$1 $2 $3 $4", v[0], v[1], cv[0], cv[1]);
+  EXPECT_THAT(strings1, ::testing::Contains(testing::Eq(str1)));
 
-  std::string str = "Logic be like: ";
-  basic::SubstituteAndAppend(&str, "$1 $2 $3 $4", v[0], v[1], cv[0], cv[1]);
-  EXPECT_EQ("Logic be like: 1 0 true false", str);
+  std::string str2 = "Logic be like: ";
+  std::set<std::string> strings2{"Logic be like: 1 0 true false", "Logic be like: 1 0 1 0"};
+  basic::SubstituteAndAppend(&str2, "$1 $2 $3 $4", v[0], v[1], cv[0], cv[1]);
+  EXPECT_THAT(strings2, ::testing::Contains(testing::Eq(str2)));
 }
 
 #ifdef GTEST_HAS_DEATH_TEST
 
 TEST(SubstituteDeathTest, SubstituteDeath) {
-  std::string str;
-  EXPECT_DCHECK_DEATH(
-    basic::SubstituteAndAppend(&str, "$1 $2 $3 $4 $5 $6 $7 $8 $9 $10", "a", "b",
-                              "c", "d", "e", "f", "g", "h", "i", "j"));
+  {
+    std::string str;
+    EXPECT_DCHECK_DEATH(
+      basic::SubstituteAndAppend(&str, "$1 $2 $3 $4 $5 $6 $7 $8 $9 $10", "a", "b",
+                                "c", "d", "e", "f", "g", "h", "i", "j"));
+  }
 #if TODO
   EXPECT_DCHECK_DEATH(
       static_cast<void>(basic::Substitute(base::StringPiece("-$3"), "a", "b")),

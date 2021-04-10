@@ -52,13 +52,16 @@ struct DelayedWakeUp {
   int sequence_num;
   WakeUpResolution resolution;
 
+#if __cplusplus <= 201703L
   bool operator!=(const DelayedWakeUp& other) const {
     return time != other.time || other.sequence_num != sequence_num ||
            resolution != other.resolution;
   }
+#endif
 
   bool operator==(const DelayedWakeUp& other) const {
-    return !(*this != other);
+    return !(time != other.time || other.sequence_num != sequence_num ||
+        resolution != other.resolution);
   }
 
   bool operator<=(const DelayedWakeUp& other) const {

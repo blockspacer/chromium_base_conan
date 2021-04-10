@@ -34,6 +34,24 @@ Note that `MULTICONF_String` is same as `MULTICONF_type(std::string, ...)`
   MULTICONF_type(std::string, __VA_ARGS__)
 ```
 
+## FAQ
+
+* Why not gflags (https://gflags.github.io/gflags/)
+
+```cpp
+#include <gflags/gflags.h>
+
+DEFINE_bool(big_menu, true, "Include 'advanced' options in the menu listing");
+DEFINE_string(languages, "english,french,german",
+              "comma-separated list of languages to offer in the 'lang' menu");
+```
+
+
+Note that gflags is Commandline Flags Library.
+
+`multiconfig` - can support multiple configuration providers,
+not only Commandline Flags.
+
 ## Usage
 
 Syntax used to add new configuration option:
@@ -46,12 +64,12 @@ Example that adds multiple configuration options:
 
 ```cpp
 // creates var. `my_string_key` and configuration option using text "my_string_key"
-MULTICONF_String(my_string_key, "-12345", BUILTIN_MULTICONF_LOADERS);
+MULTICONF_String(my_string_key, "-12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 
 // creates var. `my_bool_key` and configuration option using text "my_bool_key"
-MULTICONF_Bool(my_bool_key, "True", BUILTIN_MULTICONF_LOADERS);
+MULTICONF_Bool(my_bool_key, "True", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 
-MULTICONF_Int(my_int_key, "-12345", BUILTIN_MULTICONF_LOADERS);
+MULTICONF_Int(my_int_key, "-12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 ```
 
 Note that `MULTICONF_Bool(my_bool_key, ...`
@@ -61,7 +79,7 @@ So make sure that you place `MULTICONF_`
 inside anonymous namespace or struct/class/etc.
 
 It is also valid to use `static` like so:
-`static MULTICONF_Bool(my_bool_key, "True", BUILTIN_MULTICONF_LOADERS);`
+`static MULTICONF_Bool(my_bool_key, "True", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);`
 
 To use registered configuration options:
 
@@ -151,7 +169,7 @@ but can NOT be called concurrently.
 You can create per-thread `MULTICONF_Observer` to overcome that issue.
 
 ```cpp
-MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS);
+MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 // Observe existing variable on multiple thread
 MULTICONF_Observer(conf_key_observer_on_thread_1, my_namespace::my_conf_key);
 MULTICONF_Observer(conf_key_observer_on_thread_2, my_namespace::my_conf_key);
@@ -166,9 +184,9 @@ You can create configuration option with
 `basic::useGlobalLoaders::kTrue` or `basic::useGlobalLoaders::kFalse`
 
 ```cpp
-MULTICONF_String(my_conf_key_1, "abcd", BUILTIN_MULTICONF_LOADERS, basic::useGlobalLoaders::kTrue);
+MULTICONF_String(my_conf_key_1, "abcd", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP, basic::useGlobalLoaders::kTrue);
 
-MULTICONF_String(my_conf_key_2, "abcd", BUILTIN_MULTICONF_LOADERS, basic::useGlobalLoaders::kFalse);
+MULTICONF_String(my_conf_key_2, "abcd", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP, basic::useGlobalLoaders::kFalse);
 ```
 
 Not provided `basic::useGlobalLoaders` value equals to `kTrue`.

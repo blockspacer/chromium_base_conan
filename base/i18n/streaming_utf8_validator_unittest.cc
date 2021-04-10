@@ -204,7 +204,9 @@ class PartialIterator {
     return index_ == rhs.index_ && prefix_length_ == rhs.prefix_length_;
   }
 
+#if __cplusplus <= 201703L
   bool operator!=(const PartialIterator& rhs) const { return !(rhs == *this); }
+#endif
 
  private:
   // This constructor is used by the end() method.

@@ -15,37 +15,70 @@
  */
 
 #include <basic/synchronization/futex.h>
+#include <basic/test/deterministic_schedule.h>
 
 #include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <ratio>
-#include <thread>
 
-#include <base/logging.h>
-
-// #include <folly/Chrono.h>
-// #include <folly/portability/Time.h>
-// #include <folly/test/DeterministicSchedule.h>
+#include "base/logging.h"
+#include "base/test/gtest_util.h"
+#include "base/test/task_environment.h"
+#include "base/run_loop.h"
+#include "base/threading/platform_thread.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
+namespace basic {
+namespace chrono {
+
+struct coarse_steady_clock {
+  using rep = std::chrono::milliseconds::rep;
+  using period = std::chrono::milliseconds::period;
+  using duration = std::chrono::duration<rep, period>;
+  using time_point = std::chrono::time_point<coarse_steady_clock, duration>;
+  constexpr static bool is_steady = true;
+
+  static time_point now() noexcept {
+#ifndef CLOCK_MONOTONIC_COARSE
+    return time_point(std::chrono::duration_cast<duration>(
+        std::chrono::steady_clock::now().time_since_epoch()));
+#else
+    timespec ts;
+    auto ret = clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
+    if (kIsDebug && (ret != 0)) {
+      CHECK(false)
+        << "Error using CLOCK_MONOTONIC_COARSE.";
+    }
+
+    return time_point(std::chrono::duration_cast<duration>(
+        std::chrono::seconds(ts.tv_sec) +
+        std::chrono::nanoseconds(ts.tv_nsec)));
+#endif
+  }
+};
+
+} // namespace chrono
+} // namespace basic
+
+using namespace basic;
 using namespace basic::detail;
 using namespace base;
 using namespace std;
 using namespace std::chrono;
+using basic::test::DeterministicSchedule;
+using basic::test::DeterministicAtomic;
 
-#if TODO
-using folly::chrono::coarse_steady_clock;
+using basic::chrono::coarse_steady_clock;
 typedef DeterministicSchedule DSched;
-#endif
 
 template <template <typename> class Atom>
 void run_basic_thread(Futex<Atom>& f) {
   EXPECT_EQ(FutexResult::AWOKEN, futexWait(&f, 0));
 }
-#if TODO
+
 template <template <typename> class Atom>
 void run_basic_tests() {
   Futex<Atom> f(0);
@@ -53,13 +86,14 @@ void run_basic_tests() {
   EXPECT_EQ(FutexResult::VALUE_CHANGED, futexWait(&f, 1));
   EXPECT_EQ(futexWake(&f), 0);
 
-  auto thr = DSched::thread(std::bind(run_basic_thread<Atom>, std::ref(f)));
+  std::unique_ptr<basic::test::DSchedThreadWrapper> thr = DSched::thread(
+    std::bind(run_basic_thread<Atom>, std::ref(f)));
 
   while (futexWake(&f) != 1) {
-    std::this_thread::yield();
+    base::PlatformThread::YieldCurrentThread();
   }
 
-  DSched::join(thr);
+  DSched::join(*thr);
 }
 
 template <template <typename> class Atom, typename Clock, typename Duration>
@@ -68,7 +102,7 @@ void liveClockWaitUntilTests() {
 
   for (int stress = 0; stress < 1000; ++stress) {
     auto fp = &f; // workaround for t5336595
-    auto thrA = DSched::thread([fp, stress] {
+    std::unique_ptr<basic::test::DSchedThreadWrapper> thrA = DSched::thread([fp, stress] {
       while (true) {
         const auto deadline = time_point_cast<Duration>(
             Clock::now() + microseconds(1 << (stress % 20)));
@@ -81,10 +115,10 @@ void liveClockWaitUntilTests() {
     });
 
     while (futexWake(&f) != 1) {
-      std::this_thread::yield();
+      base::PlatformThread::YieldCurrentThread();
     }
 
-    DSched::join(thrA);
+    DSched::join(*thrA);
   }
 
   {
@@ -123,9 +157,7 @@ template <template <typename> class Atom>
 void run_wait_until_tests() {
   liveClockWaitUntilTests<Atom, system_clock, system_clock::duration>();
   liveClockWaitUntilTests<Atom, steady_clock, steady_clock::duration>();
-#if TODO
   liveClockWaitUntilTests<Atom, steady_clock, coarse_steady_clock::duration>();
-#endif
 
   typedef duration<int64_t, std::ratio<1, 10000000>> decimicroseconds;
   liveClockWaitUntilTests<Atom, system_clock, decimicroseconds>();
@@ -135,29 +167,26 @@ template <>
 void run_wait_until_tests<DeterministicAtomic>() {
   deterministicAtomicWaitUntilTests<system_clock>();
   deterministicAtomicWaitUntilTests<steady_clock>();
-#if TODO
   deterministicAtomicWaitUntilTests<coarse_steady_clock>();
-#endif
 }
 
 template <template <typename> class Atom>
 void run_wake_blocked_test() {
-  for (auto delay = std::chrono::milliseconds(1);; delay *= 2) {
+  for (auto delay = 1;; delay *= 2) {
     bool success = false;
     Futex<Atom> f(0);
-    auto thr = DSched::thread(
+    std::unique_ptr<basic::test::DSchedThreadWrapper> thr = DSched::thread(
         [&] { success = FutexResult::AWOKEN == futexWait(&f, 0); });
-    /* sleep override */ std::this_thread::sleep_for(delay);
+    /* sleep override */ base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(delay));
     f.store(1);
     futexWake(&f, 1);
-    DSched::join(thr);
-    LOG(INFO) << "delay=" << delay.count() << "_ms, success=" << success;
+    DSched::join(*thr);
+    LOG(INFO) << "delay=" << delay << "_ms, success=" << success;
     if (success) {
       break;
     }
   }
 }
-#endif
 
 // Only Linux platforms currently use the futex() syscall.
 // This syscall requires timeouts to either use CLOCK_REALTIME or
@@ -223,7 +252,19 @@ void run_steady_clock_test() {
   EXPECT_TRUE(A <= B && B <= C);
 }
 
-TEST(Futex, clock_source) {
+namespace {
+
+class FutexTest : public testing::Test {
+ protected:
+  ~FutexTest() override { base::RunLoop().RunUntilIdle(); }
+
+ private:
+  base::test::TaskEnvironment task_environment_;
+};
+
+}  // namespace
+
+TEST_F(FutexTest, clock_source) {
   run_system_clock_test();
 
   /* On some systems steady_clock is just an alias for system_clock. So,
@@ -235,30 +276,26 @@ TEST(Futex, clock_source) {
 
 #endif // __linux__
 
-#if TODO
-TEST(Futex, basic_live) {
+TEST_F(FutexTest, basic_live) {
   run_basic_tests<std::atomic>();
   run_wait_until_tests<std::atomic>();
 }
 
-TEST(Futex, basic_emulated) {
+TEST_F(FutexTest, basic_emulated) {
   run_basic_tests<EmulatedFutexAtomic>();
   run_wait_until_tests<EmulatedFutexAtomic>();
 }
 
-#if TODO
-TEST(Futex, basic_deterministic) {
+TEST_F(FutexTest, basic_deterministic) {
   DSched sched(DSched::uniform(0));
   run_basic_tests<DeterministicAtomic>();
   run_wait_until_tests<DeterministicAtomic>();
 }
-#endif
 
-TEST(Futex, wake_blocked_live) {
+TEST_F(FutexTest, wake_blocked_live) {
   run_wake_blocked_test<std::atomic>();
 }
 
-TEST(Futex, wake_blocked_emulated) {
+TEST_F(FutexTest, wake_blocked_emulated) {
   run_wake_blocked_test<EmulatedFutexAtomic>();
 }
-#endif

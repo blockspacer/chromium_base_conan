@@ -823,7 +823,6 @@ endforeach()
 list(APPEND extensions_unittests
   crc32_unittest.cc
   output_parameter_unittest.cc
-  spin_lock_unittest.cc
   stl_util_unittest.cc
   type_id_unittest.cc
 )
@@ -841,14 +840,19 @@ list(APPEND extensions_unittests
   containers/prioritized_repeating_task_list_unittest.cc
   containers/sparse_byte_set_unittest.cc
   containers/indexed_mem_pool_unittest.cc
+  containers/flat_combining_priority_queue_unittest.cc
+  containers/mpmc_queue_unittest.cc
 )
 
 list(APPEND extensions_unittests
   synchronization/futex_unittest.cc
   synchronization/parking_lot_unittest.cc
-  #synchronization/flat_combining_unittest.cc
-  #synchronization/saturating_semaphore_unittest.cc
-  #synchronization/memory_idler_unittest.cc
+  synchronization/flat_combining_unittest.cc
+  synchronization/saturating_semaphore_unittest.cc
+  synchronization/memory_idler_unittest.cc
+  synchronization/atomic_util_unittest.cc
+  synchronization/spin_lock_unittest.cc
+  synchronization/baton_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -866,6 +870,9 @@ list(APPEND extensions_unittests
   hash/murmurhash_unittest.cc
   hash/xxhash_unittest.cc
   hash/twang_hash_unittest.cc
+  hash/jenkins_hash_unittest.cc
+  hash/spooky_hash_v2_unittest.cc
+  hash/hash_combine_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -944,6 +951,9 @@ list(APPEND extensions_unittests
   memory/wrap_unique_ptr_not_array_unittest.cc
   memory/unowned_ptr_unittest.cc
   memory/unowned_ref_unittest.cc
+  memory/padded_unittest.cc
+  memory/not_null_unittest.cc
+  memory/arena_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -996,6 +1006,8 @@ list(APPEND extensions_unittests
   core/weak_handle_unittest.cc
   core/observable_unittest.cc
   core/typed_enum_unittest.cc
+  core/move_wrapper_unittest.cc
+  core/memory_unittest.cc
 )
 
 list(APPEND extensions_unittests
@@ -1015,8 +1027,6 @@ list(APPEND extensions_unittests
   annotations/guard_annotations_unittest.cc
 )
 
-# TODO
-#numerics/uint256_unittest.cc
 list(APPEND extensions_unittests
   numerics/double_summation_unittest.cc
   numerics/floating_point_comparison_unittest.cc
@@ -1027,6 +1037,9 @@ list(APPEND extensions_unittests
 
 list(APPEND extensions_unittests
   test/test_macros_unittest.cc
+  test/deterministic_schedule_unittest.cc
+  test/semaphore_unittest.cc
+  test/barrier_unittest.cc
 )
 
 list(APPEND extensions_unittests

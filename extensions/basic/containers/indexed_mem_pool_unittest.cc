@@ -15,25 +15,39 @@
  */
 
 #include <basic/containers/indexed_mem_pool.h>
+#include <basic/portability/unistd.h>
+#include <basic/test/deterministic_schedule.h>
 
 #include <string>
 #include <thread>
 
-#include <basic/portability/unistd.h>
+#include "base/logging.h"
+#include "base/test/gtest_util.h"
+#include "base/test/task_environment.h"
+#include "base/run_loop.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
-#if TODO
-#include <folly/portability/Semaphore.h>
-#include <folly/test/DeterministicSchedule.h>
-#endif
-
 using namespace basic;
 using namespace base;
 using namespace testing;
+using basic::test::DeterministicSchedule;
+using basic::test::DeterministicAtomic;
 
-TEST(IndexedMemPool, unique_ptr) {
+namespace {
+
+class IndexedMemPoolTest : public testing::Test {
+ protected:
+  ~IndexedMemPoolTest() override { base::RunLoop().RunUntilIdle(); }
+
+ private:
+  base::test::TaskEnvironment task_environment_;
+};
+
+}  // namespace
+
+TEST_F(IndexedMemPoolTest, unique_ptr) {
   typedef IndexedMemPool<size_t> Pool;
   Pool pool(100);
 
@@ -55,8 +69,7 @@ TEST(IndexedMemPool, unique_ptr) {
   }
 }
 
-#if TODO
-TEST(IndexedMemPool, no_starvation) {
+TEST_F(IndexedMemPoolTest, no_starvation) {
   const int count = 1000;
   const uint32_t poolSize = 100;
 
@@ -77,7 +90,7 @@ TEST(IndexedMemPool, no_starvation) {
     // always block in an Sched:: operation rather than in a read() syscall
     DeterministicSchedule::Sem readSem(0);
 
-    std::thread produce = Sched::thread([&]() {
+    std::unique_ptr<basic::test::DSchedThreadWrapper> produce = Sched::thread([&]() {
       for (auto i = 0; i < count; ++i) {
         Sched::wait(&allocSem);
         uint32_t idx = pool.allocIndex();
@@ -90,7 +103,7 @@ TEST(IndexedMemPool, no_starvation) {
       }
     });
 
-    std::thread consume = Sched::thread([&]() {
+    std::unique_ptr<basic::test::DSchedThreadWrapper> consume = Sched::thread([&]() {
       for (auto i = 0; i < count; ++i) {
         uint32_t idx;
         Sched::wait(&readSem);
@@ -105,15 +118,14 @@ TEST(IndexedMemPool, no_starvation) {
       }
     });
 
-    Sched::join(produce);
-    Sched::join(consume);
+    Sched::join(*produce);
+    Sched::join(*consume);
     close(fd[0]);
     close(fd[1]);
   }
 }
-#endif
 
-TEST(IndexedMemPool, st_capacity) {
+TEST_F(IndexedMemPoolTest, st_capacity) {
   // only one local list => capacity is exact
   typedef IndexedMemPool<int, 1, 32> Pool;
   Pool pool(10);
@@ -126,10 +138,11 @@ TEST(IndexedMemPool, st_capacity) {
   EXPECT_EQ(pool.allocIndex(), 0u);
 }
 
-TEST(IndexedMemPool, mt_capacity) {
+TEST_F(IndexedMemPoolTest, mt_capacity) {
   typedef IndexedMemPool<int, 16, 32> Pool;
   Pool pool(1000);
 
+  /// \todo use base::Thread
   std::thread threads[10];
   for (auto i = 0; i < 10; ++i) {
     threads[i] = std::thread([&]() {
@@ -150,7 +163,7 @@ TEST(IndexedMemPool, mt_capacity) {
   EXPECT_EQ(pool.allocIndex(), 0u);
 }
 
-TEST(IndexedMemPool, locate_elem) {
+TEST_F(IndexedMemPoolTest, locate_elem) {
   IndexedMemPool<int> pool(1000);
 
   for (auto i = 0; i < 1000; ++i) {
@@ -183,7 +196,7 @@ struct NonTrivialStruct {
 
 BASIC_TLS size_t NonTrivialStruct::count;
 
-TEST(IndexedMemPool, eager_recycle) {
+TEST_F(IndexedMemPoolTest, eager_recycle) {
   typedef IndexedMemPool<NonTrivialStruct> Pool;
   Pool pool(100);
 
@@ -201,7 +214,7 @@ TEST(IndexedMemPool, eager_recycle) {
   }
 }
 
-TEST(IndexedMemPool, late_recycle) {
+TEST_F(IndexedMemPoolTest, late_recycle) {
   {
     using Pool = IndexedMemPool<
         NonTrivialStruct,
@@ -226,7 +239,7 @@ TEST(IndexedMemPool, late_recycle) {
   EXPECT_EQ(NonTrivialStruct::count, 0);
 }
 
-TEST(IndexedMemPool, no_data_races) {
+TEST_F(IndexedMemPoolTest, no_data_races) {
   const int count = 1000;
   const uint32_t poolSize = 100;
   const int nthreads = 10;
@@ -255,7 +268,7 @@ TEST(IndexedMemPool, no_data_races) {
 std::atomic<int> cnum{0};
 std::atomic<int> dnum{0};
 
-TEST(IndexedMemPool, construction_destruction) {
+TEST_F(IndexedMemPoolTest, construction_destruction) {
   struct Foo {
     Foo() { cnum.fetch_add(1); }
     ~Foo() { dnum.fetch_add(1); }
@@ -358,13 +371,13 @@ void testTraits(TraitsTestPool& pool) {
 }
 
 // Test that Traits is used when both local and global lists are empty.
-TEST(IndexedMemPool, use_traits_empty) {
+TEST_F(IndexedMemPoolTest, use_traits_empty) {
   TraitsTestPool pool(10);
   testTraits(pool);
 }
 
 // Test that Traits is used when allocating from a local list.
-TEST(IndexedMemPool, use_traits_local_list) {
+TEST_F(IndexedMemPoolTest, use_traits_local_list) {
   TraitsTestPool pool(10);
   MockTraits traits;
   EXPECT_CALL(traits, onAllocate(_, _));
@@ -374,7 +387,7 @@ TEST(IndexedMemPool, use_traits_local_list) {
 }
 
 // Test that Traits is used when allocating from a global list.
-TEST(IndexedMemPool, use_traits_global_list) {
+TEST_F(IndexedMemPoolTest, use_traits_global_list) {
   TraitsTestPool pool(10);
   MockTraits traits;
   EXPECT_CALL(traits, onAllocate(_, _)).Times(2);

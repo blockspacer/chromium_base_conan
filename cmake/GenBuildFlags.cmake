@@ -438,6 +438,17 @@ check_cxx_source_compiles("
   BASIC_USE_LIBSTDCPP
 )
 
+# Probe for coroutine TS support
+find_package(Coroutines COMPONENTS Experimental Final)
+message(STATUS "_CXX_COROUTINES_AWAIT=${_CXX_COROUTINES_AWAIT}")
+message(STATUS "_CXX_COROUTINES_STDLIB=${_CXX_COROUTINES_STDLIB}")
+message(STATUS "_CXX_COROUTINES_HAVE_HEADER=${_CXX_COROUTINES_HAVE_HEADER}")
+message(STATUS "_CXX_COROUTINES_HAVE_EXPERIMENTAL_HEADER=${_CXX_COROUTINES_HAVE_EXPERIMENTAL_HEADER}")
+message(STATUS "CXX_COROUTINES_HEADER=${CXX_COROUTINES_HEADER}")
+message(STATUS "CXX_COROUTINES_NAMESPACE=${CXX_COROUTINES_NAMESPACE}")
+message(STATUS "can_link for COROUTINES=${can_link}")
+message(STATUS "_have_coro for COROUTINES=${_have_coro}")
+
 check_cxx_source_runs("
   #include <stdarg.h>
   #include <stdio.h>

@@ -23,7 +23,9 @@ class BASE_EXPORT SequenceToken {
   // An invalid SequenceToken is not equal to any other SequenceToken, including
   // other invalid SequenceTokens.
   bool operator==(const SequenceToken& other) const;
+#if __cplusplus <= 201703L
   bool operator!=(const SequenceToken& other) const;
+#endif
 
   // Returns true if this is a valid SequenceToken.
   bool IsValid() const;
@@ -66,7 +68,9 @@ class BASE_EXPORT TaskToken {
   // An invalid TaskToken is not equal to any other TaskToken, including
   // other invalid TaskTokens.
   bool operator==(const TaskToken& other) const;
+#if __cplusplus <= 201703L
   bool operator!=(const TaskToken& other) const;
+#endif
 
   // Returns true if this is a valid TaskToken.
   bool IsValid() const;

@@ -1,24 +1,22 @@
 ﻿list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "type_id.cc"
-  "type_id.h"
-  "value_conversions.cc"
-  "value_conversions.h"
-  "wasm_util.h"
-  "wasm_closure.h"
-  "stl_util.h"
-  "spin_lock.cc"
-  "spin_lock.h"
-  "rvalue_cast.h"
-  "recursion_checker.h"
-  "output_parameter.h"
-  "macros.h"
-  "logging.h"
-  "enum_to_int.h"
-  "crc32.h"
-  "crc32.cc"
-  "cmd_util.h"
-  "cmd_util.cc"
-  "compiler_specific.h"
+  type_id.cc
+  type_id.h
+  value_conversions.cc
+  value_conversions.h
+  wasm_util.h
+  wasm_closure.h
+  stl_util.h
+  rvalue_cast.h
+  recursion_checker.h
+  output_parameter.h
+  macros.h
+  logging.h
+  enum_to_int.h
+  crc32.h
+  crc32.cc
+  cmd_util.h
+  cmd_util.cc
+  compiler_specific.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -35,6 +33,10 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   test/type_id_test_support_a.cc
   test/type_id_test_support_b.h
   test/type_id_test_support_b.cc
+  test/deterministic_schedule.h
+  test/deterministic_schedule.cc
+  test/semaphore.h
+  test/barrier.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -56,6 +58,8 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   containers/seq_num_buffer.h
   containers/sparse_byte_set.h
   containers/indexed_mem_pool.h
+  containers/flat_combining_priority_queue.h
+  containers/mpmc_queue.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -63,26 +67,27 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   portability/sysmman.cc
   portability/unistd.h
   portability/unistd.cc
+  portability/malloc_impl.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "decimal/decimal.h"
-  "decimal/decimal.cc"
-  "decimal/fixed_point.h"
-  "decimal/fixed_point_numeric_limits.h"
+  decimal/decimal.h
+  decimal/decimal.cc
+  decimal/fixed_point.h
+  decimal/fixed_point_numeric_limits.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "dependency_hierarchy/dependency_error_space.h"
-  "dependency_hierarchy/dependency_error_space.cc"
-  "dependency_hierarchy/dependency_hierarchy.h"
-  "dependency_hierarchy/dependency_hierarchy.cc"
-  "dependency_hierarchy/dependency_util.h"
-  "dependency_hierarchy/dependency_util.cc"
+  dependency_hierarchy/dependency_error_space.h
+  dependency_hierarchy/dependency_error_space.cc
+  dependency_hierarchy/dependency_hierarchy.h
+  dependency_hierarchy/dependency_hierarchy.cc
+  dependency_hierarchy/dependency_util.h
+  dependency_hierarchy/dependency_util.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "disjoint_sets/disjoint_sets.h"
+  disjoint_sets/disjoint_sets.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -114,12 +119,20 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   promise/post_promise.cc
   promise/promise.h
   promise/post_promise.h
+  promise/coroutine.h
+  promise/coroutine.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   memory/wrap_unique_ptr_not_array.h
   memory/unowned_ptr.h
   memory/unowned_ref.h
+  memory/mallctl_helper.cc
+  memory/padded.h
+  memory/not_null.h
+  memory/not_null-inl.h
+  memory/arena.h
+  memory/arena-inl.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -142,6 +155,7 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   time/system_time_change_notifier.h
   time/system_time_change_notifier.cc
   time/time_macros.h
+  time/hardware_timestamp.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -233,35 +247,38 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   hash/xxhash.h
   hash/xxhash.cc
   hash/twang_hash.h
+  hash/jenkins_hash.h
+  hash/spooky_hash_v2.h
+  hash/spooky_hash_v2.cc
+  hash/hash_combine.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "debug/leak_tracker.h"
+  debug/leak_tracker.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "ranges/enumerated.h"
-  "ranges/pipelined.h"
+  ranges/enumerated.h
+  ranges/pipelined.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "strong_types/strong_string.h"
-  "strong_types/strong_alias.h"
-  "strong_types/strong_bool.h"
-  "strong_types/strong_checked_math.h"
-  "strong_types/strong_int.h"
-  "strong_types/strong_double.h"
-  "strong_types/strong_string.h"
-  "strong_types/metric_units/strong_metric_units.h"
-  "strong_types/money/money_util.cc"
-  "strong_types/money/money_util.h"
-  "strong_types/money/money.h"
-  "strong_types/size_units/strong_size_units.h"
-  "strong_types/time_units/strong_time_units.h"
+  strong_types/strong_string.h
+  strong_types/strong_alias.h
+  strong_types/strong_bool.h
+  strong_types/strong_checked_math.h
+  strong_types/strong_int.h
+  strong_types/strong_double.h
+  strong_types/strong_string.h
+  strong_types/metric_units/strong_metric_units.h
+  strong_types/money/money_util.cc
+  strong_types/money/money_util.h
+  strong_types/money/money.h
+  strong_types/size_units/strong_size_units.h
+  strong_types/time_units/strong_time_units.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  synchronization/spin_wait.h
   synchronization/atomic_struct.h
   synchronization/atomic_utils.h
   synchronization/futex.h
@@ -269,35 +286,50 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   synchronization/futex_inl.h
   synchronization/parking_lot.h
   synchronization/parking_lot.cc
-  #synchronization/flat_combining.h
-  #synchronization/saturating_semaphore.h
+  synchronization/flat_combining.h
+  synchronization/saturating_semaphore.h
   synchronization/memory_idler.h
+  synchronization/memory_idler.cc
+  synchronization/atomic_util.h
+  synchronization/atomic_util_inl.h
+  synchronization/wait_options.h
+  synchronization/wait_options.cc
+  synchronization/spin_wait.h
+  synchronization/spin.h
+  synchronization/spin_lock.h
+  synchronization/spin_lock.cc
+  synchronization/baton.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "strings/substitute.h"
-  "strings/substitute.cc"
-  "strings/string_number_conversions.h"
-  "strings/string_number_conversions.cc"
-  "strings/string_format.h"
-  "strings/string_util.h"
-  "strings/string_util.cc"
-  "strings/fixed_string.h"
+  random/random.h
+  random/random.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "status/app_error_space.h"
-  "status/app_error_space.cc"
-  "status/posix_error_space.h"
-  "status/posix_error_space.cc"
-  "status/status_callback.h"
-  "status/status_macros.h"
-  "status/status_macros.cc"
-  "status/status.h"
-  "status/status.cc"
-  "status/statusor.h"
-  "status/statusor.cc"
-  "status/with_details.h"
+  strings/substitute.h
+  strings/substitute.cc
+  strings/string_number_conversions.h
+  strings/string_number_conversions.cc
+  strings/string_format.h
+  strings/string_util.h
+  strings/string_util.cc
+  strings/fixed_string.h
+)
+
+list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
+  status/app_error_space.h
+  status/app_error_space.cc
+  status/posix_error_space.h
+  status/posix_error_space.cc
+  status/status_callback.h
+  status/status_macros.h
+  status/status_macros.cc
+  status/status.h
+  status/status.cc
+  status/statusor.h
+  status/statusor.cc
+  status/with_details.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -315,24 +347,24 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "varint/fast_varint.h"
-  "varint/fast_varint.cc"
-  "varint/memcmpable_varint.h"
-  "varint/memcmpable_varint.cc"
-  "varint/varint.h"
-  "varint/varint.cc"
+  varint/fast_varint.h
+  varint/fast_varint.cc
+  varint/memcmpable_varint.h
+  varint/memcmpable_varint.cc
+  varint/varint.h
+  varint/varint.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "annotations/guard_annotations.h"
-  "annotations/guard_annotations.cc"
+  annotations/guard_annotations.h
+  annotations/guard_annotations.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "files/scoped_temp_file.h"
-  "files/scoped_temp_file.cc"
-  "files/file_path_util.h"
-  "files/file_path_util.cc"
+  files/scoped_temp_file.h
+  files/scoped_temp_file.cc
+  files/file_path_util.h
+  files/file_path_util.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -385,12 +417,14 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   core/weak_handle.cc
   core/polymorphic_downcast.h
   core/enum_set.h
-  core/move_only.h
+  core/move_only_on_sequence.h
   core/observable.h
   core/ptr_element_compare.h
   core/scoped_cleanup.h
   core/weak_handle.h
   core/bitmask.h
+  core/move_wrapper.h
+  core/memory.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
@@ -425,27 +459,24 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   bloom_filter/filter_policy.h
 )
 
-# TODO
-# "numerics/uint256.h"
-# "numerics/uint256.cc"
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "numerics/floating_point_comparison.h"
-  "numerics/double_summation.h"
-  "numerics/double_summation.cc"
-  "numerics/integral_macros.h"
-  "numerics/math_utils.h"
-  "numerics/pack_numbers.h"
-  "numerics/uint128.h"
-  "numerics/uint256.h"
-  "numerics/uint256.cc"
+  numerics/floating_point_comparison.h
+  numerics/double_summation.h
+  numerics/double_summation.cc
+  numerics/integral_macros.h
+  numerics/math_utils.h
+  numerics/pack_numbers.h
+  numerics/uint128.h
+  numerics/uint256.h
+  numerics/uint256.cc
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "algorithm/top_n.h"
+  algorithm/top_n.h
 )
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
-  "bit_field/bit_field.h"
+  bit_field/bit_field.h
 )
 
 list(TRANSFORM EXTENSIONS_SOURCES_UNPROCESSED PREPEND "../extensions/basic/")

@@ -152,7 +152,7 @@ template <typename T>
 struct is_optional<base::Optional<T>> : std::true_type {};
 } // namespace plug_point_internal
 
-// Priority sorted from Highest (0) to Lowest (6)
+// Priority sorted from highest (0) to lowest (+inf)
 enum class PlugPointPriority
 {
   Highest = 0
@@ -595,6 +595,17 @@ class PlugPointNotifierStorage
     cb_list.push_back(RVALUE_CAST(callback));
   }
 
+  void clearCallbacks() NO_EXCEPTION
+  {
+    DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
+    for(size_t i = 0
+        ; i < static_cast<size_t>(PlugPointPriority::TOTAL)
+        ; i++) {
+      CBList& cb_list = priority_callbacks_[i];
+      cb_list.clear();
+    }
+  }
+
  private:
   PlugPointName name_;
 
@@ -773,6 +784,11 @@ class StrongPlugPointNotifier<Tag, RetType(ArgsType...)>
     value_.addCallback(priority, RVALUE_CAST(callback));
   }
 
+  void clearCallbacks() NO_EXCEPTION
+  {
+    value_.clearCallbacks();
+  }
+
 private:
   friend class ::base::NoDestructor<StrongPlugPointNotifier>;
 
@@ -843,6 +859,10 @@ class CallbackListRunnerBase {
   bool empty() {
     DCHECK_EQ(0, active_iterator_count_);
     return callbacks_.empty();
+  }
+
+  bool clear() {
+    return callbacks_.clear();
   }
 
  protected:
@@ -1080,6 +1100,17 @@ class PlugPointRunnerStorage
     return priority_callbacks_[static_cast<size_t>(priority)].Add(RVALUE_CAST(callback));
   }
 
+  void clearCallbacks() NO_EXCEPTION
+  {
+    DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
+    for(size_t i = 0
+        ; i < static_cast<size_t>(PlugPointPriority::TOTAL)
+        ; i++) {
+      CBList& cb_list = priority_callbacks_[i];
+      cb_list.clear();
+    }
+  }
+
  private:
   PlugPointName name_;
 
@@ -1275,6 +1306,11 @@ class StrongPlugPointRunner<Tag, RetType(ArgsType...)>
       , CallbackType&& callback) NO_EXCEPTION
   {
     return value_.addCallback(priority, RVALUE_CAST(callback));
+  }
+
+  void clearCallbacks() NO_EXCEPTION
+  {
+    value_.clearCallbacks();
   }
 
 private:

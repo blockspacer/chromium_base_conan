@@ -25,6 +25,7 @@
 
 using namespace base;
 using namespace basic;
+using namespace basic::test;
 
 constexpr int LINES = 5;
 constexpr int NUM_RECS = 20;

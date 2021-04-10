@@ -35,9 +35,11 @@ class BASE_EXPORT MemoryAllocatorDumpGuid {
     return guid_ == other.guid_;
   }
 
+#if __cplusplus <= 201703L
   bool operator!=(const MemoryAllocatorDumpGuid& other) const {
     return !(*this == other);
   }
+#endif
 
   bool operator<(const MemoryAllocatorDumpGuid& other) const {
     return guid_ < other.guid_;

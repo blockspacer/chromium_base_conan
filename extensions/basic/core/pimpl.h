@@ -14,6 +14,8 @@
 #endif // PIMPL_DEBUG_VALUE_MEMBER
 #endif // NDEBUG
 
+#include "basic/concept/dependent_false.h"
+
 #include <cstddef>
 #include <type_traits>
 #include <utility>
@@ -199,22 +201,6 @@ namespace pimpl {
     >
   class FastPimpl {
 
-    /* Required wrapper for if constexpr
-     *
-     * Is dependent on a template parameter.
-     * Is used in static_assert in a false branch to produce a compile error
-     * with message containing provided type.
-     * See an example with dependent_false at https://en.cppreference.com/w/cpp/language/if
-     *
-     * if constexpr (std::is_same<T, someType1>) {
-     * } else if constexpr (std::is_same<T, someType2>) {
-     * } else {
-     *     static_assert(dependent_false<T>::value, "unknown type");
-     * }
-     */
-    template<class U>
-    struct dependent_false : std::false_type {};
-
     // wrap static_assert into static_validate
     // for console message with desired sizeof in case of error
     /// \note Usage is completely safe,
@@ -248,7 +234,7 @@ namespace pimpl {
       {
         // dependent_false yields false only if
         // previous if branches yield false
-        static_assert(dependent_false<T>::value);
+        static_assert(basic::dependent_false<T>::value);
       }
 
       if constexpr (SizePolicyType == pimpl::SizePolicy::AtLeast)
@@ -267,7 +253,7 @@ namespace pimpl {
       {
         // dependent_false yields false only if
         // previous if branches yield false
-        static_assert(dependent_false<T>::value);
+        static_assert(basic::dependent_false<T>::value);
       }
     }
 

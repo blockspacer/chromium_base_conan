@@ -71,7 +71,9 @@ class BASE_EXPORT GUID {
 
   // Invalid GUIDs are equal.
   bool operator==(const GUID& other) const;
+#if __cplusplus <= 201703L
   bool operator!=(const GUID& other) const;
+#endif
   bool operator<(const GUID& other) const;
   bool operator<=(const GUID& other) const;
   bool operator>(const GUID& other) const;

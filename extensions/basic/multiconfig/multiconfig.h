@@ -30,7 +30,7 @@
       ::basic::EnvMultiConf::kId \
       , base::BindRepeating( \
           &::basic::EnvMultiConf::tryLoadString \
-          , base::Unretained(&EnvMultiConf::GetInstance())) \
+          , base::Unretained(&::basic::EnvMultiConf::GetInstance())) \
     }
 
 #define CMD_MULTICONF_LOADER \
@@ -38,7 +38,7 @@
       ::basic::CmdMultiConf::kId \
       , base::BindRepeating( \
           &::basic::CmdMultiConf::tryLoadString \
-          , base::Unretained(&CmdMultiConf::GetInstance())) \
+          , base::Unretained(&::basic::CmdMultiConf::GetInstance())) \
     }
 
 #define JSON_MULTICONF_LOADER \
@@ -46,7 +46,7 @@
       ::basic::JsonMultiConf::kId \
       , base::BindRepeating( \
           &::basic::JsonMultiConf::tryLoadString \
-          , base::Unretained(&JsonMultiConf::GetInstance())) \
+          , base::Unretained(&::basic::JsonMultiConf::GetInstance())) \
     }
 
 // Does nothing, useful for tests
@@ -63,6 +63,8 @@
     , JSON_MULTICONF_LOADER \
   }
 
+#define DEFAULT_MULTICONF_GROUP "DEFAULT_MULTICONF_GROUP"
+
 /// \note Each `MULTICONF_*` macro expected to create single variable,
 /// so you will be able to write code: `static MULTICONF_String(...)`.
 ///
@@ -75,7 +77,7 @@
 
 // USAGE
 //
-// MULTICONF_type(float, my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_type(float, my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_type(TYPE, KEY_NAME, DEFAULT_STR, ...) \
   basic::MultiConfWrapper<TYPE> KEY_NAME \
@@ -83,82 +85,86 @@
       , DEFAULT_STR \
       , __VA_ARGS__}
 
+// `MULTICONF_type` that uses default loaders and group
+#define MULTICONF(type, KEY_NAME, DEFAULT_STR, ...) \
+  MULTICONF_type(type, KEY_NAME, DEFAULT_STR, BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP, __VA_ARGS__)
+
 // USAGE
 //
-// MULTICONF_String(my_conf_key, "abcd", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_String(my_conf_key, "abcd", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_String(KEY_NAME, DEFAULT_STR, ...) \
   MULTICONF_type(std::string, KEY_NAME, DEFAULT_STR, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Bool(my_conf_key, "true", BUILTIN_MULTICONF_LOADERS);
-// MULTICONF_Bool(my_conf_key, "True", BUILTIN_MULTICONF_LOADERS);
-// MULTICONF_Bool(my_conf_key, "TRUE", BUILTIN_MULTICONF_LOADERS);
-// MULTICONF_Bool(my_conf_key, "1", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Bool(my_conf_key, "true", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
+// MULTICONF_Bool(my_conf_key, "True", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
+// MULTICONF_Bool(my_conf_key, "TRUE", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
+// MULTICONF_Bool(my_conf_key, "1", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Bool(...) \
   MULTICONF_type(bool, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Int(my_conf_key, "-12345", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Int(my_conf_key, "-12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Int(...) \
   MULTICONF_type(int, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Uint(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Uint(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Uint(...) \
   MULTICONF_type(unsigned, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Int64(my_conf_key, "-12345", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Int64(my_conf_key, "-12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Int64(...) \
   MULTICONF_type(int64_t, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Int32(my_conf_key, "-12345", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Int32(my_conf_key, "-12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Int32(...) \
   MULTICONF_type(int32_t, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Uint32(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Uint32(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Uint32(...) \
   MULTICONF_type(uint32_t, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Uint64(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Uint64(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Uint64(...) \
   MULTICONF_type(uint64_t, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_SizeT(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_SizeT(my_conf_key, "12345", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_SizeT(...) \
   MULTICONF_type(size_t, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Double(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Double(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Double(...) \
   MULTICONF_type(double, __VA_ARGS__)
 
 // USAGE
 //
-// MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 //
 #define MULTICONF_Float(...) \
   MULTICONF_type(float, __VA_ARGS__)
@@ -170,7 +176,7 @@
 //
 // USAGE
 //
-// MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS);
+// MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 // // Observe existing variable on multiple threads
 // MULTICONF_Observer(my_conf_key_observer_thread_1, my_namespace::my_conf_key);
 // MULTICONF_Observer(my_conf_key_observer_thread_2, my_namespace::my_conf_key);
@@ -326,8 +332,6 @@ class CmdMultiConf {
 
  private:
   FRIEND_TEST_ALL_PREFIXES(MultiConfTest, SimpleTest);
-
-  const base::CommandLine* command_line_;
 
   friend class base::NoDestructor<CmdMultiConf>;
 
@@ -1000,7 +1004,6 @@ class MultiConfWrapper {
   std::shared_ptr<SAO> sao_;
   std::string target_name_;
   std::string target_configuration_group_;
-
 };
 
 } // namespace basic

@@ -149,9 +149,11 @@ bool GUID::operator==(const GUID& other) const {
   return AsLowercaseString() == other.AsLowercaseString();
 }
 
+#if __cplusplus <= 201703L
 bool GUID::operator!=(const GUID& other) const {
   return !(*this == other);
 }
+#endif
 
 bool GUID::operator<(const GUID& other) const {
   return AsLowercaseString() < other.AsLowercaseString();

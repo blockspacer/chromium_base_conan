@@ -149,9 +149,11 @@ inline bool operator==(const uint256& lhs, const uint256& rhs) {
   return (Uint256Low128(lhs) == Uint256Low128(rhs) &&
           Uint256High128(lhs) == Uint256High128(rhs));
 }
+#if __cplusplus <= 201703L
 inline bool operator!=(const uint256& lhs, const uint256& rhs) {
   return !(lhs == rhs);
 }
+#endif
 
 inline constexpr uint256::uint256() : lo_(0), hi_(0) {}
 inline constexpr uint256::uint256(absl::uint128 top, absl::uint128 bottom)

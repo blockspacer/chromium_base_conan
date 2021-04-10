@@ -20,6 +20,7 @@
 #include <basic/benchmark/benchmark_util.h>
 
 #include <base/logging.h>
+#include <base/threading/platform_thread.h>
 
 // #include <folly/Benchmark.h>
 
@@ -78,6 +79,7 @@ uint64_t fc_test(
     }
   }
 
+  /// \todo use base::Thread
   std::vector<std::thread> threads(nthreads);
   for (int tid = 0; tid < nthreads; ++tid) {
     threads[tid] = std::thread([&, tid] {
@@ -118,7 +120,7 @@ uint64_t fc_test(
           VLOG(2) << tid << " " << ex.getVal() << " ...........";
           using namespace std::chrono_literals;
           /* sleep override */ // for coverage
-          std::this_thread::sleep_for(10ms);
+          base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
           VLOG(2) << tid << " " << ex.getVal() << " ===========";
           CHECK(mutex);
           mutex = false;
@@ -131,7 +133,7 @@ uint64_t fc_test(
           VLOG(2) << tid << " " << ex.getVal() << " ...........";
           using namespace std::chrono_literals;
           /* sleep override */ // for coverage
-          std::this_thread::sleep_for(10ms);
+          base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
           VLOG(2) << tid << " " << ex.getVal() << " ===========";
           CHECK(mutex);
           mutex = false;

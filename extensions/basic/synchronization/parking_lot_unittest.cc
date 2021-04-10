@@ -20,7 +20,7 @@
 
 #include <thread>
 
-// #include <folly/synchronization/Baton.h>
+#include <basic/synchronization/baton.h>
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -28,15 +28,15 @@
 using namespace base;
 using namespace basic;
 
-#if TODO
 TEST(ParkingLot, multilot) {
   using SmallLot = ParkingLot<bool>;
   using LargeLot = ParkingLot<uint64_t>;
   SmallLot smalllot;
   LargeLot largelot;
-  folly::Baton<> sb;
-  folly::Baton<> lb;
+  basic::Baton<> sb;
+  basic::Baton<> lb;
 
+  /// \todo use base::Thread
   std::thread small([&]() {
     smalllot.park(
         0, false, [] { return true; }, [&]() { sb.post(); });
@@ -66,7 +66,6 @@ TEST(ParkingLot, multilot) {
   small.join();
   large.join();
 }
-#endif
 
 // This is not possible to implement with Futex, because futex
 // and the native linux syscall are 32-bit only.

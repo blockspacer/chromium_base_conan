@@ -4,6 +4,8 @@
 
 #include "basic/promise/promise.h"
 #include "basic/promise/do_nothing_promise.h"
+#include "basic/promise/coroutine.h"
+#include "basic/promise/post_promise.h"
 
 #include <memory>
 #include <string>
@@ -390,6 +392,9 @@ TEST_F(PromiseTest, ThenRejectWithTuple) {
 TEST_F(PromiseTest, ManualPromiseResolverMultipleArgs) {
   ManualPromiseResolver<int, std::tuple<bool, std::string>> p(FROM_HERE);
   p.GetRejectCallback<bool, std::string>().Run(false, "Noes!");
+
+  RunLoop().RunUntilIdle();
+
   std::tuple<bool, std::string> err = p.promise().TakeRejectValueForTesting();
   EXPECT_FALSE(std::get<0>(err));
   EXPECT_EQ("Noes!", std::get<1>(err));
@@ -2352,6 +2357,8 @@ TEST_F(PromiseTest, TakeResolveValueForTesting) {
 
   p1.Resolve();
 
+  RunLoop().RunUntilIdle();
+
   EXPECT_EQ(123, p2.TakeResolveValueForTesting());
 }
 
@@ -2363,6 +2370,8 @@ TEST_F(PromiseTest, TakeResolveValueForTestingMoveOnlyType) {
 
   p1.Resolve();
 
+  RunLoop().RunUntilIdle();
+
   EXPECT_EQ(123, *p2.TakeResolveValueForTesting());
 }
 
@@ -2371,6 +2380,8 @@ TEST_F(PromiseTest, TakeResolveValueForTestingNotResolved) {
                                      RejectPolicy::kCatchNotRequired);
 
   p1.Reject(123);
+
+  RunLoop().RunUntilIdle();
 
   EXPECT_DCHECK_DEATH({ p1.promise().TakeResolveValueForTesting(); });
 }
@@ -2384,6 +2395,8 @@ TEST_F(PromiseTest, TakeRejectedValueForTesting) {
 
   p1.Reject();
 
+  RunLoop().RunUntilIdle();
+
   EXPECT_EQ(456, p2.TakeRejectValueForTesting());
 }
 
@@ -2391,6 +2404,8 @@ TEST_F(PromiseTest, TakeRejectedValueForTestingMoveOnlyType) {
   ManualPromiseResolver<void, std::unique_ptr<int>> p1(FROM_HERE);
 
   p1.Reject(std::make_unique<int>(456));
+
+  RunLoop().RunUntilIdle();
 
   EXPECT_EQ(456, *p1.promise().TakeRejectValueForTesting());
 }
@@ -2401,7 +2416,149 @@ TEST_F(PromiseTest, TakeRejectedValueForTestingNotRejected) {
 
   p1.Resolve(123);
 
+  RunLoop().RunUntilIdle();
+
   EXPECT_DCHECK_DEATH({ p1.promise().TakeRejectValueForTesting(); });
 }
+
+#if BASIC_HAS_COROUTINES
+namespace {
+Promise<void> PreResolvedTask(int* value) 
+{
+  ManualPromiseResolver<int> p(FROM_HERE);
+  p.Resolve(1337);
+
+  int result =
+    co_await p.promise();
+
+  *value = result;
+}
+}  // namespace
+
+TEST_F(PromiseTest, AwaitResolvedTask) {
+  int value = 0;
+
+  Promise<void, base::NoReject> p = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce(&PreResolvedTask, &value)
+    , ::base::IsNestedPromise{true}
+  );
+
+  RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(value, 1337);
+}
+
+namespace {
+Promise<int> PostResolvedTask() 
+{
+  Promise<int, base::NoReject> p = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce([]() { return 100; })
+  );
+
+  int result =
+    co_await p;
+
+  int value = result;
+
+  co_return value + 1;
+}
+}  // namespace
+
+TEST_F(PromiseTest, AwaitPostResolvedTask) {
+  int value = 0;
+
+  Promise<int, base::NoReject> p = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce(&PostResolvedTask)
+    , ::base::IsNestedPromise{true}
+  );
+
+  p.ThenHere(FROM_HERE,
+     BindOnce([](int* out, int in) { *out = in; }, &value));
+
+  RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(value, 101);
+}
+
+namespace {
+Promise<void> PostRejectedTask(int* value) 
+{
+  Promise<NoResolve, int> p = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce([]() -> PromiseResult<NoResolve, int> { return Rejected<int>{-100}; })
+  );
+  
+  Promise<void> p2 = p.CatchHere(FROM_HERE,
+              BindLambdaForTesting([&](const int& val) {
+                EXPECT_EQ(-100, val);
+              }));
+
+  int result =
+    co_await p;
+
+  *value = result;
+}
+}  // namespace
+
+TEST_F(PromiseTest, AwaitRejectedTask) {
+  int value = 0;
+
+  Promise<void> p = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce(&PostRejectedTask, &value)
+    , ::base::IsNestedPromise{true}
+  );
+
+  RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(value, -100);
+}
+
+namespace {
+Promise<void> PostMultiTask(int* value, std::string* str) 
+{
+  Promise<std::string, int> p1 = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce([]() -> PromiseResult<std::string, int> { return Rejected<int>{-100}; })
+  );
+
+  std::variant<std::string, int> result1 =
+    co_await p1;
+
+  *value = std::get<int>(result1);
+
+  Promise<std::string, int> p2 = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce([]() -> PromiseResult<std::string, int> { return Resolved<std::string>{"123"}; })
+  );
+
+  std::variant<std::string, int> result2 =
+    co_await p2;
+
+  *str = std::get<std::string>(result2);
+}
+}  // namespace
+
+TEST_F(PromiseTest, AwaitMultiTask) {
+  int value = 0;
+  std::string str;
+
+  Promise<void> p = base::PostPromise(FROM_HERE
+    , ThreadTaskRunnerHandle::Get().get()
+    , BindOnce(&PostMultiTask, &value, &str)
+    , ::base::IsNestedPromise{true}
+  );
+
+  RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(value, -100);
+
+  EXPECT_EQ(str, "123");
+}
+
+#endif // BASIC_HAS_COROUTINES
 
 }  // namespace base

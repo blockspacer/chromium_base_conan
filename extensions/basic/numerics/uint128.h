@@ -103,9 +103,11 @@ inline bool operator==(const Uint128& lhs, const Uint128& rhs) {
   return (QuicUint128Low64Impl(lhs) == QuicUint128Low64Impl(rhs) &&
           QuicUint128High64Impl(lhs) == QuicUint128High64Impl(rhs));
 }
+#if __cplusplus <= 201703L
 inline bool operator!=(const Uint128& lhs, const Uint128& rhs) {
   return !(lhs == rhs);
 }
+#endif
 inline Uint128& Uint128::operator=(const Uint128& b) {
   lo_ = b.lo_;
   hi_ = b.hi_;

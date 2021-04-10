@@ -85,7 +85,9 @@ class TestObject {
     return std::tie(foo_, bar_) == std::tie(other.foo_, other.bar_);
   }
 
+#if __cplusplus <= 201703L
   bool operator!=(const TestObject& other) const { return !(*this == other); }
+#endif
 
   int foo() const { return foo_; }
   State state() const { return state_; }

@@ -456,9 +456,11 @@ class FixedPointNumber {
    * @tparam Rad1 Radix (base) type of number being added to `this`
    * @return true if `lhs` and `rhs` are not equal, false if not
    */
+#if __cplusplus <= 201703L
   template <typename Rep1, Radix Rad1>
   friend bool operator!=(FixedPointNumber<Rep1, Rad1> const& lhs,
                                                    FixedPointNumber<Rep1, Rad1> const& rhs);
+#endif
 
   /**
    * @brief operator <= (for comparing two `FixedPointNumber` numbers)
@@ -718,6 +720,7 @@ bool operator==(FixedPointNumber<Rep1, Rad1> const& lhs,
   return lhs.rescaled(scale)._value == rhs.rescaled(scale)._value;
 }
 
+#if __cplusplus <= 201703L
 // EQUALITY NOT COMPARISON Operation
 template <typename Rep1, Radix Rad1>
 bool operator!=(FixedPointNumber<Rep1, Rad1> const& lhs,
@@ -726,6 +729,7 @@ bool operator!=(FixedPointNumber<Rep1, Rad1> const& lhs,
   auto const scale = std::min(lhs._scale, rhs._scale);
   return lhs.rescaled(scale)._value != rhs.rescaled(scale)._value;
 }
+#endif
 
 // LESS THAN OR EQUAL TO Operation
 template <typename Rep1, Radix Rad1>

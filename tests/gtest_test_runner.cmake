@@ -9,7 +9,7 @@ add_library( ${gtest_test_runner} OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/../base/test/run_all_unittests.cc
 )
 
-set_property(TARGET ${gtest_test_runner} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${gtest_test_runner} PROPERTY CXX_STANDARD 20)
 
 # ensure that dependencies build before <target> does.
 add_dependencies(${gtest_test_runner} ${ROOT_PROJECT_LIB})

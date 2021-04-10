@@ -11,9 +11,6 @@ project(${PROJECT_NAME}
 
 set(BASE_LIB_NAME ${PROJECT_NAME})
 
-set(COBALT_DIR cobalt)
-set(LOCAL_COBALT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${COBALT_DIR}/)
-
 # --------------------------- conan configuration ------------------------------
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_cmake_utils.cmake)
@@ -645,6 +642,9 @@ find_package(Threads)
 list(APPEND USED_3DPARTY_LIBS
   ${CUSTOM_ICU_LIB}
   CONAN_PKG::abseil
+  CONAN_PKG::boost_preprocessor
+  CONAN_PKG::boost_intrusive
+  CONAN_PKG::boost_iterator
   ${FMTLIB}
   ${CMAKE_THREAD_LIBS_INIT}
   #CONAN_PKG::protobuf # TODO: collides with perfetto_trace_protos in function google::protobuf::Base64Escape
@@ -716,7 +716,7 @@ target_link_libraries(${BASE_LIB_NAME} PUBLIC
   ${USED_3DPARTY_LIBS}
 )
 
-set_property(TARGET ${BASE_LIB_NAME} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${BASE_LIB_NAME} PROPERTY CXX_STANDARD 20)
 
 # POSITION_INDEPENDENT_CODE for -fPIC
 # -fPIC may be used to link static library into dynamic one
@@ -763,6 +763,8 @@ endif(NOT ALLOCATOR_TCMALLOC)
 
 if(ENABLE_BASE_TRACING)
   set_if_not_empty(PERFETTO_SDK_DIR "$ENV{PERFETTO_SDK_DIR}")
+  set_if_not_empty(PERFETTO_BUILDTOOLS_DIR "$ENV{PERFETTO_BUILDTOOLS_DIR}")
+  set_if_not_empty(PERFETTO_GEN_DIR "$ENV{PERFETTO_GEN_DIR}")
 
   # path to `protobuf/src/google/protobuf/port_def.inc`
   add_absolute_include_dir(${BASE_LIB_NAME} PUBLIC "${PERFETTO_BUILDTOOLS_DIR}/protobuf/src")
@@ -779,7 +781,6 @@ endif(ENABLE_BASE_TRACING)
 
 add_relative_include_dir(${BASE_LIB_NAME} PUBLIC PUBLIC "")
 add_relative_include_dir(${BASE_LIB_NAME} PUBLIC PUBLIC "extensions")
-add_relative_include_dir(${BASE_LIB_NAME} PUBLIC PUBLIC "extensions/third_party/boost_preprocessor/include")
 
 # path to base/threading/thread.h
 
@@ -826,6 +827,13 @@ else()
   target_compile_features(${BASE_LIB_NAME}
     PUBLIC cxx_auto_type
     PRIVATE cxx_variadic_templates)
+endif()
+
+if(CXX_COROUTINES_HAVE_COROUTINES)
+  target_link_libraries(${BASE_LIB_NAME} PUBLIC std::coroutines)
+  target_compile_options(${BASE_LIB_NAME} PUBLIC ${_CXX_COROUTINES_AWAIT})
+else()
+  message(WARNING "No coroutines support found")
 endif()
 
 if(NOT MSVC OR IS_CLANG_CL)

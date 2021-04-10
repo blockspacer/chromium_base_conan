@@ -66,6 +66,7 @@
 //   base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(300));
 //
 //   LOG_EVERY_N_US(INFO, 800000L) << "High-frequent logs (every 800ms)";
+//   LOG_EVERY_N_MS(INFO, 800L) << "High-frequent logs (every 800ms)";
 //   LOG_EVERY_SECOND(INFO) << "High-frequent logs (every 1sec)";
 //   LOG_EVERY_N_TIMES(ERROR, 3) << "High-frequent logs (every 3 times)";
 //   LOG_FIRST_N_TIMES(INFO, 5) << "Logs that prints for at most 5 times";

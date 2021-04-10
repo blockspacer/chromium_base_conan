@@ -167,12 +167,14 @@ public:
     return x.value_ == y.value_;
   }
 
+#if __cplusplus <= 201703L
   /// Not-equal-to operator.
   friend bool operator!=(
     StrongBool x, StrongBool y) NO_EXCEPTION
   {
     return x.value_ != y.value_;
   }
+#endif
 
   /// Equal-to operator.
   friend bool operator==(
@@ -181,12 +183,14 @@ public:
     return x == y.value_;
   }
 
+#if __cplusplus <= 201703L
   /// Not-equal-to operator.
   friend bool operator!=(
     bool x, const StrongBool& y) NO_EXCEPTION
   {
     return x != y.value_;
   }
+#endif
 
   const std::string ToString() const NO_EXCEPTION
   {

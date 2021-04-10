@@ -20,12 +20,14 @@
 #include <atomic>
 #include <chrono>
 
-#include <folly/detail/Futex.h>
-#include <folly/hash/Hash.h>
-#include <folly/synchronization/AtomicStruct.h>
-#include <folly/system/ThreadId.h>
+#include <base/threading/platform_thread.h>
 
-namespace folly {
+#include <basic/synchronization/futex.h>
+#include <basic/hash/twang_hash.h>
+#include <basic/hash/hash_combine.h>
+#include <basic/synchronization/atomic_struct.h>
+
+namespace basic {
 namespace detail {
 
 /// MemoryIdler provides helper routines that allow routines to return
@@ -77,8 +79,8 @@ struct MemoryIdler {
 
     // hash the pthread_t and the time to get the adjustment
     // Standard hash func isn't very good, so bit mix the result
-    uint64_t h = folly::hash::twang_mix64(folly::hash::hash_combine(
-        getCurrentThreadID(),
+    uint64_t h = basic::hash::twang_mix64(basic::hash::hash_combine(
+        base::PlatformThread::CurrentId(),
         std::chrono::system_clock::now().time_since_epoch().count()));
 
     // multiplying the duration by a floating point doesn't work, grr
@@ -122,7 +124,7 @@ struct MemoryIdler {
       return pre;
     }
 
-    using folly::detail::futexWait;
+    using basic::detail::futexWait;
     return futexWait(&fut, expected, waitMask);
   }
 
@@ -160,7 +162,7 @@ struct MemoryIdler {
       return pre;
     }
 
-    using folly::detail::futexWaitUntil;
+    using basic::detail::futexWaitUntil;
     return futexWaitUntil(&fut, expected, deadline, waitMask);
   }
 
@@ -190,7 +192,7 @@ struct MemoryIdler {
     if (idleTimeout > IdleTime::zero()) {
       auto idleDeadline = Deadline::clock::now() + idleTimeout;
       if (idleDeadline < deadline) {
-        using folly::detail::futexWaitUntil;
+        using basic::detail::futexWaitUntil;
         auto rv = futexWaitUntil(&fut, expected, idleDeadline, waitMask);
         if (rv != FutexResult::TIMEDOUT) {
           // finished before timeout hit, no flush
@@ -211,4 +213,4 @@ struct MemoryIdler {
 };
 
 } // namespace detail
-} // namespace folly
+} // namespace basic

@@ -100,7 +100,9 @@ class VarInt {
 
   // Note: operator== is numerical comparison, and can yield equality between different bases.
   bool operator==(const VarInt& other) const { return CompareTo(other) == 0; }
+#if __cplusplus <= 201703L
   bool operator!=(const VarInt& other) const { return CompareTo(other) != 0; }
+#endif
   bool operator<(const VarInt& other) const { return CompareTo(other) < 0; }
   bool operator<=(const VarInt& other) const { return CompareTo(other) <= 0; }
   bool operator>(const VarInt& other) const { return CompareTo(other) > 0; }

@@ -534,10 +534,12 @@ bool ProcessMemoryDump::MemoryAllocatorDumpEdge::operator==(
          importance == other.importance && overridable == other.overridable;
 }
 
+#if __cplusplus <= 201703L
 bool ProcessMemoryDump::MemoryAllocatorDumpEdge::operator!=(
     const MemoryAllocatorDumpEdge& other) const {
   return !(*this == other);
 }
+#endif
 
 }  // namespace trace_event
 }  // namespace base

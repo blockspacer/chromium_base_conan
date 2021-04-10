@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-#include <folly/detail/MemoryIdler.h>
+#include <basic/synchronization/memory_idler.h>
+
+#include <base/logging.h>
+
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/gmock/include/gmock/gmock.h"
 
 #include <memory>
 #include <thread>
 
-#include <folly/portability/GMock.h>
-#include <folly/portability/GTest.h>
-#include <folly/synchronization/Baton.h>
-
-using namespace folly;
-using namespace folly::detail;
+using namespace basic;
+using namespace basic::detail;
 using namespace testing;
 
 TEST(MemoryIdler, releaseStack) {

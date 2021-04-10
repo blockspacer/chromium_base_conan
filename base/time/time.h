@@ -324,9 +324,11 @@ class BASE_EXPORT TimeDelta {
   constexpr bool operator==(TimeDelta other) const {
     return delta_ == other.delta_;
   }
+#if __cplusplus <= 201703L
   constexpr bool operator!=(TimeDelta other) const {
     return delta_ != other.delta_;
   }
+#endif
   constexpr bool operator<(TimeDelta other) const {
     return delta_ < other.delta_;
   }
@@ -497,7 +499,9 @@ class TimeBase {
 
   // Comparison operators
   constexpr bool operator==(TimeClass other) const { return us_ == other.us_; }
+#if __cplusplus <= 201703L
   constexpr bool operator!=(TimeClass other) const { return us_ != other.us_; }
+#endif
   constexpr bool operator<(TimeClass other) const { return us_ < other.us_; }
   constexpr bool operator<=(TimeClass other) const { return us_ <= other.us_; }
   constexpr bool operator>(TimeClass other) const { return us_ > other.us_; }

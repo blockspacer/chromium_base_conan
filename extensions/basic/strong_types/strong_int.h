@@ -225,12 +225,14 @@ public:
     return x.value_ == y.value_;
   }
 
+#if __cplusplus <= 201703L
   /// Not-equal-to operator.
   friend int operator!=(
     StrongInt x, StrongInt y) NO_EXCEPTION
   {
     return x.value_ != y.value_;
   }
+#endif
 
   /// Equal-to operator.
   friend bool operator==(
@@ -239,12 +241,14 @@ public:
     return x == y.value_;
   }
 
+#if __cplusplus <= 201703L
   /// Not-equal-to operator.
   friend bool operator!=(
     int x, const StrongInt& y) NO_EXCEPTION
   {
     return x != y.value_;
   }
+#endif
 
   // Increment and decrement operators.
   StrongInt& operator++() {  // ++x
