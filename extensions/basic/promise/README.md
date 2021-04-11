@@ -20,6 +20,56 @@ Tracking bug for all promises related patches - https://bugs.chromium.org/p/chro
 
 See how to rewrite `PostTaskAndReplyWithResult` using `PostPromise` https://chromium-review.googlesource.com/c/chromium/src/+/1061516/1/storage/browser/quota/quota_manager.cc#b979
 
+https://chromium-review.googlesource.com/c/chromium/src/+/1062245 which takes resource_coordinator_render_process_probe.cc's callback spaghetti (one previously had to read the whole file to understand what ResourceCoordinatorRenderProcessProbe::StartSingleGather() did) into a single declarative block:
+
+```cpp
+  base::ThreadTaskRunnerHandle::Get()
+      ->PostTask(FROM_HERE, handle_.callback())
+      .ThenOn(io_task_runner, FROM_HERE,
+              base::BindOnce(
+                  &ResourceCoordinatorRenderProcessProbe::
+                      CollectRenderProcessMetricsAndStartMemoryDumpOnIOThread,
+                  base::Unretained(this)))
+      .ThenOn(io_task_runner, FROM_HERE,
+              base::BindOnce(&ResourceCoordinatorRenderProcessProbe::
+                                 ProcessGlobalMemoryDumpAndDispatchOnIOThread,
+                             base::Unretained(this)))
+      .ThenHere(FROM_HERE,
+                base::BindOnce(&ResourceCoordinatorRenderProcessProbe::
+                                   FinishCollectionOnUIThread,
+                               base::Unretained(this)));
+```
+
+or https://chromium-review.googlesource.com/c/chromium/src/+/1055395 which turns
+
+```cpp
+  scoped_refptr<JsonParserCallback<PaymentMethodCallback>> json_callback =
+      new JsonParserCallback<PaymentMethodCallback>(
+          base::Bind(&PaymentManifestParser::OnPaymentMethodParse,
+                     weak_factory_.GetWeakPtr()),
+          std::move(callback));
+  data_decoder::SafeJsonParser::Parse(
+      content::ServiceManagerConnection::GetForProcess()->GetConnector(),
+      content,
+      base::Bind(&JsonParserCallback<PaymentMethodCallback>::OnSuccess,
+                 json_callback),
+      base::Bind(&JsonParserCallback<PaymentMethodCallback>::OnError,
+                 json_callback));
+```
+
+into
+
+```cpp
+  data_decoder::SafeJsonParser::Parse(
+      content::ServiceManagerConnection::GetForProcess()->GetConnector(),
+      content)
+      .CatchHere(FROM_HERE, base::BindOnce(&IgnoreError))
+      .ThenHere(
+          FROM_HERE,
+          base::BindOnce(&PaymentManifestParser::OnPaymentMethodParse,
+                         weak_factory_.GetWeakPtr(), std::move(callback)));
+```
+
 ## Major changes from chromium promises
 
 * Added co_await support for promises based on https://chromium-review.googlesource.com/c/chromium/src/+/1070970
@@ -36,6 +86,10 @@ Uses dynamic allocations, so avoid it in hot-code-paths.
 Also `Promise` has shared ownership (`shared_ptr` is anti-pattern).
 
 Performance overhead expected to be NOT large (TODO: measure).
+
+## Code in `README.md` outdated!
+
+For up-to-date examples see unittests!
 
 ## Avoid antipattern: The Broken Chain
 
@@ -672,7 +726,7 @@ Promise<std::unique_ptr<bool>> p3 = ...;
 
 Promises::Race(p1, p2, p3)
     .ThenHere(FROM_HERE,
-              BindOnce([](Variant<std::unique_ptr<float>, std::unique_ptr<int>,
+              BindOnce([](std::tuple<std::unique_ptr<float>, std::unique_ptr<int>,
                                   std::unique_ptr<bool>> result) {
                     // Do something with |result|.
                   }));
@@ -685,10 +739,10 @@ Promise<void, CustomError> p3;
 Promise<int, std::string> p4;
 
 Promises::Race(p1, p2, p3, p4)
-  .ThenOn(sequence, FROM_HERE, base::BindOnce([](Variant<int, Void> result) {
+  .ThenOn(sequence, FROM_HERE, base::BindOnce([](std::tuple<int, Void> result) {
          // Do something with result.
        }),
-       base::BindOnce([](const Variant<base::Void, net::Error, CustomError,
+       base::BindOnce([](const std::tuple<base::Void, net::Error, CustomError,
                                        std::string>& err) {
          // Do something with err.
        }));
@@ -717,11 +771,11 @@ promises.push_back(p1);
 promises.push_back(p2);
 promises.push_back(p3);
 Promises::Race(promises)
-  .ThenOn(sequence, FROM_HERE, base::BindOnce([](Variant<int, Void> result) {
+  .ThenOn(sequence, FROM_HERE, base::BindOnce([](std::tuple<int, Void> result) {
          // Do something with result.
        }),
    base::BindOnce(
-       [](const Variant<ErrorType1, ErrorType2, ErrorType3>& err) {
+       [](const std::tuple<ErrorType1, ErrorType2, ErrorType3>& err) {
          // Do something with err.
        }));
 ```

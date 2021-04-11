@@ -90,5 +90,36 @@ struct RaceContainerHelper<Container, Promise<ResolveType, RejectType>> {
   }
 };
 
+// TODO: Maybe specalize to support containers of variants.
+//
+// https://chromium.googlesource.com/chromium/src/+/589fb96673c255dadfd6e929593050545a68eb14/base/promise/race_promise_executor.h
+//
+// template <typename Container, typename... Promises>
+// struct RaceContainerHelper<Container, std::variant<Promises...>> {
+//   using PromiseResolve =
+//       typename UnionOfVarArgTypes<typename Promises::ResolveT...>::type;
+//   using PromiseReject = typename internal::SanatizeRejectVariant<
+//       typename UnionOfVarArgTypes<typename Promises::RejectT...>::type>::type;
+//   using PromiseType = Promise<PromiseResolve, PromiseReject>;
+//   static PromiseType Race(const Container& promises) {
+//     std::vector<scoped_refptr<AbstractPromise>> prerequistes;
+//     prerequistes.reserve(promises.size());
+//     for (typename Container::const_iterator it = promises.begin();
+//          it != promises.end(); ++it) {
+//       prerequistes.push_back(
+//           VariantPromiseHelper<0, Promises...>::GetAbstractPromise(*it));
+//     }
+//     return PromiseType(subtle::AdoptRefIfNeeded(
+//         new AbstractPromise(
+//             AbstractPromise::ConstructWith<PromiseResolve, PromiseReject>(),
+//             internal::GetCurrentSequence(), FROM_HERE,
+//             AbstractPromise::PrerequisitePolicy::ANY, std::move(prerequistes),
+//             RejectPolicy::kMustCatchRejection,
+//             std::make_unique<
+//                 RacePromiseVariantTypeExecutor<PromiseType, Promises...>>()),
+//         AbstractPromise::kRefCountPreference));
+//   }
+// };
+
 }  // namespace internal
 }  // namespace base

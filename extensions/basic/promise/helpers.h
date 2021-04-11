@@ -5,6 +5,7 @@
 #pragma once
 
 #include <tuple>
+#include <variant>
 #include <type_traits>
 
 #include "base/bind.h"
@@ -14,6 +15,7 @@
 
 #include "basic/promise/abstract_promise.h"
 #include "basic/promise/promise_result.h"
+#include "basic/type_id.h"
 
 namespace base {
 class DoNothing;
@@ -410,6 +412,38 @@ class ArgMoveSemanticsHelper {
   }
 };
 
+template <typename ArgType>
+static auto GetResolvedValueFromPromise(AbstractPromise* arg) {
+  using ResolvedType = ::base::Resolved<UndoToNonVoidT<ArgType>>;
+  DCHECK(arg->IsSettled() && arg->IsResolved());
+  return ArgMoveSemanticsHelper<ArgType, ResolvedType>::Get(arg);
+}
+
+template <typename ArgType>
+static auto GetOptionallyResolvedValueFromPromise(AbstractPromise* arg) {
+  using ResolvedType = ::base::Resolved<UndoToNonVoidT<ArgType>>;
+  if(arg->IsSettled() && arg->IsResolved()) {
+    return ArgMoveSemanticsHelper<ArgType, ResolvedType>::Get(arg);
+  }
+  return internal::ToNonVoidT<UndoToNonVoidT<ArgType>>{};
+}
+
+template <typename ArgType>
+static auto GetRejectedValueFromPromise(AbstractPromise* arg) {
+  using RejectedType = ::base::Rejected<UndoToNonVoidT<ArgType>>;
+  DCHECK(arg->IsSettled() && arg->IsRejected());
+  return ArgMoveSemanticsHelper<ArgType, RejectedType>::Get(arg);
+}
+
+template <typename ArgType>
+static auto GetOptionallyRejectedValueFromPromise(AbstractPromise* arg) {
+  using RejectedType = ::base::Rejected<UndoToNonVoidT<ArgType>>;
+  if(arg->IsSettled() && arg->IsRejected()) {
+    return ArgMoveSemanticsHelper<ArgType, RejectedType>::Get(arg);
+  }
+  return internal::ToNonVoidT<UndoToNonVoidT<ArgType>>{};
+}
+
 // Helper for converting a callback to its repeating variant.
 template <typename Cb>
 struct ToRepeatingCallback;
@@ -676,6 +710,336 @@ struct AllPromiseRejectHelper {
   }
 };
 
+// Helper for computing the index (if any) of a given type within the parameter
+// pack.
+template <typename...>
+struct VarArgIndexHelper;
+enum { kVarArgIndexHelperInvalidIndex = 0xffffffff };
+template <typename T, typename... Rest>
+struct VarArgIndexHelper<T, T, Rest...> {
+  enum {
+    kIndex = 0,
+  };
+};
+template <typename T>
+struct VarArgIndexHelper<T> {
+  enum { kIndex = kVarArgIndexHelperInvalidIndex };
+};
+template <typename T, typename First, typename... Rest>
+struct VarArgIndexHelper<T, First, Rest...> {
+  enum {
+    kIndex =
+        VarArgIndexHelper<T, Rest...>::kIndex != kVarArgIndexHelperInvalidIndex
+            ? VarArgIndexHelper<T, Rest...>::kIndex + 1
+            : kVarArgIndexHelperInvalidIndex
+  };
+};
+
+// Helper that processes a reject type Varient<> to simplify the type by
+// removing NoReject from the Variant<>.  If a single type is left, that's
+// returned rather than the variant.  If no types are left then the result is
+// NoReject.
+template <typename T, typename... Ts>
+struct NoRejectUnion;
+template <typename T>
+struct NoRejectUnion<T, NoReject> {
+  using type = T;
+};
+template <typename A, typename B>
+struct NoRejectUnion<A, B> {
+  using type = std::variant<A, B>;
+};
+template <typename T, typename... Ts>
+struct NoRejectUnion<T, std::variant<Ts...>> {
+  using type = std::variant<T, Ts...>;
+};
+
+template <typename... Ts>
+struct SanatizeRejectVariant;
+template <>
+struct SanatizeRejectVariant<std::variant<>> {
+  using type = NoReject;
+};
+template <typename T, typename... Ts>
+struct SanatizeRejectVariant<std::variant<T, Ts...>> {
+  using type = std::conditional_t<
+      std::is_same<T, NoReject>::value,
+      typename SanatizeRejectVariant<std::variant<Ts...>>::type,
+      typename NoRejectUnion<
+          T,
+          typename SanatizeRejectVariant<std::variant<Ts...>>::type>::type>;
+};
+template <typename T>
+struct SanatizeRejectVariant<T> {
+  using type = T;
+};
+
+// Helper used to extract the Nth AbstractPromise from a std::variant<Promises...>
+template <size_t N, typename...>
+struct VariantPromiseHelper;
+template <size_t N>
+struct VariantPromiseHelper<N> {
+  template <typename PromiseType>
+  static internal::AbstractPromise* GetAbstractPromise(
+      const PromiseType& promise) {
+    NOTREACHED();
+    return nullptr;
+  }
+};
+template <size_t N, typename First, typename... Rest>
+struct VariantPromiseHelper<N, First, Rest...> {
+  template <typename VariantOfPromises>
+  static internal::AbstractPromise* GetAbstractPromise(
+      const VariantOfPromises& variant_of_promises) {
+    if (N == variant_of_promises.index()) {
+      return std::get<First>(variant_of_promises).abstract_promise_.get();
+    } else {
+      return VariantPromiseHelper<N + 1, Rest...>::GetAbstractPromise(
+          variant_of_promises);
+    }
+  }
+};
+// This template helps assign a Variant with the (unwrapped) result of a
+// prerequisite promise.
+template <typename AssignType, typename... PrerequisitePromises>
+struct VariantAssignHelper;
+template <typename AssignType>
+struct VariantAssignHelper<AssignType> {
+  static void Assign(AssignType& dest,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+    DCHECK(false);
+  }
+};
+// Can't assign a Rejected<NoReject>.
+template <typename AssignType, typename... Rest>
+struct VariantAssignHelper<AssignType, Rejected<NoReject>, Rest...> {
+  static void Assign(AssignType& dest,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+    VariantAssignHelper<AssignType, Rest...>::Assign(dest, prerequisite);
+  }
+};
+template <typename AssignType, typename Front, typename... Rest>
+struct VariantAssignHelper<AssignType, Front, Rest...> {
+  static void Assign(AssignType& dest,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+    const base::internal::PromiseValue& value = prerequisite->value();
+    // Front* value = std::get_if<Front>(&prerequisite->value());
+    if (!value.has_value()) {
+      VariantAssignHelper<AssignType, Rest...>::Assign(dest, prerequisite);
+    } else {
+      //dest.value = std::move(value->value);
+      //dest.value = std::move(value.Get<Resolved<Front>>()->value);
+      dest.value = std::move(value.Get<Front>()->value);
+    }
+  }
+};
+
+template <typename AssignType, typename PromiseType, typename... PrerequisitePromises>
+struct VariantResolveHelper;
+template <typename AssignType, typename PromiseType>
+struct VariantResolveHelper<AssignType, PromiseType> {
+  static void Assign(PromiseType* promise,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+    DCHECK(false);
+  }
+};
+// Can't assign a Rejected<NoReject>.
+template <typename AssignType, typename PromiseType, typename... Rest>
+struct VariantResolveHelper<AssignType, PromiseType, Rejected<NoReject>, Rest...> {
+  static void Assign(PromiseType* promise,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+    VariantResolveHelper<AssignType, PromiseType, Rest...>::Assign(promise, prerequisite);
+  }
+};
+// Loops all types in `std::tuple<...>` and checks if prerequisite promise was resolved using type from loop.
+template <typename AssignType, typename PromiseType, typename Front, typename... Rest>
+struct VariantResolveHelper<AssignType, PromiseType, Front, Rest...> {
+  static void Assign(PromiseType* promise,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+  static_assert(!std::is_same<std::decay_t<Front>, basic::internal::NoType>::value
+                && !std::is_same<std::decay_t<typename Front::Type>, basic::internal::NoType>::value,
+                "Can't have NoType");
+
+    AbstractPromise::ValueHandle value = prerequisite->TakeValue();
+    PromiseValue& promiseValue = value.value();
+    DCHECK(promiseValue.has_value());
+    
+    using ResolvedType = ::base::Resolved<UndoToNonVoidT<std::decay_t<typename Front::Type>>>;
+    using ResolvedNonVoidType = ::base::Resolved<ToNonVoidT<std::decay_t<typename Front::Type>>>;
+
+    /// \todo refactor and remove unused checks
+    if (promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<Front>>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<typename Front::Type>>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<ResolvedType>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<typename ResolvedType::Type>>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<ResolvedNonVoidType>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<typename ResolvedNonVoidType::Type>>()
+       ) {
+      DCHECK(prerequisite->IsSettled() && prerequisite->IsResolved());
+      AssignType result; // create variant to store resolved result
+
+      if constexpr (std::is_same<::base::Resolved<base::Void>, ResolvedNonVoidType>::value) {
+        /// \todo refactor, see GetResolvedValueFromPromise
+        result = base::Void{}; // emplace into variant
+      } else {
+        /// \todo refactor, see GetResolvedValueFromPromise
+        Front front = RVALUE_CAST(promiseValue.Get<ResolvedNonVoidType>()->value);
+        result = RVALUE_CAST(front.value); // emplace into variant
+        //result = GetResolvedValueFromPromise<Front>(prerequisite.get()).value;
+      }
+      promise->emplace(in_place_type_t<Resolved<AssignType>>(),
+                      Resolved<AssignType>(RVALUE_CAST(result)));
+
+                       
+    } else {
+      VariantResolveHelper<AssignType, PromiseType, Rest...>::Assign(promise, prerequisite);
+    }
+  }
+};
+
+template <typename AssignType, typename PromiseType, typename... PrerequisitePromises>
+struct VariantRejectHelper;
+template <typename AssignType, typename PromiseType>
+struct VariantRejectHelper<AssignType, PromiseType> {
+  static void Assign(PromiseType* promise,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+    DCHECK(false);
+  }
+};
+// Can't assign a Rejected<NoReject>.
+template <typename AssignType, typename PromiseType, typename... Rest>
+struct VariantRejectHelper<AssignType, PromiseType, Rejected<NoReject>, Rest...> {
+  static void Assign(PromiseType* promise,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+    VariantRejectHelper<AssignType, PromiseType, Rest...>::Assign(promise, prerequisite);
+  }
+};
+// Loops all types in `std::tuple<...>` and checks if prerequisite promise was rejected using type from loop.
+template <typename AssignType, typename PromiseType, typename Front, typename... Rest>
+struct VariantRejectHelper<AssignType, PromiseType, Front, Rest...> {
+  static void Assign(PromiseType* promise,
+                     const scoped_refptr<AbstractPromise>& prerequisite) {
+  static_assert(!std::is_same<std::decay_t<Front>, basic::internal::NoType>::value
+                && !std::is_same<std::decay_t<typename Front::Type>, basic::internal::NoType>::value,
+                "Can't have NoType");
+
+    AbstractPromise::ValueHandle value = prerequisite->TakeValue();
+    PromiseValue& promiseValue = value.value();
+    DCHECK(promiseValue.has_value());
+    
+    using RejectedType = ::base::Rejected<UndoToNonVoidT<std::decay_t<typename Front::Type>>>;
+    using RejectedNonVoidType = ::base::Rejected<ToNonVoidT<std::decay_t<typename Front::Type>>>;
+
+    /// \todo refactor and remove unused checks
+    if (promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<Front>>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<typename Front::Type>>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<RejectedType>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<typename RejectedType::Type>>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<RejectedNonVoidType>()
+        || promiseValue.typeId() == basic::internal::UniqueIdFromType<std::decay_t<typename RejectedNonVoidType::Type>>()
+       ) {
+      DCHECK(prerequisite->IsSettled() && prerequisite->IsRejected());
+      AssignType result; // create variant to store rejected result
+
+      if constexpr (std::is_same<::base::Rejected<base::Void>, RejectedNonVoidType>::value) {
+        /// \todo refactor, see GetRejectedValueFromPromise
+        result = base::Void{}; // emplace into variant
+      } else {
+        /// \todo refactor, see GetRejectedValueFromPromise
+        Front front = RVALUE_CAST(promiseValue.Get<RejectedNonVoidType>()->value);
+        result = RVALUE_CAST(front.value); // emplace into variant
+        //result = GetRejectedValueFromPromise<Front>(prerequisite.get()).value;
+      }
+      promise->emplace(in_place_type_t<Rejected<AssignType>>(),
+                       Rejected<AssignType>(RVALUE_CAST(result)));
+
+                       
+    } else {
+      VariantRejectHelper<AssignType, PromiseType, Rest...>::Assign(promise, prerequisite);
+    }
+  }
+};
+
+// To support multiple rejection types in a ThenChain use this.
+// using ThenReject = typename UnionOfTypes<RejectT, RejectResult>::type;
+//
+// Helper to compute the Reject type given a promise and a Then/Catch which is
+// the union of all Reject types.
+//
+template <typename T1, typename T2>
+struct UnionOfTypes {
+  using type = std::variant<ToNonVoidT<T1>, ToNonVoidT<T2>>;
+};
+template <typename T>
+struct UnionOfTypes<T, T> {
+  using type = T;
+};
+template <typename T, typename... Ts>
+struct UnionOfTypes<std::variant<Ts...>, T> {
+  static constexpr bool is_unique =
+      VarArgIndexHelper<ToNonVoidT<T>, Ts...>::kIndex ==
+      kVarArgIndexHelperInvalidIndex;
+  using type = 
+      std::conditional_t<is_unique, std::variant<Ts..., ToNonVoidT<T>>, std::variant<Ts...>>;
+};
+
+template <typename T1, typename T2>
+struct UnionOfVariants;
+template <typename T, typename... Ts>
+struct UnionOfVariants<std::variant<Ts...>, std::variant<T>> {
+  using NonVoidT = ToNonVoidT<T>;
+  static constexpr bool is_unique =
+      VarArgIndexHelper<NonVoidT, Ts...>::kIndex ==
+      kVarArgIndexHelperInvalidIndex;
+  using type =
+      std::conditional_t<is_unique, std::variant<Ts..., NonVoidT>, std::variant<Ts...>>;
+};
+template <typename... T1s, typename T, typename... T2s>
+struct UnionOfVariants<std::variant<T1s...>, std::variant<T, T2s...>> {
+  using NonVoidT = ToNonVoidT<T>;
+  static constexpr bool is_unique =
+      VarArgIndexHelper<NonVoidT, T1s...>::kIndex ==
+      kVarArgIndexHelperInvalidIndex;
+  static constexpr bool t2s_not_empty = sizeof...(T2s) > 0;
+  using include =
+      std::conditional_t<t2s_not_empty,
+                         typename UnionOfVariants<std::variant<T1s..., NonVoidT>,
+                                                  std::variant<T2s...>>::type,
+                         std::variant<T1s..., T>>;
+  using exclude = std::conditional_t<
+      t2s_not_empty,
+      typename UnionOfVariants<std::variant<T1s...>, std::variant<T2s...>>::type,
+      std::variant<T1s...>>;
+  using type = std::conditional_t<is_unique, include, exclude>;
+};
+
+// Helper which simplifies single value variants by converting to the underlying
+// type.
+template <typename T>
+struct ConvertToNonVariantIfPossible;
+template <typename T>
+struct ConvertToNonVariantIfPossible<std::variant<T>> {
+  using type = T;
+};
+template <>
+struct ConvertToNonVariantIfPossible<std::variant<Void>> {
+  using type = void;
+};
+template <typename... Ts>
+struct ConvertToNonVariantIfPossible<std::variant<Ts...>> {
+  using type = std::variant<Ts...>;
+};
+// Helper to compute a de-duplicated single type or Variant<> from a parameter
+// pack.
+template <typename... Ts>
+struct UnionOfVarArgTypes;
+template <typename Front, typename... Rest>
+struct UnionOfVarArgTypes<Front, Rest...> {
+  using type = typename ConvertToNonVariantIfPossible<
+      typename UnionOfVariants<std::variant<ToNonVoidT<Front>>,
+                               std::variant<Rest...>>::type>::type;
+};
+
 // TODO(alexclarke): Specalize AllPromiseRejectHelper for variants.
 
 // This template helps assign the reject value from a prerequisite into the
@@ -735,22 +1099,6 @@ struct TupleConstructor;
 
 template <typename Tuple, size_t... Indices>
 struct TupleConstructor<Tuple, std::index_sequence<Indices...>> {
-  template <typename ArgType>
-  static auto GetResolvedValueFromPromise(AbstractPromise* arg) {
-    using ResolvedType = ::base::Resolved<UndoToNonVoidT<ArgType>>;
-    DCHECK(arg->IsSettled() && arg->IsResolved());
-    return ArgMoveSemanticsHelper<ArgType, ResolvedType>::Get(arg);
-  }
-
-  template <typename ArgType>
-  static auto GetOptionallyResolvedValueFromPromise(AbstractPromise* arg) {
-    using ResolvedType = ::base::Resolved<UndoToNonVoidT<ArgType>>;
-    if(arg->IsSettled() && arg->IsResolved()) {
-      return ArgMoveSemanticsHelper<ArgType, ResolvedType>::Get(arg);
-    }
-    return internal::ToNonVoidT<UndoToNonVoidT<ArgType>>{};
-  }
-
   // Resolves |result| with a std::tuple of the promise results of the dependent
   // promises.
   static void ConstructResolvedTuple(
@@ -783,6 +1131,15 @@ struct TupleCanResolveHelper<std::tuple<Ts...>> {
       any_of({!std::is_same<Ts, NoResolve>::value...});
 };
 
+
+template <typename T>
+struct VariantCanResolveHelper;
+
+template <typename... Ts>
+struct VariantCanResolveHelper<std::variant<Ts...>> {
+  static constexpr bool value =
+      all_of({!std::is_same<Ts, NoResolve>::value...});
+};
 
 template <typename ResolveT, typename RejectT>
 auto wrapPromiseIntoOnceCallback(Promise<ResolveT, RejectT> targetPromise)

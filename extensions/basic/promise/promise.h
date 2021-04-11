@@ -926,7 +926,7 @@ class Promises {
             RVALUE_CAST(executor_data)));
   }
 
-  // All for one Promise equals to that Promise
+  // All() for one Promise equals to that Promise
   template <typename Resolve, typename Reject>
   static Promise<Resolve, Reject> All(const Location& from_here,
                                       Promise<Resolve, Reject> promise) {
@@ -958,8 +958,66 @@ class Promises {
    * Resolved when any
    * input promise is resolved or rejected.
    */
-  template <typename... Resolve, typename Reject>
+  template <typename... Resolve, typename... Reject>
   static auto Race(const Location& from_here,
+                  Promise<Resolve, Reject>... promises) {
+    using ThenResolve = typename internal::UnionOfVarArgTypes<Resolve...>::type;
+    using ThenReject = typename internal::SanatizeRejectVariant<
+        typename internal::UnionOfVarArgTypes<Reject...>::type>::type;
+    using ThenPromise = Promise<ThenResolve, ThenReject>;
+
+    std::vector<internal::DependentList::Node> prerequisite_list(
+        sizeof...(promises));
+    int i = 0;
+    for (auto&& p : {promises.abstract_promise_.get()...}) {
+      prerequisite_list[i++].SetPrerequisite(p);
+    }
+
+    internal::PromiseExecutor::Data executor_data(
+        (in_place_type_t<internal::RacePromiseVariantTypeExecutor<
+             ThenResolve, ThenReject, Promise<Resolve, Reject>...>>()));
+
+    return ThenPromise(
+        internal::AbstractPromise::Create(
+            nullptr, from_here,
+            std::make_unique<internal::AbstractPromise::AdjacencyList>(
+                RVALUE_CAST(prerequisite_list)),
+            RejectPolicy::kMustCatchRejection,
+            internal::DependentList::ConstructUnresolved(),
+            RVALUE_CAST(executor_data)));
+  }
+
+  /// \note Useful if you want to know what promise resolved first.
+  /// Note that it uses `std::tuple`, but not all types will be resolved due `Promises::Race()` (unlike `Promises::All()`),
+  /// so it supports only types where value is optional, i.e. use `base::Optional`, `std::unique_ptr`, etc.
+  /*
+   * Resolved when any
+   * input promise is resolved or rejected.
+   *
+   * USAGE
+   *
+   * ManualPromiseResolver<std::unique_ptr<float>> p1(FROM_HERE);
+   * ManualPromiseResolver<std::unique_ptr<int>> p2(FROM_HERE);
+   * ManualPromiseResolver<std::unique_ptr<bool>> p3(FROM_HERE);
+   * RunLoop run_loop;
+   * Promises::RaceAll(FROM_HERE, p1.promise(), p2.promise(), p3.promise())
+   *    .ThenHere(
+   *        FROM_HERE,
+   *        BindOnce(
+   *            [](RunLoop* run_loop,
+   *               std::tuple<std::unique_ptr<float>, std::unique_ptr<int>,
+   *                       std::unique_ptr<bool>> result) {
+   *              EXPECT_FALSE(std::get<0>(result));
+   *              EXPECT_TRUE(std::get<1>(result));
+   *              EXPECT_FALSE(std::get<2>(result));
+   *              EXPECT_EQ(1337, *std::get<std::unique_ptr<int>>(result));
+   *              EXPECT_EQ(1337, *std::get<1>(result));
+   *              run_loop->Quit();
+   *            },
+   *            &run_loop));
+   */
+  template <typename... Resolve, typename Reject>
+  static auto RaceAll(const Location& from_here,
                   Promise<Resolve, Reject>... promises) {
     using ReturnedPromiseResolveT =
         std::tuple<internal::ToNonVoidT<Resolve>...>;
@@ -973,7 +1031,7 @@ class Promises {
     }
 
     internal::PromiseExecutor::Data executor_data(
-        (in_place_type_t<internal::RaceTuplePromiseExecutor<
+        (in_place_type_t<internal::RaceAllPromiseExecutor<
              ReturnedPromiseResolveT, ReturnedPromiseRejectT>>()));
 
     return Promise<ReturnedPromiseResolveT, ReturnedPromiseRejectT>(
@@ -986,7 +1044,7 @@ class Promises {
             RVALUE_CAST(executor_data)));
   }
 
-  // Race for one Promise equals to that Promise
+  // Race() for one Promise equals to that Promise
   template <typename Resolve, typename Reject>
   static Promise<Resolve, Reject> Race(const Location& from_here,
                                       Promise<Resolve, Reject> promise) {

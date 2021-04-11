@@ -11,6 +11,7 @@
 
 #include "basic/rvalue_cast.h"
 #include "basic/macros.h"
+#include "basic/type_id.h"
 
 #include <ostream>
 
@@ -196,6 +197,7 @@ struct BASE_EXPORT PromiseValueInternal {
 #if DCHECK_IS_ON()
     const char* type_name;
 #endif
+    basic::internal::TypeUniqueId type_id;
     MoveFunctionPtr move_fn_ptr;
     DeleteFunctionPtr delete_fn_ptr;
   };
@@ -208,6 +210,7 @@ struct BASE_EXPORT PromiseValueInternal {
 #if DCHECK_IS_ON()
         TypeName(),
 #endif
+        basic::internal::UniqueIdFromType<std::decay_t<T>>(), // basic::TypeId::From<T>(),
         &MoveHelper<T,
                     InlineStorageHelper<T>::kUseInlineStorage,
                     std::is_move_constructible<T>::value>::Move,
@@ -221,6 +224,7 @@ struct BASE_EXPORT PromiseValueInternal {
 #if DCHECK_IS_ON()
       "EMPTY!",
 #endif
+      basic::internal::UniqueIdFromType<basic::internal::NoType>(),
       &NopMove, &NopDelete};
 
   union {
@@ -481,6 +485,10 @@ class BASE_EXPORT PromiseValue {
 
   bool ContainsRejected() const {
     return type_ops_.GetState() == State::REJECTED;
+  }
+
+  basic::internal::TypeUniqueId typeId() const {
+    return type_ops_->type_id;
   }
 
   template <typename T,

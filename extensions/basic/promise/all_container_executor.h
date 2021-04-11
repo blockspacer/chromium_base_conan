@@ -124,6 +124,113 @@ struct AllContainerHelper<Container, Promise<ResolveType, RejectType>> {
 
 // TODO(alexclarke): Maybe specalize to support containers of variants.
 // E.g. Promises::All(std::vector<Variant<Promise<T>...>>& promises)
+//
+// https://chromium.googlesource.com/chromium/src/+/589fb96673c255dadfd6e929593050545a68eb14/base/promise/all_promise_executor.h
+//
+// This template helps assign the reject value from a prerequisite into the
+// rejection storage type.
+// template <typename RejectT>
+// struct AllPromiseRejectAssignHelper {
+//   static void Assign(RejectT& dest,
+//                      const scoped_refptr<AbstractPromise>& prerequisite) {
+//     dest.value = std::move(Get<RejectT>(&prerequisite->value()).value);
+//   }
+// };
+// template <typename... Ts>
+// struct AllPromiseRejectAssignHelper<Rejected<Variant<Ts...>>> {
+//   static void Assign(Rejected<Variant<Ts...>>& dest,
+//                      const scoped_refptr<AbstractPromise>& prerequisite) {
+//     VariantAssignHelper<Rejected<Variant<Ts...>>, Rejected<Ts>...>::Assign(
+//         dest, prerequisite);
+//   }
+// };
+// template <size_t index>
+// struct AllVariantContainerPromiseExecutorHelper {
+//   template <typename... Ts>
+//   static void Assign(AbstractVariant* abstract_variant,
+//                      Variant<Ts...>* variant) {
+//     using ResolvedT =
+//         base::Resolved<UndoToNonVoidT<TypeAtHelper<index, Ts...>>>;
+//     ResolvedT* resolved = GetIf<ResolvedT>(abstract_variant);
+//     if (resolved) {
+//       *variant = std::move(resolved->value);
+//     } else {
+//       AllVariantContainerPromiseExecutorHelper<index - 1>::Assign(
+//           abstract_variant, variant);
+//     }
+//   }
+// };
+// template <>
+// struct AllVariantContainerPromiseExecutorHelper<0> {
+//   template <typename... Ts>
+//   static void Assign(AbstractVariant* abstract_variant,
+//                      Variant<Ts...>* variant) {
+//     using ResolvedT = base::Resolved<UndoToNonVoidT<TypeAtHelper<0, Ts...>>>;
+//     *variant = std::move(Get<ResolvedT>(abstract_variant).value);
+//   }
+// };
+// template <typename T>
+// struct VariantSizeHelper;
+// template <typename... Ts>
+// struct VariantSizeHelper<Variant<Ts...>> {
+//   static constexpr int size = sizeof...(Ts);
+// };
+// template <typename VectorT, typename RejectT>
+// class AllVariantContainerPromiseExecutor : public AbstractPromise::Executor {
+//  public:
+//   AllVariantContainerPromiseExecutor() {}
+//   ~AllVariantContainerPromiseExecutor() override {}
+//   bool IsCancelled() const override { return false; }
+//   void Execute(AbstractPromise* promise) override {
+//     for (const auto& prerequisite : promise->prerequisites()) {
+//       if (prerequisite->IsRejected()) {
+//         RejectT& rejected = promise->value().template emplace<RejectT>();
+//         AllPromiseRejectAssignHelper<RejectT>::Assign(rejected, prerequisite);
+//         return;
+//       }
+//     }
+//     Resolved<VectorT> result{VectorT(promise->prerequisites().size())};
+//     for (size_t i = 0; i < promise->prerequisites().size(); i++) {
+//       DCHECK(promise->prerequisites()[i]->IsResolved());
+//       constexpr size_t varant_dimension =
+//           VariantSizeHelper<typename VectorT::value_type>::size;
+//       AllVariantContainerPromiseExecutorHelper<varant_dimension - 1>::Assign(
+//           &promise->prerequisites()[i]->value(), &result.value[i]);
+//     }
+//     bool success = promise->value().TryAssign(std::move(result));
+//     DCHECK(success);
+//   }
+// };
+// template <typename Container, typename... Promises>
+// struct AllContainerHelper<Container, Variant<Promises...>> {
+//   using PromiseResolve = std::vector<
+//       typename UnionOfVarArgTypes<typename Promises::ResolveT...>::type>;
+//   using PromiseReject = typename internal::SanatizeRejectVariant<
+//       typename UnionOfVarArgTypes<typename Promises::RejectT...>::type>::type;
+//   using PromiseType = Promise<PromiseResolve, PromiseReject>;
+//   static PromiseType All(const Container& promises) {
+//     if (promises.empty()) {
+//       return ResolvedPromiseHelper<PromiseResolve,
+//                                    PromiseReject>::CreateResolved();
+//     }
+//     std::vector<scoped_refptr<AbstractPromise>> prerequistes;
+//     prerequistes.reserve(promises.size());
+//     for (typename Container::const_iterator it = promises.begin();
+//          it != promises.end(); ++it) {
+//       prerequistes.push_back(
+//           VariantPromiseHelper<0, Promises...>::GetAbstractPromise(*it));
+//     }
+//     return PromiseType(subtle::AdoptRefIfNeeded(
+//         new AbstractPromise(
+//             AbstractPromise::ConstructWith<PromiseResolve, PromiseReject>(),
+//             internal::GetCurrentSequence(), FROM_HERE,
+//             AbstractPromise::PrerequisitePolicy::ALL, std::move(prerequistes),
+//             RejectPolicy::kMustCatchRejection,
+//             std::make_unique<AllVariantContainerPromiseExecutor<
+//                 PromiseResolve, Rejected<PromiseReject>>>()),
+//         AbstractPromise::kRefCountPreference));
+//   }
+// };
 
 }  // namespace internal
 }  // namespace base

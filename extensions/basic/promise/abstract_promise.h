@@ -17,6 +17,7 @@
 #include "basic/promise/promise_executor.h"
 #include "basic/promise/promise_value.h"
 #include "basic/rvalue_cast.h"
+#include "basic/type_id.h"
 
 namespace base {
 class TaskRunner;

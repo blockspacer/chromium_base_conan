@@ -1989,6 +1989,282 @@ TEST_F(PromiseTest, ThreadPoolThenChain) {
   run_loop.Run();
 }
 
+TEST_F(PromiseTest, RaceReject) {
+  ManualPromiseResolver<float, std::string> p1(FROM_HERE);
+  ManualPromiseResolver<int, std::string> p2(FROM_HERE);
+  ManualPromiseResolver<bool, std::string> p3(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, p1.promise(), p2.promise(), p3.promise())
+      .ThenHere(FROM_HERE,
+                BindOnce(
+                    [](RunLoop* run_loop, std::variant<float, int, bool> result) {
+                      run_loop->Quit();
+                      FAIL() << "We shouldn't get here, a raced promise was "
+                                "rejected!";
+                    },
+                    &run_loop),
+                BindOnce(
+                    [](RunLoop* run_loop, const std::string& err) {
+                      run_loop->Quit();
+                      EXPECT_EQ("Whoops!", err);
+                    },
+                    &run_loop));
+
+  p3.Reject("Whoops!");
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceResolve) {
+  ManualPromiseResolver<float> p1(FROM_HERE);
+  ManualPromiseResolver<int> p2(FROM_HERE);
+  ManualPromiseResolver<bool> p3(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, p1.promise(), p2.promise(), p3.promise())
+      .ThenHere(FROM_HERE,
+                BindOnce(
+                    [](RunLoop* run_loop, std::variant<float, int, bool> result) {
+                      EXPECT_EQ(1337, std::get<int>(result));
+                      run_loop->Quit();
+                    },
+                    &run_loop));
+
+  p2.Resolve(1337);
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceResolveIntVoidVoidInt) {
+  ManualPromiseResolver<int> p1(FROM_HERE);
+  ManualPromiseResolver<void> p2(FROM_HERE);
+  ManualPromiseResolver<void> p3(FROM_HERE);
+  ManualPromiseResolver<int> p4(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, p1.promise(), p2.promise(), p3.promise(), p4.promise())
+      .ThenHere(FROM_HERE,
+                BindOnce(
+                    [](RunLoop* run_loop, std::variant<int, Void> result) {
+                      EXPECT_TRUE(std::holds_alternative<Void>(result));
+                      run_loop->Quit();
+                    },
+                    &run_loop));
+
+  p3.Resolve();
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceRejectMultipleTypes) {
+  ManualPromiseResolver<int, void> p1(FROM_HERE);
+  ManualPromiseResolver<void, bool> p2(FROM_HERE);
+  ManualPromiseResolver<void, int> p3(FROM_HERE);
+  ManualPromiseResolver<int, std::string> p4(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, p1.promise(), p2.promise(), p3.promise(), p4.promise())
+      .ThenHere(FROM_HERE, BindOnce([](std::variant<int, Void> result) {
+                  FAIL() << "One of the promises was rejected.";
+                }),
+                BindOnce(
+                    [](RunLoop* run_loop,
+                       const std::variant<Void, bool, int, std::string>& err) {
+                      EXPECT_EQ("Oh dear!", std::get<std::string>(err));
+                      run_loop->Quit();
+                    },
+                    &run_loop));
+
+  p4.Reject("Oh dear!");
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceRejectSingleType) {
+  ManualPromiseResolver<int, int> p1(FROM_HERE);
+  ManualPromiseResolver<void, int> p2(FROM_HERE);
+  ManualPromiseResolver<void, int> p3(FROM_HERE);
+  ManualPromiseResolver<int, int> p4(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, p1.promise(), p2.promise(), p3.promise(), p4.promise())
+      .ThenHere(FROM_HERE, BindOnce([](std::variant<int, Void> result) {
+                  FAIL() << "One of the promises was rejected.";
+                }),
+                BindOnce(
+                    [](RunLoop* run_loop, int err) {
+                      EXPECT_EQ(12345, err);
+                      run_loop->Quit();
+                    },
+                    &run_loop));
+
+  p3.Reject(12345);
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceRejectMultipleNoRejectHandling) {
+  ManualPromiseResolver<int> p1(FROM_HERE);
+  ManualPromiseResolver<void, bool> p2(FROM_HERE);
+  ManualPromiseResolver<void, int> p3(FROM_HERE);
+  ManualPromiseResolver<int> p4(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, p1.promise(), p2.promise(), p3.promise(), p4.promise())
+      .ThenHere(FROM_HERE, BindOnce([](std::variant<int, Void> result) {
+                  FAIL() << "One of the promises was rejected.";
+                }),
+                BindOnce(
+                    [](RunLoop* run_loop, const std::variant<bool, int>& err) {
+                      EXPECT_EQ(-1, std::get<int>(err));
+                      run_loop->Quit();
+                    },
+                    &run_loop));
+
+  p3.Reject(-1);
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceResolveMoveOnlyType) {
+  ManualPromiseResolver<std::unique_ptr<float>> p1(FROM_HERE);
+  ManualPromiseResolver<std::unique_ptr<int>> p2(FROM_HERE);
+  ManualPromiseResolver<std::unique_ptr<bool>> p3(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, p1.promise(), p2.promise(), p3.promise())
+      .ThenHere(FROM_HERE,
+                BindOnce(
+                    [](RunLoop* run_loop,
+                       std::variant<std::unique_ptr<float>, std::unique_ptr<int>,
+                               std::unique_ptr<bool>> result) {
+                      EXPECT_EQ(1337, *std::get<std::unique_ptr<int>>(result));
+                      run_loop->Quit();
+                    },
+                    &run_loop));
+
+  p2.Resolve(std::make_unique<int>(1337));
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceResolveMoveOnlyTypeTuple) {
+  ManualPromiseResolver<std::unique_ptr<float>> p1(FROM_HERE);
+  ManualPromiseResolver<std::unique_ptr<int>> p2(FROM_HERE);
+  ManualPromiseResolver<std::unique_ptr<bool>> p3(FROM_HERE);
+
+  RunLoop run_loop;
+  Promises::RaceAll(FROM_HERE, p1.promise(), p2.promise(), p3.promise())
+      .ThenHere(
+          FROM_HERE,
+          BindOnce(
+              [](RunLoop* run_loop,
+                 std::tuple<std::unique_ptr<float>, std::unique_ptr<int>,
+                         std::unique_ptr<bool>> result) {
+                EXPECT_FALSE(std::get<0>(result));
+                EXPECT_TRUE(std::get<1>(result));
+                EXPECT_FALSE(std::get<2>(result));
+
+                EXPECT_EQ(1337, *std::get<std::unique_ptr<int>>(result));
+                EXPECT_EQ(1337, *std::get<1>(result));
+
+                run_loop->Quit();
+              },
+              &run_loop));
+
+  p2.Resolve(std::make_unique<int>(1337));
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceResolveIntContainer) {
+  ManualPromiseResolver<int> mpr1(FROM_HERE);
+  ManualPromiseResolver<int> mpr2(FROM_HERE);
+  ManualPromiseResolver<int> mpr3(FROM_HERE);
+  ManualPromiseResolver<int> mpr4(FROM_HERE);
+  std::vector<Promise<int>> promises{mpr1.promise(), mpr2.promise(),
+                                     mpr3.promise(), mpr4.promise()};
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, promises).ThenHere(FROM_HERE,
+                                    BindOnce(
+                                        [](RunLoop* run_loop, int result) {
+                                          EXPECT_EQ(54321, result);
+                                          run_loop->Quit();
+                                        },
+                                        &run_loop));
+
+  mpr3.Resolve(54321);
+  run_loop.Run();
+}
+
+TEST_F(PromiseTest, RaceRejectVoidContainer) {
+  ManualPromiseResolver<void, void> mpr1(FROM_HERE);
+  ManualPromiseResolver<void, void> mpr2(FROM_HERE);
+  ManualPromiseResolver<void, void> mpr3(FROM_HERE);
+  ManualPromiseResolver<void, void> mpr4(FROM_HERE);
+  std::vector<Promise<void, void>> promises{mpr1.promise(), mpr2.promise(),
+                                            mpr3.promise(), mpr4.promise()};
+
+  RunLoop run_loop;
+  Promises::Race(FROM_HERE, promises).CatchHere(FROM_HERE, run_loop.QuitClosure());
+
+  mpr2.Reject();
+  run_loop.Run();
+}
+
+// TODO: Maybe specalize to support containers of variants.
+//
+// https://chromium.googlesource.com/chromium/src/+/589fb96673c255dadfd6e929593050545a68eb14/base/promise/race_promise_executor.h
+//
+// TEST_F(PromiseTest, RaceVariantContainer) {
+//   ManualPromiseResolver<int> mpr1(FROM_HERE);
+//   ManualPromiseResolver<bool> mpr2(FROM_HERE);
+//   ManualPromiseResolver<std::string> mpr3(FROM_HERE);
+//   ManualPromiseResolver<bool> mpr4(FROM_HERE);
+// 
+//   std::vector<std::variant<Promise<int>, Promise<bool>, Promise<std::string>>>
+//       promises;
+//   promises.push_back(mpr1.promise());
+//   promises.push_back(mpr2.promise());
+//   promises.push_back(mpr3.promise());
+//   promises.push_back(mpr4.promise());
+// 
+//   RunLoop run_loop;
+//   Promises::Race(FROM_HERE, promises).ThenHere(
+//       FROM_HERE,
+//       BindOnce(
+//           [](RunLoop* run_loop, std::variant<int, bool, std::string> result) {
+//             EXPECT_EQ("Hello", (std::get<std::string>(result)));
+//             run_loop->Quit();
+//           },
+//           &run_loop));
+// 
+//   mpr3.Resolve("Hello");
+//   run_loop.Run();
+// }
+// 
+// TEST_F(PromiseTest, RaceVariantContainerReject) {
+//   ManualPromiseResolver<void, std::string> mpr1(FROM_HERE);
+//   ManualPromiseResolver<void, std::string> mpr2(FROM_HERE);
+//   ManualPromiseResolver<void, int> mpr3(FROM_HERE);
+//   ManualPromiseResolver<void, bool> mpr4(FROM_HERE);
+// 
+//   std::vector<std::variant<Promise<void, std::string>, Promise<void, int>,
+//                       Promise<void, bool>>>
+//       promises;
+//   promises.push_back(mpr1.promise());
+//   promises.push_back(mpr2.promise());
+//   promises.push_back(mpr3.promise());
+//   promises.push_back(mpr4.promise());
+// 
+//   RunLoop run_loop;
+//   Promises::Race(FROM_HERE, promises).CatchHere(
+//       FROM_HERE,
+//       BindOnce(
+//           [](RunLoop* run_loop, const std::variant<std::string, int, bool>& err) {
+//             EXPECT_EQ(-1, std::get<int>(err));
+//             run_loop->Quit();
+//           },
+//           &run_loop));
+// 
+//   mpr3.Reject(-1);
+//   run_loop.Run();
+// }
+
 TEST_F(PromiseTest, All) {
   ManualPromiseResolver<float> p1(FROM_HERE);
   ManualPromiseResolver<int> p2(FROM_HERE);
@@ -2348,6 +2624,63 @@ TEST_F(PromiseTest, AllVoidContainerMultipleRejectsAfterExecute) {
   mpr2.Reject();
   mpr4.Reject();
 }
+
+// TODO(alexclarke): Maybe specalize to support containers of variants.
+//
+// https://chromium.googlesource.com/chromium/src/+/589fb96673c255dadfd6e929593050545a68eb14/base/promise/all_promise_executor.h
+//
+// TEST_F(PromiseTest, AllVariantContainer) {
+//   ManualPromiseResolver<int> p1(FROM_HERE);
+//   ManualPromiseResolver<void> p2(FROM_HERE);
+//   ManualPromiseResolver<std::string> p3(FROM_HERE);
+// 
+//   std::vector<std::variant<Promise<int>, Promise<void>, Promise<std::string>>>
+//       promises;
+//   promises.push_back(p1.promise());
+//   promises.push_back(p2.promise());
+//   promises.push_back(p3.promise());
+// 
+//   RunLoop run_loop;
+//   Promises::All(promises).ThenHere(
+//       FROM_HERE, BindOnce(
+//                      [](RunLoop* run_loop,
+//                         std::vector<std::variant<int, Void, std::string>> result) {
+//                        EXPECT_EQ(10, (std::get<int>(&result[0])));
+//                        EXPECT_EQ("three", (std::get<std::string>(&result[2])));
+//                        run_loop->Quit();
+//                      },
+//                      &run_loop));
+// 
+//   p1.Resolve(10);
+//   p2.Resolve();
+//   p3.Resolve(std::string("three"));
+//   run_loop.Run();
+// }
+// 
+// TEST_F(PromiseTest, AllVariantContainerReject) {
+//   ManualPromiseResolver<int, int> p1(FROM_HERE);
+//   ManualPromiseResolver<void, int> p2(FROM_HERE);
+//   ManualPromiseResolver<std::string, int> p3(FROM_HERE);
+// 
+//   std::vector<
+//       std::variant<Promise<int, int>, Promise<void, int>, Promise<std::string, int>>>
+//       promises;
+//   promises.push_back(p1.promise());
+//   promises.push_back(p2.promise());
+//   promises.push_back(p3.promise());
+// 
+//   RunLoop run_loop;
+//   Promises::All(promises).CatchHere(FROM_HERE,
+//                                     BindOnce(
+//                                         [](RunLoop* run_loop, int err) {
+//                                           EXPECT_EQ(-1, err);
+//                                           run_loop->Quit();
+//                                         },
+//                                         &run_loop));
+// 
+//   p2.Reject(-1);
+//   run_loop.Run();
+// }
 
 TEST_F(PromiseTest, TakeResolveValueForTesting) {
   ManualPromiseResolver<void> p1(FROM_HERE);
