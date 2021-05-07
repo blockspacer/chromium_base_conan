@@ -524,6 +524,42 @@ TEST_F(FixedPointTest, String)
   EXPECT_EQ(static_cast<double>(decimal32{100, scale_type{4}}), 0);
 
 #if TODO
+  {
+    decimalXX num0{1.234567, scale_type{0}};
+    decimalXX num1{1.234567, scale_type{-1}};
+    decimalXX num2{1.234567, scale_type{-2}};
+    decimalXX num3{1.234567, scale_type{-3}};
+    decimalXX num4{1.234567, scale_type{-4}};
+    decimalXX num5{1.234567, scale_type{-5}};
+    decimalXX num6{1.234567, scale_type{-6}};
+
+    EXPECT_EQ(static_cast<std::string>(num0), "1");
+    EXPECT_EQ(static_cast<std::string>(num1), "1.2");
+    EXPECT_EQ(static_cast<std::string>(num2), "1.23");
+    EXPECT_EQ(static_cast<std::string>(num3), "1.234");
+    EXPECT_EQ(static_cast<std::string>(num4), "1.2345");
+    EXPECT_EQ(static_cast<std::string>(num5), "1.23456");
+    EXPECT_EQ(static_cast<std::string>(num6), "1.234567");
+  }
+
+  {
+    decimalXX num0{-1.234567, scale_type{0}};
+    decimalXX num1{-1.234567, scale_type{-1}};
+    decimalXX num2{-1.234567, scale_type{-2}};
+    decimalXX num3{-1.234567, scale_type{-3}};
+    decimalXX num4{-1.234567, scale_type{-4}};
+    decimalXX num5{-1.234567, scale_type{-5}};
+    decimalXX num6{-1.234567, scale_type{-6}};
+
+    EXPECT_EQ(static_cast<std::string>(num0), "-1");
+    EXPECT_EQ(static_cast<std::string>(num1), "-1.2");
+    EXPECT_EQ(static_cast<std::string>(num2), "-1.23");
+    EXPECT_EQ(static_cast<std::string>(num3), "-1.234");
+    EXPECT_EQ(static_cast<std::string>(num4), "-1.2345");
+    EXPECT_EQ(static_cast<std::string>(num5), "-1.23456");
+    EXPECT_EQ(static_cast<std::string>(num6), "-1.234567");
+  }
+
   decimal32 one_0{1.0000, scale_type{0}};
   EXPECT_EQ(static_cast<std::string>(one_0 / decimal32(2.5, scale_type{-1})), "00");
   EXPECT_EQ(static_cast<double>(one_0 / decimal32(2.5, scale_type{-1})), 0);

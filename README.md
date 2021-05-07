@@ -302,10 +302,12 @@ cmake -E time \
   conan package --build-folder=. ..
 
 cmake -E time \
-  conan export-pkg .. conan/stable --settings build_type=Debug --force --profile clang
+  conan export-pkg .. conan/stable \
+  --settings build_type=Debug --force --profile clang
 
 cmake -E time \
-  conan test ../test_package chromium_base/master@conan/stable --settings build_type=Debug --profile clang
+  conan test ../test_package chromium_base/master@conan/stable \
+  --settings build_type=Debug --profile clang
 ```
 
 ## HOW TO BUILD FROM SOURCE
@@ -485,7 +487,7 @@ gn gen out/config --args='is_debug=false is_official_build=true' --ide=json
 
 Follow `extensions/README.md`
 
-## Conan workspace and QT Creator
+## Conan workspace and QT Creator (use during local development)
 
 ```bash
 # remove old build files, but keep conan workspace layout
@@ -523,7 +525,11 @@ qtcreator
 
 Create kit in QT Creator with same compiler version as in conan profile.
 
+Use same CMake as in conan profile, path may look similar to `~/.conan/data/cmake_installer/3.15.5/conan/stable/package/.../bin/cmake` i.e. run `find ~/.conan/data/cmake_installer/ -name "cmake"` to find path to `bin/cmake`
+
 Open `conan_workspace/CMakelists.txt` file in QT Creator, but enable only `Debug` output directory and set `Debug` output directory to `conan_workspace` (replace with full path to build folder that used `conan build` above).
+
+If QT Creator crashes or does not work properly - disable `Clang code model` i.e. `Help - About Plugins - Clang code model`
 
 ## Coroutines support
 

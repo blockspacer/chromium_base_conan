@@ -31,7 +31,7 @@ macro(chromium_base_test test_name source_list TEST_ARGS TEST_RUNNER_LIB)
   set_tests_default_compile_options( ${test_name} )
 
   set_target_properties( ${test_name} PROPERTIES
-    CXX_STANDARD 20
+    CXX_STANDARD 17
     CXX_EXTENSIONS OFF
     CMAKE_CXX_STANDARD_REQUIRED ON
     CMAKE_CXX_FLAGS "-fno-rtti"

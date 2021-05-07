@@ -113,7 +113,7 @@ Rep ipow(T exponent)
  * @param scale The scale to be negated
  * @return The negated scale
  */
-auto negate(scale_type const& scale) { return scale_type{-scale}; }
+inline auto negate(scale_type const& scale) { return scale_type{-scale}; }
 
 /** @brief Function that performs a `right shift` scale "times" on the `val`
  *
@@ -692,6 +692,7 @@ FixedPointNumber<Rep1, Rad1> operator/(FixedPointNumber<Rep1, Rad1> const& lhs,
                                                             FixedPointNumber<Rep1, Rad1> const& rhs)
 {
   /// \todo does not work as expected
+  /// Make code as in https://stackoverflow.com/a/79942
   NOTIMPLEMENTED();
 
   DCHECK(!division_overflow<Rep1>(lhs._value, rhs._value))

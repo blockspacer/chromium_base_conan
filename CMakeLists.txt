@@ -716,7 +716,7 @@ target_link_libraries(${BASE_LIB_NAME} PUBLIC
   ${USED_3DPARTY_LIBS}
 )
 
-set_property(TARGET ${BASE_LIB_NAME} PROPERTY CXX_STANDARD 20)
+set_property(TARGET ${BASE_LIB_NAME} PROPERTY CXX_STANDARD 17)
 
 # POSITION_INDEPENDENT_CODE for -fPIC
 # -fPIC may be used to link static library into dynamic one
