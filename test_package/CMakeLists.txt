@@ -37,7 +37,8 @@ option(ENABLE_MSAN
 option(ENABLE_TSAN
   "Enable Thread Sanitizer" OFF)
 
-set(CMAKE_VERBOSE_MAKEFILE TRUE)
+# uncomment to debug CMake
+# set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 if(COMPILE_WITH_LLVM_TOOLS)
   message(STATUS
@@ -113,7 +114,33 @@ find_package(Threads)
 add_executable(${PROJECT_NAME}
   test_package.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
+
+if(NOT TARGET CONAN_PKG::chromium_base)
+  message(FATAL_ERROR "Use chromium_base from conan")
+endif()
+
+if(NOT TARGET CONAN_PKG::chromium_build_util)
+  message(FATAL_ERROR "Use chromium_build_util from conan")
+endif()
+
+find_package(chromium_build_util REQUIRED)
+#
+if(TARGET chromium_build_util::chromium_build_util-static)
+  set(build_util_LIB "chromium_build_util::chromium_build_util-static")
+else()
+  message(FATAL_ERROR "not supported ${build_util_LIB}: using system provided chromium_build_util library")
+endif()
+
+find_package(chromium_base REQUIRED)
+if(NOT TARGET ${base_LIB})
+  message(FATAL_ERROR "not supported ${base_LIB}: using system provided chromium_base library")
+endif()
+
+target_link_libraries(${PROJECT_NAME}
+  ${CMAKE_THREAD_LIBS_INIT}
+  ${base_LIB}
+  ${build_util_LIB}
+)
 
 # from cmake_helper_utils
 sanitize_lib(LIB_NAME ${PROJECT_NAME}

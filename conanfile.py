@@ -128,6 +128,9 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
             if not self._is_llvm_tools_enabled():
                 raise ConanInvalidConfiguration("sanitizers require llvm_tools")
 
+        if self.options.use_alloc_shim:
+          self.options["chromium_tcmalloc"].use_alloc_shim = True
+
         if self.options.enable_profiling:
           self.options["chromium_tcmalloc"].enable_profiling = True
 

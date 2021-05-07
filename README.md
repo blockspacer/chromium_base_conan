@@ -71,6 +71,8 @@ Usage:
 #include "base/check.h"
 #include "base/base_switches.h"
 #include "base/threading/thread_task_runner_handle.h"
+#include "base/process/memory.h"
+#include "base/process/launch.h"
 
 #include <locale.h>
 
@@ -79,7 +81,7 @@ class AppDemo {
   AppDemo();
   ~AppDemo();
 
-  void Initialize();
+  void Initialize() {}
   void Destroy();
   void Run();
 
@@ -93,8 +95,6 @@ private:
 };
 
 AppDemo::AppDemo() = default;
-
-AppDemo::~AppDemo() = default;
 
 AppDemo::~AppDemo() = default;
 
@@ -132,19 +132,47 @@ const char kLogFile[] = "log-file";
 
 const int kTraceEventAppSortIndex = -1;
 
+const char kTraceToConsole[] = "trace-to-console";
+
 } // namespace switches
+
+namespace tracing {
+
+namespace {
+// These categories will cause deadlock when ECHO_TO_CONSOLE. crbug.com/325575.
+const char kEchoToConsoleCategoryFilter[] = "-ipc,-toplevel";
+}  // namespace
+
+base::trace_event::TraceConfig GetConfigForTraceToConsole() {
+  const base::CommandLine& command_line =
+      *base::CommandLine::ForCurrentProcess();
+  DCHECK(command_line.HasSwitch(switches::kTraceToConsole));
+  std::string filter = command_line.GetSwitchValueASCII(
+      switches::kTraceToConsole);
+  if (filter.empty()) {
+    filter = kEchoToConsoleCategoryFilter;
+  } else {
+    filter.append(",");
+    filter.append(kEchoToConsoleCategoryFilter);
+  }
+  return base::trace_event::TraceConfig(
+      filter, base::trace_event::ECHO_TO_CONSOLE);
+}
+
+}  // namespace tracing
 
 int main(int argc, const char* argv[]) {
   setlocale(LC_ALL, "en_US.UTF-8");
 
   base::EnableTerminationOnHeapCorruption();
+
   // Manages the destruction of singletons.
   base::AtExitManager exit_manager;
 
   CHECK(base::CommandLine::Init(argc, argv));
   const base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
 
-#ifndef NDEBUG
+#if defined(OS_WIN) && !defined(NDEBUG)
   base::RouteStdioToConsole(false);
 #endif
 
@@ -162,6 +190,7 @@ int main(int argc, const char* argv[]) {
   logging::LoggingDestination destination =
       logging::LOG_TO_ALL;
 #endif
+  logging::LoggingSettings settings;
   settings.logging_dest = destination;
 
   settings.log_file_path = log_filename.value().c_str();
@@ -171,7 +200,8 @@ int main(int argc, const char* argv[]) {
   logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
                        true /* Timestamp */, false /* Tick count */);
 
-  base::i18n::InitializeICU();
+  /// \todo provide ICU data file
+  /// base::i18n::InitializeICU();
 
 #ifndef NDEBUG
   CHECK(base::debug::EnableInProcessStackDumping());
@@ -180,10 +210,10 @@ int main(int argc, const char* argv[]) {
   // Initialize tracing.
   base::trace_event::TraceLog::GetInstance()->set_process_name("Browser");
   base::trace_event::TraceLog::GetInstance()->SetProcessSortIndex(
-      kTraceEventAppSortIndex);
+      switches::kTraceEventAppSortIndex);
   if (command_line.HasSwitch(switches::kTraceToConsole)) {
     base::trace_event::TraceConfig trace_config =
-        tracing::GetConfigForTraceToConsole();
+        base::tracing::GetConfigForTraceToConsole();
     base::trace_event::TraceLog::GetInstance()->SetEnabled(
         trace_config, base::trace_event::TraceLog::RECORDING_MODE);
   }
@@ -289,7 +319,7 @@ cmake -E time \
   -s llvm_tools:build_type=Release \
   --profile clang \
   -e chromium_base:enable_tests=True \
-  -o chromium_base:shared=True \
+  -o chromium_base:shared=False \
   -o perfetto:is_hermetic_clang=False
 
 (rm CMakeCache.txt || true)
@@ -327,9 +357,7 @@ CONAN_REVISIONS_ENABLED=1 \
         --build missing \
         --build cascade \
         -e chromium_base:enable_tests=True \
-        -o chromium_base:use_alloc_shim=True \
-        -o chromium_base:shared=True \
-        -o chromium_tcmalloc:use_alloc_shim=True \
+        -o chromium_base:shared=False \
         -o perfetto:is_hermetic_clang=False \
         -o openssl:shared=True
 
@@ -361,7 +389,7 @@ CONAN_REVISIONS_ENABLED=1 \
         -o chromium_base:enable_tsan=True \
         -e chromium_base:enable_llvm_tools=True \
         -o chromium_base:use_alloc_shim=False \
-        -o chromium_base:shared=True \
+        -o chromium_base:shared=False \
         -o abseil:enable_tsan=True \
         -e abseil:enable_llvm_tools=True \
         -o perfetto:is_hermetic_clang=False \
