@@ -11,14 +11,6 @@
 
 namespace base {
 
-#if 0
-void perSequenceStoreTimeBeforeCallbackExecution();
-
-base::Time perSequenceGetTimeBeforeCallbackExecution();
-
-void perSequenceClearTimeBeforeCallbackExecution();
-#endif
-
 // Check that callback will be executed within `PARAM` `base::TimeDelta`.
 // Check of execution time will be performed on each call.
 //

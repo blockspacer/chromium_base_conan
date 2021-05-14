@@ -921,6 +921,7 @@ list(APPEND extensions_unittests
   statistics/weighted_moving_linear_regression_unittest.cc
   statistics/quality_threshold_unittest.cc
   statistics/rate_tracker_unittest.cc
+  statistics/rate_tracker_window_unittest.cc
   statistics/moving_average_unittest.cc
   statistics/hdr_histogram_unittest.cc
 )

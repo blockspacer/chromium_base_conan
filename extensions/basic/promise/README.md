@@ -1981,8 +1981,8 @@ private:
 
 #include "application/application_configuration.hpp"
 
+#include <basic/tracing/trace_event_util.h>
 #include <basic/promise/post_promise.h>
-#include <basic/trace_event_util.hpp>
 
 #include <base/logging.h>
 #include <base/files/file.h>

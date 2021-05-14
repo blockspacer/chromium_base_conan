@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tests_common.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
-#include "basis/statistics/rate_tracker_window.hpp"
+#include "basic/statistics/rate_tracker_window.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -12,7 +12,7 @@
 #include "base/stl_util.h"
 #include "base/test/simple_test_tick_clock.h"
 
-namespace basis {
+namespace basic {
 
 static const int64_t kTestValues[] = { 10, 20, 30, 10, 25, 16, 15 };
 
@@ -92,4 +92,4 @@ TEST(RateTrackerWindowTest, LongWindow) {
   EXPECT_EQ(expected, rate_counter.Rate());
 }
 
-}  // namespace basis
+}  // namespace basic

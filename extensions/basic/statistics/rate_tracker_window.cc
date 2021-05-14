@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "basic/statistics/rate_tracker_window.hpp" // IWYU pragma: associated
+#include "basic/statistics/rate_tracker_window.h" // IWYU pragma: associated
 
 #include <base/time/time.h>
 

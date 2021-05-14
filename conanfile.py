@@ -283,8 +283,7 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         cmake.parallel = True
         cmake.verbose = True
 
-        if self.options.shared:
-            cmake.definitions["BUILD_SHARED_LIBS"] = "ON" if self.options.shared else "OFF"
+        cmake.definitions["BUILD_SHARED_LIBS"] = "ON" if self.options.shared else "OFF"
 
         cmake.definitions["CMAKE_BUILD_TYPE"] = self.settings.build_type
 
@@ -320,10 +319,13 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         self.copy(pattern="LICENSE", dst="licenses", src=self._source_subfolder)
         cmake = self._configure_cmake()
         cmake.install()
-        # Local build
-        # see https://docs.conan.io/en/latest/developing_packages/editable_packages.html
-        if not self.in_local_cache:
-            self.copy("conanfile.py", dst=".", keep_path=False)
+
+        self.copy_conanfile_for_editable_package(".")
+
+        self.rmdir_if_packaged('.git')
+        self.rmdir_if_packaged('tests')
+        self.rmdir_if_packaged('lib/tests')
+        self.rmdir_if_packaged('lib/pkgconfig')
 
     def build(self):
         cmake = self._configure_cmake()

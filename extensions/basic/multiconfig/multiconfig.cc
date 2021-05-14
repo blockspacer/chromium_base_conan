@@ -280,7 +280,7 @@ basic::StatusOr<std::string> JsonMultiConf::tryLoadString(
   if(!cached_dictionary_.has_value())
   {
     RETURN_ERROR().with_dvlog(99)
-      << "json configuration not loaded"
+      << "json configuration not loaded "
       << key
       << " in loader "
       << kId;

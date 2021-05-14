@@ -800,7 +800,7 @@
       ptr.checkForLifetimeIssues(); \
       return ptr.Get(); \
     } \
-    , /* COPIED */ COPIED() util::UnownedPtr<StoredType>(RawPtr) \
+    , /* COPIED */ util::UnownedPtr<StoredType>(RawPtr) \
   )
 
 // Can be used to check that value is accessed
@@ -935,8 +935,6 @@
 // checks like `running_in_this_thread` or `DCHECK_CALLED_ON_VALID_SEQUENCE`
 #define NOT_THREAD_SAFE_FUNCTION(x)
 
-/// \note requires `#include <base/scoped_checks.h>`
-/// due to usage of `GUARD_MEMBER_OF_UNKNOWN_THREAD`
 // Creates `weak_ptr_factory_` and `weak_this_`.
 // base::WeakPtr can be used to ensure that any callback bound
 // to an object is canceled when that object is destroyed
@@ -950,14 +948,10 @@
 // thread according to weak_ptr.h (versus calling
 // |weak_ptr_factory_.GetWeakPtr() which is not).
 #define SET_WEAK_POINTERS(Name) \
-  base::WeakPtrFactory<Name> weak_ptr_factory_ \
-    GUARD_MEMBER_OF_UNKNOWN_THREAD(weak_ptr_factory_); \
-  const base::WeakPtr<Name> weak_this_ \
-    GUARD_MEMBER_OF_UNKNOWN_THREAD(weak_this_)
+  base::WeakPtrFactory<Name> weak_ptr_factory_; \
+  const base::WeakPtr<Name> weak_this_
 
 // Creates `weakSelf()` function.
-/// \note requires `#include <base/scoped_checks.h>`
-/// due to usage of `DCHECK_MEMBER_OF_UNKNOWN_THREAD`
 // It is thread-safe to copy |base::WeakPtr|.
 // Weak pointers may be passed safely between sequences, but must always be
 // dereferenced and invalidated on the same SequencedTaskRunner otherwise
@@ -966,7 +960,6 @@
   MUST_USE_RETURN_VALUE \
   base::WeakPtr<Name> weakSelf() const NO_EXCEPTION \
   { \
-    DCHECK_MEMBER_OF_UNKNOWN_THREAD(weak_this_); \
     return weak_this_; \
   }
 

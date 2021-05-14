@@ -13,7 +13,7 @@ namespace basic {
 //
 // USAGE
 //
-// #include <basic/numerics/integral_macros.hpp>
+// #include <basic/numerics/integral_macros.h>
 // const uint128_pod kuint128max = {static_cast<uint64_t>(LONGLONG(0xFFFFFFFFFFFFFFFF)),
 //                                  static_cast<uint64_t>(LONGLONG(0xFFFFFFFFFFFFFFFF))};
 //

@@ -254,8 +254,9 @@ class ObserverList {
   ObserverList& operator=(const ObserverList&) = delete;
   ~ObserverList() {
     // If there are live iterators, ensure destruction is thread-safe.
-    if (!live_iterators_.empty())
+    if (!live_iterators_.empty()) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(iteration_sequence_checker_);
+    }
 
     while (!live_iterators_.empty())
       live_iterators_.head()->value()->Invalidate();

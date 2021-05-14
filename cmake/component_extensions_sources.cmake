@@ -211,9 +211,11 @@ list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
 
 list(APPEND EXTENSIONS_SOURCES_UNPROCESSED
   statistics/rate_tracker.h
+  statistics/rate_tracker.cc
+  statistics/rate_tracker.h
+  statistics/rate_tracker_window.cc
   statistics/expandable_statistics_window.h
   statistics/usage_limiter.h
-  statistics/rate_tracker.cc
   statistics/quality_threshold.h
   statistics/usage_limiter.cc
   statistics/weighted_moving_average.h

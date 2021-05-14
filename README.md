@@ -14,6 +14,12 @@ Run unit tests to check support of some feature.
 * Make library cross-platform (add browser support etc.)
 * Extend `base` library from chromium with extra general-purpose functionality
 
+## Supported platforms
+
+Tested on Ubuntu 20.04.2 LTS.
+
+May work on other platforms with minor modifications.
+
 ## What is `base` library?
 
 Base, libchrome and mini_chromium are general utility libraries from chromium.
@@ -311,6 +317,7 @@ export CONAN_PRINT_RUN_COMMANDS=1
 export CONAN_LOGGING_LEVEL=10
 export GIT_SSL_NO_VERIFY=true
 
+# NOTE: use --build=missing if you got error `ERROR: Missing prebuilt package`
 cmake -E time \
   conan install .. \
   --install-folder . \
@@ -326,7 +333,10 @@ cmake -E time \
 
 # You can use `cmake --build . -- -j14` on second run.
 cmake -E time \
-  conan build .. --build-folder=.
+  conan build .. \
+  --build-folder . \
+  --source-folder . \
+  --install-folder .
 
 cmake -E time \
   conan package --build-folder=. ..
@@ -539,7 +549,10 @@ conan workspace install \
   -o chromium_base:shared=True
 
 cmake -E time \
-  conan build .. --build-folder=.
+  conan build .. \
+  --build-folder . \
+  --source-folder . \
+  --install-folder .
 ```
 
 We need to run QT Creator from terminal that uses environment variables from `activate.sh`:

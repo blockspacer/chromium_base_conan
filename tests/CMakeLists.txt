@@ -12,7 +12,7 @@ macro(chromium_base_test test_name source_list TEST_ARGS TEST_RUNNER_LIB)
 
   # add_test_executable_and_targets from cmake_helper_utils
   add_test_executable_and_targets("${test_name}" "${single_unittest_target}" "${source_list}" "${TEST_ARGS}")
-  list(APPEND CHROMIUM_BASE_CTEST_TARGETS ${single_unittest_target})
+  list(APPEND ${ROOT_PROJECT_NAME}_CTEST_TARGETS ${single_unittest_target})
 
   target_link_libraries(${test_name} PUBLIC
     ${USED_3DPARTY_LIBS}
@@ -51,5 +51,5 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/test_sources.cmake)
 add_custom_target(${ROOT_PROJECT_NAME}_run_unittests
   COMMAND ${CMAKE_COMMAND} -E echo ----------------------------------
   COMMENT "Running unittests"
-  DEPENDS ${CHROMIUM_BASE_CTEST_TARGETS}
+  DEPENDS ${${ROOT_PROJECT_NAME}_CTEST_TARGETS}
 )
