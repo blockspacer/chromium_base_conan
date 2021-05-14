@@ -140,3 +140,16 @@ Affected C++20 changes:
 
 * In C++20 the way that the relational operators work was changed, notably with the introduction of the spaceship <=> operator. In particular, If you only provide operator==, then a != b is rewritten to !(a == b).
 * C++20 adds a new character type that is used to represent UTF-8 code units. u8 string literals in C++20 have type const char8_t[N] instead of const char[N], which was the case previously.
+
+# Patched allowlists in `base/trace_event/memory_infra_background_allowlist.cc`
+
+Must always `return true`:
+
+* `IsMemoryDumpProviderInAllowlist`
+* `IsMemoryAllocatorDumpNameInAllowlist`
+
+# Patched allowlists in `base/trace_event/builtin_categories.h`
+
+Must always `return true`:
+
+* `IsAllowedCategory`
