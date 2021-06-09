@@ -291,7 +291,7 @@ git clone https://github.com/blockspacer/conan_github_downloader.git ~/conan_git
 
 cmake \
   -DSCRIPT_PATH="$PWD/get_conan_dependencies.cmake"\
-  -DEXTRA_CONAN_OPTS="--profile;clang\
+  -DEXTRA_CONAN_OPTS="--profile;clang12\
 ;-s;build_type=Debug\
 ;-s;cling_conan:build_type=Release\
 ;-s;llvm_tools:build_type=Release\
@@ -324,7 +324,8 @@ cmake -E time \
   -s build_type=Debug \
   -s cling_conan:build_type=Release \
   -s llvm_tools:build_type=Release \
-  --profile clang \
+  --profile clang12 \
+  -o chromium_base:shared=True \
   -e chromium_base:enable_tests=True \
   -o chromium_base:shared=False \
   -o perfetto:is_hermetic_clang=False
@@ -335,7 +336,7 @@ cmake -E time \
 cmake -E time \
   conan build .. \
   --build-folder . \
-  --source-folder . \
+  --source-folder .. \
   --install-folder .
 
 cmake -E time \
@@ -343,33 +344,35 @@ cmake -E time \
 
 cmake -E time \
   conan export-pkg .. conan/stable \
-  --settings build_type=Debug --force --profile clang
+  --settings build_type=Debug --force --profile clang12
 
 cmake -E time \
   conan test ../test_package chromium_base/master@conan/stable \
-  --settings build_type=Debug --profile clang
+  --settings build_type=Debug --profile clang12
 ```
 
 ## HOW TO BUILD FROM SOURCE
 
 ```bash
+export VERBOSE=1
+export CONAN_REVISIONS_ENABLED=1
+export CONAN_VERBOSE_TRACEBACK=1
+export CONAN_PRINT_RUN_COMMANDS=1
+export CONAN_LOGGING_LEVEL=10
+export GIT_SSL_NO_VERIFY=true
+
 # NOTE: change `build_type=Debug` to `build_type=Release` in production
-CONAN_REVISIONS_ENABLED=1 \
-    CONAN_VERBOSE_TRACEBACK=1 \
-    CONAN_PRINT_RUN_COMMANDS=1 \
-    CONAN_LOGGING_LEVEL=10 \
-    GIT_SSL_NO_VERIFY=true \
-    conan create . \
-        conan/stable \
-        -s build_type=Debug \
-        -s llvm_tools:build_type=Release \
-        --profile clang \
-        --build missing \
-        --build cascade \
-        -e chromium_base:enable_tests=True \
-        -o chromium_base:shared=False \
-        -o perfetto:is_hermetic_clang=False \
-        -o openssl:shared=True
+conan create . \
+  conan/stable \
+  -s build_type=Debug \
+  -s llvm_tools:build_type=Release \
+  --profile clang12 \
+  --build missing \
+  --build cascade \
+  -e chromium_base:enable_tests=True \
+  -o chromium_base:shared=False \
+  -o perfetto:is_hermetic_clang=False \
+  -o openssl:shared=True
 
 # clean build cache
 conan remove "*" --build --force
@@ -380,30 +383,32 @@ conan remove "*" --build --force
 Use `enable_asan` or `enable_ubsan`, etc.
 
 ```bash
+export VERBOSE=1
+export CONAN_REVISIONS_ENABLED=1
+export CONAN_VERBOSE_TRACEBACK=1
+export CONAN_PRINT_RUN_COMMANDS=1
+export CONAN_LOGGING_LEVEL=10
+export GIT_SSL_NO_VERIFY=true
+
 # NOTE: change `build_type=Debug` to `build_type=Release` in production
-CONAN_REVISIONS_ENABLED=1 \
-    CONAN_VERBOSE_TRACEBACK=1 \
-    CONAN_PRINT_RUN_COMMANDS=1 \
-    CONAN_LOGGING_LEVEL=10 \
-    GIT_SSL_NO_VERIFY=true \
-    conan create . \
-        conan/stable \
-        -s build_type=Debug \
-        -s llvm_tools:build_type=Release \
-        --profile clang \
-        --build chromium_tcmalloc \
-        -s llvm_tools:build_type=Release \
-        -o llvm_tools:enable_tsan=True \
-        -o llvm_tools:include_what_you_use=False \
-        -e chromium_base:enable_tests=True \
-        -o chromium_base:enable_tsan=True \
-        -e chromium_base:enable_llvm_tools=True \
-        -o chromium_base:use_alloc_shim=False \
-        -o chromium_base:shared=False \
-        -o abseil:enable_tsan=True \
-        -e abseil:enable_llvm_tools=True \
-        -o perfetto:is_hermetic_clang=False \
-        -o openssl:shared=True
+conan create . \
+    conan/stable \
+    -s build_type=Debug \
+    -s llvm_tools:build_type=Release \
+    --profile clang12 \
+    --build chromium_tcmalloc \
+    -s llvm_tools:build_type=Release \
+    -o llvm_tools:enable_tsan=True \
+    -o llvm_tools:include_what_you_use=False \
+    -e chromium_base:enable_tests=True \
+    -o chromium_base:enable_tsan=True \
+    -e chromium_base:enable_llvm_tools=True \
+    -o chromium_base:use_alloc_shim=False \
+    -o chromium_base:shared=False \
+    -o abseil:enable_tsan=True \
+    -e abseil:enable_llvm_tools=True \
+    -o perfetto:is_hermetic_clang=False \
+    -o openssl:shared=True
 
 # clean build cache
 conan remove "*" --build --force
@@ -573,6 +578,8 @@ Open `conan_workspace/CMakelists.txt` file in QT Creator, but enable only `Debug
 If QT Creator crashes or does not work properly - disable `Clang code model` i.e. `Help - About Plugins - Clang code model`
 
 ## Coroutines support
+
+First, change `CXX_STANDARD` to (at least) `20` in CMake files.
 
 Used conan profile:
 
