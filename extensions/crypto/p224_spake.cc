@@ -7,12 +7,15 @@
 
 #include <crypto/p224_spake.h>
 
-#include <algorithm>
-
 #include <base/logging.h>
 #include <crypto/p224.h>
 #include <crypto/random.h>
 #include <crypto/secure_util.h>
+
+#include <basic/portability/portability.h>
+
+#include <algorithm>
+#include <cstring>
 
 namespace {
 

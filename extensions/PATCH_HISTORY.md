@@ -10,7 +10,10 @@ About helper utils in `extensions/base`
 
 BoringSSL replaced by OpenSSL.
 
-Had to add `defined(ENABLE_BORINGSSL)` in `base/hash/md5_boringssl.h`
+Patched:
+
+* `base/hash/md5_boringssl.h`
+* `base/hash/sha1_boringssl.cc`
 
 ##  disabled `traced_value_support_unittest` due to missing `perfetto_test_support`
 
@@ -146,10 +149,24 @@ Affected C++20 changes:
 Must always `return true`:
 
 * `IsMemoryDumpProviderInAllowlist`
-* `IsMemoryAllocatorDumpNameInAllowlist`
+
+Disabled tests:
+
+* `MemoryInfraBackgroundAllowlist`
+* `NoStackOverflowWithTooManyMDPs`
 
 # Patched allowlists in `base/trace_event/builtin_categories.h`
 
 Must always `return true`:
 
 * `IsAllowedCategory`
+
+## Patched crypto library
+
+Instead of OpenSSL we use BoringSSL, so crypto library was replaced with `libchrome/crypto`:
+
+https://chromium.googlesource.com/aosp/platform/external/libchrome/+/e922041a3a292360e5dbfacfebbf1db6c2d5aa6e/crypto/
+
+* Replaced "third_party/boringssl/src/include/openssl/...".
+* Added `extensions/bssl_compat`
+* Updated to new OpenSSL version

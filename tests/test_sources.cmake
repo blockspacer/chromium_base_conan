@@ -738,12 +738,12 @@ if(ENABLE_BASE_TRACING)
   # TODO: CRASHES "trace_event/typed_macros_unittest.cc"
   #
   list(APPEND base_unittests
+    "trace_event/memory_dump_manager_unittest.cc"
     "test/trace_event_analyzer_unittest.cc"
     "trace_event/blame_context_unittest.cc"
     "trace_event/event_name_filter_unittest.cc"
     "trace_event/heap_profiler_allocation_context_tracker_unittest.cc"
     "trace_event/memory_allocator_dump_unittest.cc"
-    "trace_event/memory_dump_manager_unittest.cc"
     "trace_event/memory_dump_scheduler_unittest.cc"
     "trace_event/memory_infra_background_allowlist_unittest.cc"
     "trace_event/memory_usage_estimator_unittest.cc"
@@ -820,18 +820,18 @@ foreach(FILEPATH ${base_unittests})
     "${test_sources}")
 endforeach()
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   crc32_unittest.cc
   output_parameter_unittest.cc
   stl_util_unittest.cc
   type_id_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   debug/leak_tracker_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   containers/bounded_inline_vector_unittest.cc
   containers/unique_any_unittest.cc
   containers/any_internal_unittest.cc
@@ -840,11 +840,13 @@ list(APPEND extensions_unittests
   containers/prioritized_repeating_task_list_unittest.cc
   containers/sparse_byte_set_unittest.cc
   containers/indexed_mem_pool_unittest.cc
+  # TODO
+  # containers/mem_pool_unittest.cc
   containers/flat_combining_priority_queue_unittest.cc
   containers/mpmc_queue_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   synchronization/futex_unittest.cc
   synchronization/parking_lot_unittest.cc
   synchronization/flat_combining_unittest.cc
@@ -855,16 +857,16 @@ list(APPEND extensions_unittests
   synchronization/baton_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   state_machine/state_machine_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   decimal/decimal_unittest.cc
   decimal/fixed_point_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   hash/city_hash_unittest.cc
   hash/farmhash_unittest.cc
   hash/murmurhash_unittest.cc
@@ -875,43 +877,43 @@ list(APPEND extensions_unittests
   hash/hash_combine_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   ranges/enumerated_unittest.cc
   ranges/pipelined_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   interval/interval_map_unittest.cc
   interval/interval_set_unittest.cc
   interval/interval_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   jsonb/jsonb_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   lru/lru_cache_unittest.cc
   lru/lru_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   fail_point/fail_point_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   plug_point/plug_point_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   race_sync_point/race_sync_point_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   token_bucket/token_bucket_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   statistics/usage_limiter_unittest.cc
   statistics/weighted_moving_average_unittest.cc
   statistics/expandable_statistics_window_unittest.cc
@@ -926,11 +928,11 @@ list(APPEND extensions_unittests
   statistics/hdr_histogram_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   prometheus_metrics/metrics_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   promise/promise_unittest.cc
   promise/promise_value_unittest.cc
   promise/helpers_unittest.cc
@@ -939,16 +941,16 @@ list(APPEND extensions_unittests
   promise/dependent_list_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   dependency_hierarchy/dependency_hierarchy_unittest.cc
   dependency_hierarchy/dependency_util_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   disjoint_sets/disjoint_sets_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   memory/wrap_unique_ptr_not_array_unittest.cc
   memory/unowned_ptr_unittest.cc
   memory/unowned_ref_unittest.cc
@@ -957,30 +959,30 @@ list(APPEND extensions_unittests
   memory/arena_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   multiconfig/multiconfig_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   json/json_serializers_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   types_bucket/types_bucket_unittest.cc
   types_bucket/thread_local_types_bucket_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   static_sequence/static_sequence_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   time/backoff_timer_unittest.cc
   time/system_time_change_notifier_unittest.cc
   time/time_macros_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   strong_types/strong_checked_math_unittest.cc
   strong_types/strong_alias_unittest.cc
   strong_types/strong_bool_unittest.cc
@@ -991,19 +993,19 @@ list(APPEND extensions_unittests
   strong_types/money/money_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   log/spacer_unittest.cc
   log/table_printer_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   status/status_macros_unittest.cc
   status/status_unittest.cc
   status/statusor_unittest.cc
   status/with_details_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   core/weak_handle_unittest.cc
   core/observable_unittest.cc
   core/typed_enum_unittest.cc
@@ -1011,12 +1013,12 @@ list(APPEND extensions_unittests
   core/memory_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   varint/memcmpable_varint_unittest.cc
   varint/fast_varint_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   strings/string_number_conversions_unittest.cc
   strings/substitute_unittest.cc
   strings/string_util_unittest.cc
@@ -1024,11 +1026,11 @@ list(APPEND extensions_unittests
   strings/fixed_string_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   annotations/guard_annotations_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   numerics/double_summation_unittest.cc
   numerics/floating_point_comparison_unittest.cc
   numerics/pack_numbers_unittest.cc
@@ -1036,52 +1038,123 @@ list(APPEND extensions_unittests
   numerics/uint256_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   test/test_macros_unittest.cc
   test/deterministic_schedule_unittest.cc
   test/semaphore_unittest.cc
   test/barrier_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   algorithm/top_n_unittest.cc
+  algorithm/base32_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
+  message_loop/message_loop_utils_unittest.cc
+)
+
+list(APPEND basic_extensions_unittests
   bit_field/bit_field_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   bind/bind_to_task_runner_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   backoff_entry/backoff_entry_serializer_unittest.cc
   backoff_entry/backoff_entry_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   concurrency/concurrent_int64_unittest.cc
   concurrency/lock_free_producer_consumer_queue_unittest.cc
 )
 
-list(APPEND extensions_unittests
+list(APPEND basic_extensions_unittests
   bloom_filter/bloom_unittest.cc
   bloom_filter/counting_bloom_unittest.cc
   bloom_filter/double_hashing_bloom_unittest.cc
 )
 
-list(TRANSFORM extensions_unittests PREPEND "../extensions/basic/")
+list(TRANSFORM basic_extensions_unittests PREPEND "../extensions/basic/")
 
-list(REMOVE_DUPLICATES extensions_unittests)
-list(TRANSFORM extensions_unittests PREPEND ${BASE_SOURCES_PATH})
+list(REMOVE_DUPLICATES basic_extensions_unittests)
+list(TRANSFORM basic_extensions_unittests PREPEND ${BASE_SOURCES_PATH})
 
-foreach(FILEPATH ${extensions_unittests})
+foreach(FILEPATH ${basic_extensions_unittests})
   set(test_sources
     "${FILEPATH}"
     ${base_unittest_utils}
   )
   get_filename_component(FILENAME_WITHOUT_EXT ${FILEPATH} NAME_WE)
   chromium_base_test_gtest(${ROOT_PROJECT_NAME}-basic-${FILENAME_WITHOUT_EXT}
+    "${test_sources}")
+endforeach()
+
+list(APPEND crypto_extensions_unittests
+  # TODO
+  # "aead_unittest.cc"
+  # "curve25519_unittest.cc"
+  # "ec_private_key_unittest.cc"
+  # "ec_signature_creator_unittest.cc"
+  # "encryptor_unittest.cc"
+  # "hkdf_unittest.cc"
+  # "hmac_unittest.cc"
+  # "openssl_bio_string_unittest.cc"
+  # "rsa_private_key_unittest.cc"
+  # "signature_creator_unittest.cc"
+  # "signature_verifier_unittest.cc"
+  # "symmetric_key_unittest.cc"
+
+  "p224_spake_unittest.cc"
+  "p224_unittest.cc"
+  "random_unittest.cc"
+  "secure_hash_unittest.cc"
+  "sha2_unittest.cc"
+)
+
+if(USE_NSS_CERTS)
+  list(APPEND crypto_extensions_unittests
+    "nss_key_util_unittest.cc"
+    "nss_util_unittest.cc"
+  )
+endif()
+
+list(TRANSFORM crypto_extensions_unittests PREPEND "../extensions/crypto/")
+
+list(REMOVE_DUPLICATES crypto_extensions_unittests)
+list(TRANSFORM crypto_extensions_unittests PREPEND ${BASE_SOURCES_PATH})
+
+if(USE_NSS_CERTS)
+  list(APPEND crypto_unittest_utils
+    "scoped_test_nss_db.cc"
+    "scoped_test_nss_db.h"
+  )
+endif()
+
+if(TARGET_CHROMEOS)
+  list(APPEND crypto_unittest_utils
+    "scoped_test_nss_chromeos_user.cc"
+    "scoped_test_nss_chromeos_user.h"
+    "scoped_test_system_nss_key_slot.cc"
+    "scoped_test_system_nss_key_slot.h"
+  )
+endif()
+
+list(REMOVE_DUPLICATES crypto_unittest_utils)
+list(FILTER crypto_unittest_utils EXCLUDE REGEX ".*_unittest.cc$")
+list(TRANSFORM crypto_unittest_utils PREPEND "../extensions/crypto/")
+list(TRANSFORM crypto_unittest_utils PREPEND ${BASE_SOURCES_PATH})
+
+foreach(FILEPATH ${crypto_extensions_unittests})
+  set(test_sources
+    "${FILEPATH}"
+    ${base_unittest_utils}
+    ${crypto_unittest_utils}
+  )
+  get_filename_component(FILENAME_WITHOUT_EXT ${FILEPATH} NAME_WE)
+  chromium_base_test_gtest(${ROOT_PROJECT_NAME}-crypto-${FILENAME_WITHOUT_EXT}
     "${test_sources}")
 endforeach()

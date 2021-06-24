@@ -179,7 +179,8 @@ class MultiConfTestObserver : public MultiConf::Observer {
     ++num_cache_changed_;
   }
 
-  std::string id() override {
+  // For debug purposes
+  std::string id() const override {
     return "MultiConfTestObserver";
   }
 
@@ -257,7 +258,7 @@ TEST_F(MultiConfTest, DefaultValueTest) {
   ASSERT_NOT_OK(TestMultiConf_1::tryLoadString(
     "my_conf_key_1", kDefaultTestGroup, base::Value{}));
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   ASSERT_EQ(basic::MultiConf::GetInstance().countOptions(), 2);
@@ -309,7 +310,7 @@ TEST_F(MultiConfTest, DefaultValueTest) {
       "my_conf_key_json", kDefaultTestGroup));
     EXPECT_NOT_OK(basic::MultiConf::GetInstance().getAsStringFromCache(
       "my_conf_key_json", kDefaultTestGroup));
-    ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+    ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
     base::RunLoop().RunUntilIdle();
     EXPECT_EQ(kMustReturnStrResult, my_conf_key_json.GetValue());
     EXPECT_EQ(CONSUME_STATUSOR(
@@ -462,7 +463,7 @@ TEST_F(MultiConfTest, SimpleTest) {
   EXPECT_TRUE(basic::MultiConf::GetInstance().hasOptionWithName(
     kTestKeyB, kDefaultTestGroup));
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   ASSERT_EQ(basic::MultiConf::GetInstance().countOptions(), 2);
@@ -560,7 +561,7 @@ TEST_F(MultiConfTest, SimpleTest) {
   ASSERT_OK(JsonMultiConf::GetInstance().clearAndParseFromString(json_data));
   assertClearedJsonConfEquals(json_data);
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(CONSUME_STATUSOR(
@@ -689,16 +690,16 @@ class MultiThreadChecker {
     return *this;
   }
 
-  auto postClearAndReload() {
-    /// \note `clearAndReload` is not thread-safe
+  auto postresetAndReload() {
+    /// \note `resetAndReload` is not thread-safe
     return base::PostTaskAndReplyWithPromise(main_loop_task_runner_.get()
       , FROM_HERE
       , ::base::BindOnce(
-          &basic::MultiConf::clearAndReload
+          &basic::MultiConf::resetAndReload
           , base::Unretained(&basic::MultiConf::GetInstance())
           , true // clear_cache_on_error
         )
-      // check result of `clearAndReload`
+      // check result of `resetAndReload`
       , ::base::BindOnce([](
           basic::Status result)
         {
@@ -708,7 +709,7 @@ class MultiThreadChecker {
   }
 
   void onTaskDone(const std::string& expected_value) {
-    /// \note requires `clearAndReload`
+    /// \note requires `resetAndReload`
     EXPECT_EQ(observer.get().GetValue(), expected_value);
     // allow program termination
     // after all threads executed `GetResolveCallback`
@@ -716,7 +717,7 @@ class MultiThreadChecker {
   }
 
   void DoTask(const std::string& expected_value) {
-    postClearAndReload()
+    postresetAndReload()
     .ThenHere(
       FROM_HERE
       , ::base::BindOnce(
@@ -742,11 +743,11 @@ TEST_F(MultiConfTest, ReloadObserver) {
   EXPECT_EQ(my_key_X.target_name(), "my_key_X");
   EXPECT_EQ(my_key_X.target_configuration_group(), kDefaultTestGroup);
 
-  MULTICONF_Observer(observer_X, my_key_X);
+  DUPLICATE_Observer(observer_X, my_key_X);
   EXPECT_EQ(observer_X.target_name(), my_key_X.target_name());
   EXPECT_EQ(observer_X.target_configuration_group(), my_key_X.target_configuration_group());
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ("dasasd", my_key_X.GetValue());
@@ -758,7 +759,7 @@ TEST_F(MultiConfTest, ReloadObserver) {
   ASSERT_OK(JsonMultiConf::GetInstance().clearAndParseFromString(json_data));
   assertClearedJsonConfEquals(json_data);
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ("bbbddf", my_key_X.GetValue());
@@ -777,11 +778,11 @@ TEST_F(MultiConfTest, GlobalLoader) {
   MULTICONF_String(my_key_without_global_load, "dffgg", {DUMMY_LOADER}
     , kDefaultTestGroup, basic::UseGlobalLoaders::kFalse);
 
-  MULTICONF_Observer(observer_X, my_key_global_load);
+  DUPLICATE_Observer(observer_X, my_key_global_load);
   EXPECT_EQ(observer_X.target_name(), my_key_global_load.target_name());
   EXPECT_EQ(observer_X.target_configuration_group(), my_key_global_load.target_configuration_group());
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ("dffgg", my_key_without_global_load.GetValue());
@@ -801,7 +802,7 @@ TEST_F(MultiConfTest, GlobalLoader) {
   ASSERT_OK(JsonMultiConf::GetInstance().clearAndParseFromString(json_data));
   assertClearedJsonConfEquals(json_data);
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(CONSUME_STATUSOR(
@@ -817,7 +818,7 @@ TEST_F(MultiConfTest, GlobalLoader) {
   basic::MultiConf::GetInstance().removeGlobalLoaders({JSON_MULTICONF_LOADER});
   EXPECT_FALSE(basic::MultiConf::GetInstance().hasGlobalLoaders({JSON_MULTICONF_LOADER}));
 
-  ASSERT_OK(basic::MultiConf::GetInstance().clearAndReload());
+  ASSERT_OK(basic::MultiConf::GetInstance().resetAndReload());
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(CONSUME_STATUSOR(
@@ -837,14 +838,14 @@ TEST_F(MultiConfTest, MultiThreadTest) {
   MULTICONF_String(my_conf_key_Y, "abcd", {TEST_MULTICONF_LOADER_1}
     , kDefaultTestGroup, basic::UseGlobalLoaders::kFalse);
 
-  MULTICONF_Observer(key_Y_observer_0, my_conf_key_Y);
-  MULTICONF_Observer(key_Y_observer_1, my_conf_key_Y);
-  MULTICONF_Observer(key_Y_observer_2, my_conf_key_Y);
-  MULTICONF_Observer(key_Y_observer_3, my_conf_key_Y);
-  MULTICONF_Observer(key_Y_observer_4, my_conf_key_Y);
-  MULTICONF_Observer(key_Y_observer_5, my_conf_key_Y);
-  MULTICONF_Observer(key_Y_observer_6, my_conf_key_Y);
-  MULTICONF_Observer(key_Y_observer_7, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_0, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_1, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_2, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_3, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_4, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_5, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_6, my_conf_key_Y);
+  DUPLICATE_Observer(key_Y_observer_7, my_conf_key_Y);
 
   base::RunLoop run_loop;
 

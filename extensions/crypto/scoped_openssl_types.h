@@ -46,7 +46,9 @@ struct OpenSSLFree {
 // short-hand and prevalence.
 using ScopedBIGNUM = ScopedOpenSSL<BIGNUM, BN_free>;
 using ScopedEC_Key = ScopedOpenSSL<EC_KEY, EC_KEY_free>;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 using ScopedBIO = ScopedOpenSSL<BIO, BIO_free_all>;
+#endif
 using ScopedDSA = ScopedOpenSSL<DSA, DSA_free>;
 using ScopedECDSA_SIG = ScopedOpenSSL<ECDSA_SIG, ECDSA_SIG_free>;
 using ScopedEC_GROUP = ScopedOpenSSL<EC_GROUP, EC_GROUP_free>;

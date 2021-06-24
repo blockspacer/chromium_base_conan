@@ -97,10 +97,9 @@ export -f replace_header_contents
 find $PWD/extensions/third_party/lss -type f -name "*" -exec bash -c 'replace_header_contents "$0"' {} \;
 ```
 
-
 ## How to upgrade openssl
 
-Place headers into `third_party/boringssl/src/include/openssl/`
+Place openssl headers into `third_party/boringssl/src/include/openssl/`
 
 ## How to upgrade perfetto
 

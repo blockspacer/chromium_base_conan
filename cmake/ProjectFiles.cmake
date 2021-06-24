@@ -70,6 +70,17 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_base_sources_filter.cmake)
 list(TRANSFORM COMPONENT_BASE_SOURCES PREPEND ${BASE_SOURCES_PATH})
 list(APPEND BASE_SOURCES ${COMPONENT_BASE_SOURCES})
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_extensions_basic_sources.cmake)
+list(TRANSFORM COMPONENT_BASIC_SOURCES PREPEND "../extensions/basic/")
+list(TRANSFORM COMPONENT_BASIC_SOURCES PREPEND ${BASE_SOURCES_PATH})
+list(APPEND BASE_SOURCES ${COMPONENT_BASIC_SOURCES})
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_extensions_crypto_sources.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_extensions_crypto_sources_filter.cmake)
+list(TRANSFORM COMPONENT_CRYPTO_SOURCES PREPEND "../extensions/crypto/")
+list(TRANSFORM COMPONENT_CRYPTO_SOURCES PREPEND ${BASE_SOURCES_PATH})
+list(APPEND BASE_SOURCES ${COMPONENT_CRYPTO_SOURCES})
+
 # NOTE: `${CMAKE_CURRENT_SOURCE_DIR}/extensions/*` must be LAST included file and filtered manually
 include(${CMAKE_CURRENT_SOURCE_DIR}/extensions/testing_sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/extensions/base/third_party/lib_symbolize.cmake)

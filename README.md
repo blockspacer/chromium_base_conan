@@ -129,6 +129,15 @@ void AppDemo::Run() {
   run_loop_ = &run_loop;
   RenderFrame();
   run_loop.Run();
+
+  // base::RunLoop::QuitClosure() causes the message loop to quit
+  // immediately, even if pending tasks are still queued.
+  // Run a secondary loop to make sure all those are processed.
+  // This becomes important when app does
+  // a bunch of clean-up tasks asynchronously when shutting down.
+  while (runLoop.RunOnce(false /* may_block */)) {
+  }
+
   run_loop_ = nullptr;
 }
 
@@ -291,12 +300,38 @@ git clone https://github.com/blockspacer/conan_github_downloader.git ~/conan_git
 
 cmake \
   -DSCRIPT_PATH="$PWD/get_conan_dependencies.cmake"\
-  -DEXTRA_CONAN_OPTS="--profile;clang12\
+  -DEXTRA_CONAN_OPTS="--profile;clang12_compiler\
 ;-s;build_type=Debug\
 ;-s;cling_conan:build_type=Release\
 ;-s;llvm_tools:build_type=Release\
 ;--build;missing" \
   -P ~/conan_github_downloader/conan_github_downloader.cmake
+```
+
+## conan profile example: `clang12_compiler`
+
+```bash
+[settings]
+# We are building in Ubuntu Linux
+
+os_build=Linux
+os=Linux
+arch_build=x86_64
+arch=x86_64
+
+compiler=clang
+compiler.version=12
+compiler.libcxx=libstdc++11
+compiler.cppstd=17
+
+llvm_9:build_type=Release
+
+[env]
+CC=/usr/bin/clang-12
+CXX=/usr/bin/clang++-12
+
+[build_requires]
+cmake_installer/3.15.5@conan/stable
 ```
 
 ## Dev-only build (local conan flow)
@@ -305,50 +340,70 @@ cmake \
 find . -type f -name "*_buildflags.h" -exec rm {} \;
 find . -type f -name "*_buildflags.tmp" -exec rm {} \;
 
-(rm -rf local_build || true)
-
-mkdir local_build
-
-cd local_build
-
 export CONAN_REVISIONS_ENABLED=1
 export CONAN_VERBOSE_TRACEBACK=1
 export CONAN_PRINT_RUN_COMMANDS=1
 export CONAN_LOGGING_LEVEL=10
-export GIT_SSL_NO_VERIFY=true
+
+export PKG_NAME=chromium_base/master@conan/stable
+
+(CONAN_REVISIONS_ENABLED=1 \
+    conan remove --force $PKG_NAME || true)
 
 # NOTE: use --build=missing if you got error `ERROR: Missing prebuilt package`
 cmake -E time \
-  conan install .. \
-  --install-folder . \
+  conan install . \
+  --install-folder local_build \
   -s build_type=Debug \
   -s cling_conan:build_type=Release \
   -s llvm_tools:build_type=Release \
-  --profile clang12 \
+  --profile clang12_compiler \
   -o chromium_base:shared=True \
   -e chromium_base:enable_tests=True \
-  -o chromium_base:shared=False \
   -o perfetto:is_hermetic_clang=False
 
-(rm CMakeCache.txt || true)
+(rm local_build/CMakeCache.txt || true)
+
+cmake -E time \
+  conan source . \
+  --source-folder . \
+  --install-folder local_build
 
 # You can use `cmake --build . -- -j14` on second run.
 cmake -E time \
-  conan build .. \
-  --build-folder . \
-  --source-folder .. \
-  --install-folder .
+  conan build . \
+  --build-folder local_build \
+  --source-folder . \
+  --install-folder local_build
+
+conan package . \
+  --build-folder local_build \
+  --package-folder local_build/package_dir \
+  --source-folder . \
+  --install-folder local_build
 
 cmake -E time \
-  conan package --build-folder=. ..
+  conan export-pkg . \
+  conan/stable \
+  --package-folder local_build/package_dir \
+  --force \
+  -s build_type=Debug \
+  -s cling_conan:build_type=Release \
+  -s llvm_tools:build_type=Release \
+  --profile clang12_compiler \
+  -o chromium_base:shared=True \
+  -e chromium_base:enable_tests=True \
+  -o perfetto:is_hermetic_clang=False
 
 cmake -E time \
-  conan export-pkg .. conan/stable \
-  --settings build_type=Debug --force --profile clang12
-
-cmake -E time \
-  conan test ../test_package chromium_base/master@conan/stable \
-  --settings build_type=Debug --profile clang12
+  conan test test_package chromium_base/master@conan/stable \
+  -s build_type=Debug \
+  -s cling_conan:build_type=Release \
+  -s llvm_tools:build_type=Release \
+  --profile clang12_compiler \
+  -o chromium_base:shared=True \
+  -e chromium_base:enable_tests=True \
+  -o perfetto:is_hermetic_clang=False
 ```
 
 ## HOW TO BUILD FROM SOURCE
@@ -359,18 +414,17 @@ export CONAN_REVISIONS_ENABLED=1
 export CONAN_VERBOSE_TRACEBACK=1
 export CONAN_PRINT_RUN_COMMANDS=1
 export CONAN_LOGGING_LEVEL=10
-export GIT_SSL_NO_VERIFY=true
 
 # NOTE: change `build_type=Debug` to `build_type=Release` in production
 conan create . \
   conan/stable \
   -s build_type=Debug \
   -s llvm_tools:build_type=Release \
-  --profile clang12 \
+  --profile clang12_compiler \
   --build missing \
   --build cascade \
   -e chromium_base:enable_tests=True \
-  -o chromium_base:shared=False \
+  -o chromium_base:shared=True \
   -o perfetto:is_hermetic_clang=False \
   -o openssl:shared=True
 
@@ -388,14 +442,13 @@ export CONAN_REVISIONS_ENABLED=1
 export CONAN_VERBOSE_TRACEBACK=1
 export CONAN_PRINT_RUN_COMMANDS=1
 export CONAN_LOGGING_LEVEL=10
-export GIT_SSL_NO_VERIFY=true
 
 # NOTE: change `build_type=Debug` to `build_type=Release` in production
 conan create . \
     conan/stable \
     -s build_type=Debug \
     -s llvm_tools:build_type=Release \
-    --profile clang12 \
+    --profile clang12_compiler \
     --build chromium_tcmalloc \
     -s llvm_tools:build_type=Release \
     -o llvm_tools:enable_tsan=True \
@@ -404,7 +457,7 @@ conan create . \
     -o chromium_base:enable_tsan=True \
     -e chromium_base:enable_llvm_tools=True \
     -o chromium_base:use_alloc_shim=False \
-    -o chromium_base:shared=False \
+    -o chromium_base:shared=True \
     -o abseil:enable_tsan=True \
     -e abseil:enable_llvm_tools=True \
     -o perfetto:is_hermetic_clang=False \

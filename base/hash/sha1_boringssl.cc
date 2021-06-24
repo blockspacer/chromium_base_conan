@@ -7,14 +7,18 @@
 #include <stdint.h>
 
 #include "base/strings/string_util.h"
-#include "third_party/boringssl/src/include/openssl/crypto.h"
-#include "third_party/boringssl/src/include/openssl/sha.h"
+#include "openssl/crypto.h"
+#include "openssl/sha.h"
+
+#include "openssl/ssl.h"
 
 namespace base {
 
 SHA1Digest SHA1HashSpan(span<const uint8_t> data) {
 #if defined(ENABLE_BORINGSSL)
   CRYPTO_library_init();
+#else
+  SSL_library_init();
 #endif // ENABLE_BORINGSSL
   SHA1Digest digest;
   SHA1(data.data(), data.size(), digest.data());
@@ -24,6 +28,8 @@ SHA1Digest SHA1HashSpan(span<const uint8_t> data) {
 std::string SHA1HashString(const std::string& str) {
 #if defined(ENABLE_BORINGSSL)
   CRYPTO_library_init();
+#else
+  SSL_library_init();
 #endif // ENABLE_BORINGSSL
   std::string digest;
   SHA1(reinterpret_cast<const uint8_t*>(str.data()), str.size(),
@@ -34,6 +40,8 @@ std::string SHA1HashString(const std::string& str) {
 void SHA1HashBytes(const unsigned char* data, size_t len, unsigned char* hash) {
 #if defined(ENABLE_BORINGSSL)
   CRYPTO_library_init();
+#else
+  SSL_library_init();
 #endif // ENABLE_BORINGSSL
   SHA1(data, len, hash);
 }

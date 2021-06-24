@@ -236,5 +236,3 @@ if(NOT TARGET_LINUX AND NOT TARGET_CHROMEOS AND NOT TARGET_ANDROID)
     "linux_util.cc"
     "linux_util.h")
 endif()
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/component_extensions_sources.cmake)

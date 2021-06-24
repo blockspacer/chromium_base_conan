@@ -9,7 +9,10 @@
 
 #include "crypto/p224.h"
 
+#include "basic/macros.h"
+
 #include "base/macros.h"
+#include "base/check.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace crypto {

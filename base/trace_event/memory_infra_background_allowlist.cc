@@ -436,10 +436,6 @@ bool IsMemoryDumpProviderInAllowlist(const char* mdp_name) {
 }
 
 bool IsMemoryAllocatorDumpNameInAllowlist(const std::string& name) {
-#if 1
-  /// \note patched to allow all
-  return true;
-#else
   // Global dumps that are of hex digits are all allowed for background use.
   if (base::StartsWith(name, "global/", CompareCase::SENSITIVE)) {
     for (size_t i = strlen("global/"); i < name.size(); i++)
@@ -480,7 +476,6 @@ bool IsMemoryAllocatorDumpNameInAllowlist(const std::string& name) {
     }
   }
   return false;
-#endif
 }
 
 void SetDumpProviderAllowlistForTesting(const char* const* list) {

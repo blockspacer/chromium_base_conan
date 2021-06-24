@@ -7,6 +7,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "basic/macros.h"
+
+#include "base/check.h"
 #include "base/macros.h"
 #include "base/numerics/safe_conversions.h"
 #include "testing/gtest/include/gtest/gtest.h"

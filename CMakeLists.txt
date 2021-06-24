@@ -817,6 +817,7 @@ target_compile_definitions(${BASE_LIB_NAME} PUBLIC
 )
 
 target_compile_definitions(${BASE_LIB_NAME} PRIVATE
+  ${BASE_PRIVATE_DEFINES}
   BASE_IMPLEMENTATION=1
   BASE_I18N_IMPLEMENTATION=1
 )
@@ -830,8 +831,9 @@ else()
 endif()
 
 if(CXX_COROUTINES_HAVE_COROUTINES)
-  target_link_libraries(${BASE_LIB_NAME} PUBLIC std::coroutines)
-  target_compile_options(${BASE_LIB_NAME} PUBLIC ${_CXX_COROUTINES_AWAIT})
+  message(WARNING "Found coroutines support")
+  target_link_libraries(${BASE_LIB_NAME} PRIVATE std::coroutines)
+  target_compile_options(${BASE_LIB_NAME} PRIVATE ${_CXX_COROUTINES_AWAIT})
 else()
   message(WARNING "No coroutines support found")
 endif()

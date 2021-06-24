@@ -88,7 +88,7 @@ To use registered configuration options:
 CHECK_OK(basic::MultiConf::GetInstance().init());
 
 // you can reload confuguration on demand
-CHECK_OK(basic::MultiConf::GetInstance().clearAndReload());
+CHECK_OK(basic::MultiConf::GetInstance().resetAndReload());
 
 // may crash if `string` not convertable to `bool`, see `error_status().ok()`
 std::string str = my_string_key.GetValue();
@@ -97,7 +97,7 @@ std::string str = my_string_key.GetValue();
 bool flag = my_bool_key.GetValue();
 ```
 
-Note that without `clearAndReload` configuration values will be cached
+Note that without `resetAndReload` configuration values will be cached
 i.e. changes in configuration files are NOT auto detected
 (but you can add that functionality manually, see `addObserver`).
 
@@ -163,20 +163,20 @@ std::string result = getEnvironmentVariableByName(key);
 
 ## Multiple threads
 
-`MULTICONF_String`, `MULTICONF_type` can be called from multiple threads,
+`MULTICONF_String`, `MULTICONF_type`, etc. can be called from multiple threads,
 but can NOT be called concurrently.
 
-You can create per-thread `MULTICONF_Observer` to overcome that issue.
+You can create per-thread `DUPLICATE_Observer` to overcome that issue.
 
 ```cpp
 MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 // Observe existing variable on multiple thread
-MULTICONF_Observer(conf_key_observer_on_thread_1, my_namespace::my_conf_key);
-MULTICONF_Observer(conf_key_observer_on_thread_2, my_namespace::my_conf_key);
-MULTICONF_Observer(conf_key_observer_on_thread_3, my_namespace::my_conf_key);
+DUPLICATE_Observer(conf_key_observer_on_thread_1, my_namespace::my_conf_key);
+DUPLICATE_Observer(conf_key_observer_on_thread_2, my_namespace::my_conf_key);
+DUPLICATE_Observer(conf_key_observer_on_thread_3, my_namespace::my_conf_key);
 ```
 
-Note that `MULTICONF_Observer` observes already existing configuration option.
+Note that `DUPLICATE_Observer` observes already existing configuration option.
 
 ## Global configuration loaders
 

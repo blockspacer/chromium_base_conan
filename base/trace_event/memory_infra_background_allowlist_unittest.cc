@@ -10,6 +10,7 @@ namespace base {
 
 namespace trace_event {
 
+#if 0 /// \todo remove, see patched `IsMemoryAllocatorDumpNameInAllowlist`
 TEST(MemoryInfraBackgroundAllowlist, Allowlist) {
   // Global dumps that are of hex digits are all allowed for background use.
   EXPECT_TRUE(IsMemoryAllocatorDumpNameInAllowlist("global/01234ABCDEF"));
@@ -31,6 +32,7 @@ TEST(MemoryInfraBackgroundAllowlist, Allowlist) {
   EXPECT_TRUE(IsMemoryAllocatorDumpNameInAllowlist(
       "net/http_network_session_0x123/quic_stream_factory"));
 }
+#endif
 
 }  // namespace trace_event
 

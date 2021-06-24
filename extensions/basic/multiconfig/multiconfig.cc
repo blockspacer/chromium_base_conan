@@ -428,7 +428,6 @@ void MultiConf::removeGlobalLoaders(
   }
 }
 
-
 bool MultiConf::hasGlobalLoaders(
   const std::initializer_list<MultiConfLoader>& loaders)
 {
@@ -468,6 +467,7 @@ bool MultiConf::hasOptionWithName(const std::string& name
   DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
 
   // creates dummy option to find real option
+  /// \note search must ignore all fields except `name` and `configuration_group`
   return known_config_options_.find(
     MultiConfOption{name, base::nullopt, {}, configuration_group}) != known_config_options_.end();
 }
@@ -481,12 +481,16 @@ basic::Status MultiConf::reloadOptionWithName(
   DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
 
   // creates dummy option to find real option
-  auto it = known_config_options_.find(MultiConfOption{name, base::nullopt, {}, configuration_group});
+  /// \note search must ignore all fields except `name` and `configuration_group`
+  auto it = known_config_options_.find(
+    MultiConfOption{name, base::nullopt, {}, configuration_group});
+
   RETURN_ERROR_IF(it == known_config_options_.end())
     << "Failed to find configuration option: "
     << formatConfigNameAndGroup(name, configuration_group);
 
-  RETURN_IF_NOT_OK(reloadOption(*it, notify_cache_reload_on_success, clear_cache_on_error));
+  RETURN_IF_NOT_OK(reloadOption(
+    *it, notify_cache_reload_on_success, clear_cache_on_error));
 
   RETURN_OK();
 }
@@ -498,7 +502,9 @@ basic::StatusOr<MultiConfOption> MultiConf::findOptionWithName(
   DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
 
   // creates dummy option to find real option
+  /// \note search must ignore all fields except `name` and `configuration_group`
   auto it = known_config_options_.find(MultiConfOption{name, base::nullopt, {}, configuration_group});
+
   RETURN_ERROR_IF(it == known_config_options_.end())
     << "Failed to find configuration option: "
     << formatConfigNameAndGroup(name, configuration_group);
@@ -506,7 +512,7 @@ basic::StatusOr<MultiConfOption> MultiConf::findOptionWithName(
   return *it;
 }
 
-basic::Status MultiConf::clearAndReload(bool clear_cache_on_error)
+basic::Status MultiConf::resetAndReload(bool clear_cache_on_error)
 {
   DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
 

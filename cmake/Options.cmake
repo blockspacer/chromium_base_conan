@@ -145,14 +145,29 @@ option(ENABLE_MSAN
 option(ENABLE_TSAN
   "Enable Thread Sanitizer" OFF)
 
+option(USE_OPENSSL
+  "Enable openssl in crypto lib" ON)
+message(STATUS "USE_OPENSSL=${USE_OPENSSL}")
+
+cmake_dependent_option(USE_NSS_CERTS
+  "NSS CERTS"
+  ON
+  "NOT USE_OPENSSL;\
+TARGET_LINUX;\
+TARGET_CHROMEOS"
+  # If the condition above is not true
+  OFF)
+message(STATUS "USE_NSS_CERTS=${USE_NSS_CERTS}")
+
 cmake_dependent_option(ALLOCATOR_TCMALLOC
   "Disable custom allocators (use glibc on linux)"
   ON
-  "NOT ENABLE_ASAN \
-  AND NOT ENABLE_TSAN \
-  AND NOT ENABLE_MSAN \
-  AND NOT ENABLE_UBSAN \
-  AND NOT ENABLE_VALGRIND"
+  "NOT ENABLE_ASAN;\
+NOT ENABLE_TSAN;\
+NOT ENABLE_MSAN;\
+NOT ENABLE_UBSAN;\
+NOT ENABLE_VALGRIND"
+  # If the condition above is not true
   OFF)
 
 message(STATUS
@@ -160,13 +175,14 @@ message(STATUS
 
 cmake_dependent_option(ALLOCATOR_NONE
   "Disable custom allocators (use glibc on linux)"
-  ON
-  "ENABLE_ASAN \
-  OR ENABLE_TSAN \
-  OR ENABLE_MSAN \
-  OR ENABLE_UBSAN \
-  OR ENABLE_VALGRIND"
-  OFF)
+  OFF
+  "NOT ENABLE_ASAN;\
+NOT ENABLE_TSAN;\
+NOT ENABLE_MSAN;\
+NOT ENABLE_UBSAN;\
+NOT ENABLE_VALGRIND"
+  # If the condition above is not true
+  ON)
 
 message(STATUS
   "ALLOCATOR_NONE=${ALLOCATOR_NONE}")

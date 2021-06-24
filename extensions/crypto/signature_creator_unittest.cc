@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-#include "base/sha1.h"
+#include "base/hash/sha1.h"
 #include "crypto/rsa_private_key.h"
 #include "crypto/sha2.h"
 #include "crypto/signature_verifier.h"

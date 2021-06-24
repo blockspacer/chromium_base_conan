@@ -564,8 +564,8 @@ TEST(nn_sp, pointer_cast_check) {
 #endif
 }
 
-/// \todo C++20 support
-#if __cplusplus <= 201703L
+/// \todo C++20 support # if __cplusplus <= 201703L
+#if 0
 class MyAllocator : public std::allocator<int> {
  public:
   explicit MyAllocator(int* count) : count_(count) {}

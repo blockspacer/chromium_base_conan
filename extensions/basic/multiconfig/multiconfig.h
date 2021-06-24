@@ -21,10 +21,13 @@
 #include <base/files/file_path.h>
 #include <base/threading/thread_collision_warner.h>
 #include <base/observer_list_threadsafe.h>
+#include <base/at_exit.h>
+#include <base/synchronization/atomic_flag.h>
 
 #include <string>
 #include <ostream>
 
+// Loads configuration from env. vars
 #define ENV_MULTICONF_LOADER \
     basic::MultiConfLoader{ \
       ::basic::EnvMultiConf::kId \
@@ -33,6 +36,7 @@
           , base::Unretained(&::basic::EnvMultiConf::GetInstance())) \
     }
 
+// Loads configuration from command-line
 #define CMD_MULTICONF_LOADER \
     basic::MultiConfLoader{ \
       ::basic::CmdMultiConf::kId \
@@ -41,6 +45,7 @@
           , base::Unretained(&::basic::CmdMultiConf::GetInstance())) \
     }
 
+// Loads configuration from json file
 #define JSON_MULTICONF_LOADER \
     basic::MultiConfLoader{ \
       ::basic::JsonMultiConf::kId \
@@ -56,6 +61,7 @@
       , base::BindRepeating(&::basic::DummyLoader::tryLoadString) \
     }
 
+// Common configuration providers
 #define BUILTIN_MULTICONF_LOADERS \
   { \
     CMD_MULTICONF_LOADER \
@@ -74,7 +80,7 @@
 /// Use multiple configuration groups to avoid collision like so:
 /// `MULTICONF_String(my_key, "", MY_LOADERS, CONFIG_GROUP_A);`
 /// `MULTICONF_String(my_key, "", MY_LOADERS, CONFIG_GROUP_B);`
-
+//
 // USAGE
 //
 // MULTICONF_type(float, my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
@@ -83,7 +89,7 @@
   basic::MultiConfWrapper<TYPE> KEY_NAME \
     {basic::CheckOptionPolicy::kCheckAddedNew, STRINGIFY(KEY_NAME) \
       , DEFAULT_STR \
-      , __VA_ARGS__}
+      , /* configuration group, etc. */ __VA_ARGS__}
 
 // `MULTICONF_type` that uses default loaders and group
 #define MULTICONF(type, KEY_NAME, DEFAULT_STR, ...) \
@@ -171,22 +177,36 @@
 
 // MOTIVATION
 //
-// `MULTICONF_type` can not be used concurrently from multiple threads.
-// You can create per-thread `MULTICONF_Observer` to overcome that issue.
+// Single `MULTICONF_type` can not be used concurrently from multiple threads.
+// You can create per-thread `DUPLICATE_Observer` to overcome that issue.
+// Under the hood it will copy shared pointers to `observer_and_cache_` and  `observer_lifetime_`.
+// I.e. you can use multiple `MULTICONF_type` objects to access cached values
+// of single configuration option from multiple threads.
 //
 // USAGE
 //
 // MULTICONF_Float(my_conf_key, "1.12", BUILTIN_MULTICONF_LOADERS, DEFAULT_MULTICONF_GROUP);
 // // Observe existing variable on multiple threads
-// MULTICONF_Observer(my_conf_key_observer_thread_1, my_namespace::my_conf_key);
-// MULTICONF_Observer(my_conf_key_observer_thread_2, my_namespace::my_conf_key);
-// MULTICONF_Observer(my_conf_key_observer_thread_3, my_namespace::my_conf_key);
+// DUPLICATE_Observer(my_conf_key_observer_thread_1, my_namespace::my_conf_key);
+// DUPLICATE_Observer(my_conf_key_observer_thread_2, my_namespace::my_conf_key);
+// DUPLICATE_Observer(my_conf_key_observer_thread_3, my_namespace::my_conf_key);
 //
 /// \note `KEY_NAME` expected to be already existing variable
 /// of type `MultiConfWrapper<...>` i.e. no need to call `addOption`.
 //
-#define MULTICONF_Observer(VAR_NAME, KEY_NAME) \
-  auto VAR_NAME = KEY_NAME
+/// \note We copy `MultiConfWrapper` into new variable.
+/// That must copy cached value and register newly created observer
+#define DUPLICATE_Observer(VAR_NAME, KEY_NAME) \
+  auto VAR_NAME = KEY_NAME.duplicate()
+
+/// \note kCheckExists - we do not create new config option,
+/// just use existing one
+#define MULTICONF_Observer(TYPE, KEY_NAME, ...) \
+  basic::MultiConfWrapper<TYPE> KEY_NAME \
+    {basic::CheckOptionPolicy::kCheckExists, STRINGIFY(KEY_NAME) \
+      , /* default value not used */ "" \
+      , /* loaders not used */ std::initializer_list<basic::MultiConfLoader>{} \
+      , /* configuration group, etc. */ __VA_ARGS__}
 
 namespace base {
 
@@ -372,6 +392,7 @@ struct MultiConfLoader {
 STRONGLY_TYPED_BOOL(UseGlobalLoaders);
 
 // Configuration option that can be read from file, environment vars, etc.
+// Each conf. option can use both custom and global configuration providers.
 struct MultiConfOption
 {
  public:
@@ -466,7 +487,8 @@ class MultiConf {
     /// \note will NOT trigger if `known_config_options_.empty()`.
     virtual void onCacheReloaded()  = 0;
 
-    virtual std::string id() {
+    // For debug purposes
+    virtual std::string id() const {
       return "MultiConf::Observer";
     }
 
@@ -495,10 +517,12 @@ class MultiConf {
     observers_->AssertEmpty();
   }
 
-  // may be called from `clearAndReload()` or `reloadOption()`
+  // Can be used to detect changes in configuration.
+  // May be called from `resetAndReload()` or `reloadOption()`
   void notifyCacheReloaded();
 
-  // called if `reloadOption()` succeeded
+  // Can be used to detect changes in configuration.
+  // Called if `reloadOption()` succeeded.
   void notifyOptionReloaded(
     const MultiConfOption& option
     , const std::string& prev_value
@@ -507,7 +531,7 @@ class MultiConf {
   // USAGE
   //
   // /// \note will cache configuration values,
-  // /// so use `clearAndReload` if you need to update configuration values.
+  // /// so use `resetAndReload` if you need to update configuration values.
   // CHECK_OK(basic::MultiConf::GetInstance().init())
   //   << "Wrong configuration.";
   // /// \note required to refresh configuration cache.
@@ -516,8 +540,9 @@ class MultiConf {
   //
   MUST_USE_RETURN_VALUE
   basic::Status init() {
+    DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
     DCHECK_EQ(current_config_cache_.size(), 0);
-    RETURN_WITH_MESSAGE_IF_NOT_OK(clearAndReload())
+    RETURN_WITH_MESSAGE_IF_NOT_OK(resetAndReload())
       << "Failed to initialize configuration";
     RETURN_OK();
   }
@@ -564,13 +589,13 @@ class MultiConf {
   //
   // USAGE
   //
-  // CHECK_OK(basic::MultiConf::GetInstance().clearAndReload())
+  // CHECK_OK(basic::MultiConf::GetInstance().resetAndReload())
   //   << "Wrong configuration.";
   // /// \note required to refresh configuration cache.
   // /// Do not use `RunUntilIdle` if you already started another `RunLoop`.
   // base::RunLoop().RunUntilIdle();
   //
-  basic::Status clearAndReload(
+  basic::Status resetAndReload(
     // if your application requires all configuration values
     // to be valid or have valid defaults,
     // than set `clear_cache_on_error` to true
@@ -586,7 +611,8 @@ class MultiConf {
 
   // Populates `current_config_cache_`
   // Calls `reloadOption`
-  /// \note Does not return error if configuration option has default value.
+  /// \note Does not return error if configuration option has default value
+  /// i.e. parsing errors will load to defaults.
   basic::Status reloadOptionWithName(
     const std::string& name
     , const std::string& configuration_group
@@ -608,7 +634,8 @@ class MultiConf {
   MultiConf();
 
   // Calls each loader in `MultiConfOption` until it returns value.
-  /// \note Ignores default value
+  /// \note Ignores default value.
+  /// \note Does not read or write cache.
   basic::StatusOr<std::string> loadAsStringWithoutDefaults(
     const MultiConfOption& option);
 
@@ -644,40 +671,49 @@ class MultiConf {
 };
 
 template<typename T>
-class MultiConfObserver : public MultiConf::Observer {
+class MultiConfWrapper;
+
+// Used to:
+// 1. Reload cached value for some configuration option.
+// 2. Store cached value.
+// 3. Get cached value.
+template<typename T>
+class ConfOptionObserverAndCache : public MultiConf::Observer {
  public:
-  MultiConfObserver(const std::string& target_name
+  ConfOptionObserverAndCache(const std::string& target_name
     , const std::string& default_value
     , const std::string& configuration_group)
     : target_name_(target_name)
     , target_configuration_group_(configuration_group)
     /// \note `ConsumeValueOrDie` can CRASH without error,
-    /// so provide error text using `dcheckCanParseAndReturnOk`,
+    /// so provide error text using `debugCheckValidStringOption`,
     /// but only in DEBUG builds.
-    , error_status_(dcheckCanParseAndReturnOk(default_value))
+    , error_status_(debugCheckValidStringOption(default_value))
     /// \note Will CRASH without error text
     /// if default configuration value is not valid!
     , cached_value_{basic::rvalue_cast(parseOptionAs<T>(default_value).ConsumeValueOrDie())}
   {}
 
-  ~MultiConfObserver() override {}
+  ~ConfOptionObserverAndCache() override {}
 
-  MultiConfObserver(const MultiConfObserver& other)
+  ConfOptionObserverAndCache(const ConfOptionObserverAndCache& other)
     : target_name_{other.target_name_}
     , target_configuration_group_{other.target_configuration_group_}
     , cached_value_{other.cached_value_}
     , error_status_{other.error_status_}
   {}
 
-  MultiConfObserver(MultiConfObserver&& other)
+  ConfOptionObserverAndCache(ConfOptionObserverAndCache&& other)
     : target_name_{RVALUE_CAST(other.target_name_)}
     , target_configuration_group_{RVALUE_CAST(other.target_configuration_group_)}
     , cached_value_{RVALUE_CAST(other.cached_value_)}
     , error_status_{RVALUE_CAST(other.error_status_)}
   {}
 
-  MultiConfObserver& operator=(
-    const MultiConfObserver& other)
+  /// \note Do not forget to register newly created observer somehow
+  /// (or prolong observer registration in case of shared pointers).
+  ConfOptionObserverAndCache& operator=(
+    const ConfOptionObserverAndCache& other)
   {
     target_name_ = other.target_name_;
     target_configuration_group_ = other.target_configuration_group_;
@@ -686,8 +722,8 @@ class MultiConfObserver : public MultiConf::Observer {
     return *this;
   }
 
-  MultiConfObserver& operator=(
-    MultiConfObserver&& other)
+  ConfOptionObserverAndCache& operator=(
+    ConfOptionObserverAndCache&& other)
   {
     target_name_ = RVALUE_CAST(other.target_name_);
     target_configuration_group_ = RVALUE_CAST(other.target_configuration_group_);
@@ -719,6 +755,8 @@ class MultiConfObserver : public MultiConf::Observer {
   }
 
   void onCacheReloaded() override {
+    DFAKE_SCOPED_RECURSIVE_LOCK(debug_thread_collision_warner_);
+
     error_status_ = basic::OkStatus();
 
     basic::StatusOr<std::string> cache_statusor
@@ -745,8 +783,9 @@ class MultiConfObserver : public MultiConf::Observer {
     }
   }
 
-  std::string id() override {
-    return "MultiConfObserver";
+  // For debug purposes
+  std::string id() const override {
+    return "ConfOptionObserverAndCache";
   }
 
   basic::Status error_status() const NO_EXCEPTION {
@@ -775,7 +814,8 @@ class MultiConfObserver : public MultiConf::Observer {
   }
 
  private:
-  static basic::Status dcheckCanParseAndReturnOk(const std::string& default_value) NO_EXCEPTION
+  /// \note Will crash in debug build if option can not be parsed from string.
+  static basic::Status debugCheckValidStringOption(const std::string& default_value) NO_EXCEPTION
   {
 #if DCHECK_IS_ON()
     basic::StatusOr<T> statusor = parseOptionAs<T>(default_value);
@@ -789,11 +829,18 @@ class MultiConfObserver : public MultiConf::Observer {
     RETURN_OK();
   }
 
- private:
+ protected:
+  friend class MultiConfWrapper<T>;
+
   std::string target_name_;
 
   std::string target_configuration_group_;
 
+  // Use to check if `cached_value_` is valid.
+  // For example, use `error_status_` to check if:
+  // * failed to parse value
+  // * failed to find value in cache or use default value
+  // * etc.
   basic::Status error_status_;
 
   T cached_value_;
@@ -804,43 +851,101 @@ class MultiConfObserver : public MultiConf::Observer {
   DFAKE_MUTEX(debug_thread_collision_warner_);
 };
 
+TYPED_ENUM(ConfObserverLifetime, int, (kScoped)(kAtExit))
+
+// Decides (based on `ConfObserverLifetime`)
+// when to register and unregister `Observer` pointer.
 template<typename T>
-class ScopedAddConfObserver {
+class ConfObserverLifetimeHelper {
  public:
   using AddObserverCb
-    = base::RepeatingCallback<void(MultiConf::Observer*)>;
+    = base::OnceCallback<void(MultiConf::Observer*)>;
 
   using DelObserverCb
-    = base::RepeatingCallback<void(MultiConf::Observer*)>;
+    = base::OnceCallback<void(MultiConf::Observer*)>;
 
-  ScopedAddConfObserver(T* ptr
+  ConfObserverLifetimeHelper(T* ptr
+    , ConfObserverLifetime lifetime = ConfObserverLifetime::kScoped
     , AddObserverCb addObserverCb
-    , DelObserverCb delObserverCb)
+      = base::BindOnce(
+          &basic::MultiConf::addObserver
+          , base::Unretained(&basic::MultiConf::GetInstance()))
+    , DelObserverCb delObserverCb
+        = base::BindOnce(
+            &basic::MultiConf::removeObserver
+            , base::Unretained(&basic::MultiConf::GetInstance())))
     : ptr_(ptr)
-    , addObserverCb_(addObserverCb)
-    , delObserverCb_(delObserverCb)
+    , lifetime_(lifetime)
+    , addObserverCb_(std::move(addObserverCb))
+    , delObserverCb_(std::move(delObserverCb))
   {
     DCHECK(addObserverCb_);
-    addObserverCb_.Run(ptr_);
+    std::move(addObserverCb_).Run(ptr_);
+    switch(lifetime_) {
+      case ConfObserverLifetime::kScoped: {
+        // skip
+        break;
+      }
+      case ConfObserverLifetime::kAtExit: {
+        base::AtExitManager::RegisterTask(createDeletionCallback());
+        break;
+      }
+      default: {
+        FATAL_INVALID_ENUM_VALUE(ConfObserverLifetime, lifetime_);
+      }
+    }
   }
 
-  ~ScopedAddConfObserver()
-  {
+  // Resets `ptr_` to avoid calling `createDeletionCallback()` multiple times.
+  base::OnceCallback<void()> createDeletionCallback() {
+    DCHECK(ptr_);
     DCHECK(delObserverCb_);
-    delObserverCb_.Run(ptr_);
+    auto cb = base::BindOnce([](DelObserverCb&& delCb, T* ptr){
+      DCHECK(delCb);
+      DCHECK(ptr);
+      std::move(delCb).Run(ptr);
+    }, std::move(delObserverCb_), base::Unretained(ptr_));
+    ptr_ = nullptr;
+    return cb;
+  }
+
+  ~ConfObserverLifetimeHelper()
+  {
+    switch(lifetime_) {
+      case ConfObserverLifetime::kScoped: {
+        createDeletionCallback().Run();
+        break;
+      }
+      case ConfObserverLifetime::kAtExit: {
+        // skip
+        break;
+      }
+      default: {
+        FATAL_INVALID_ENUM_VALUE(ConfObserverLifetime, lifetime_);
+      }
+    }
+
+    // `createDeletionCallback()` must be called at this point,
+    // so `ptr_` must be reset
+    DCHECK(!ptr_);
   }
 
 private:
-  T* ptr_;
+  T* ptr_{nullptr};
+
+  ConfObserverLifetime lifetime_;
 
   SCOPED_UNOWNED_PTR_CHECKER(ptr_);
 
   AddObserverCb addObserverCb_;
   DelObserverCb delObserverCb_;
 
-  DISALLOW_COPY_AND_ASSIGN(ScopedAddConfObserver);
+  DISALLOW_COPY_AND_ASSIGN(ConfObserverLifetimeHelper);
 };
 
+// kCheckAddedNew - Creates new option. Option must NOT be created before.
+// kCheckExists - Checks that some option exists.
+// kIgnoreCheck - Does no checks at all.
 TYPED_ENUM(CheckOptionPolicy, int, (kCheckAddedNew)(kCheckExists)(kIgnoreCheck))
 
 // Used by `MULTICONF_*` macros to both create configuration option
@@ -851,11 +956,11 @@ TYPED_ENUM(CheckOptionPolicy, int, (kCheckAddedNew)(kCheckExists)(kIgnoreCheck))
 template<typename T>
 class MultiConfWrapper {
  public:
-  using MCO
-    = MultiConfObserver<T>;
+  using ObserverAndCache
+    = ConfOptionObserverAndCache<T>;
 
-  using SAO
-    = ScopedAddConfObserver<MCO>;
+  using ObserverLifetime
+    = ConfObserverLifetimeHelper<ObserverAndCache>;
 
   template <typename... Args>
   MultiConfWrapper(CheckOptionPolicy checkOptionPolicy
@@ -864,22 +969,20 @@ class MultiConfWrapper {
     , const std::initializer_list<MultiConfLoader>& loaders
     , const std::string& configuration_group
     , Args... args)
-    : mco_{std::make_shared<MCO>(target_name, default_value, configuration_group)}
-    , sao_{std::make_shared<SAO>(
-        mco_.get()
-        , base::BindRepeating(
-            &basic::MultiConf::addObserver
-            , base::Unretained(&basic::MultiConf::GetInstance()))
-        , base::BindRepeating(
-            &basic::MultiConf::removeObserver
-            , base::Unretained(&basic::MultiConf::GetInstance()))
-      )}
+    : observer_and_cache_{std::make_shared<ObserverAndCache>(
+        target_name, default_value, configuration_group)}
+    , observer_lifetime_{std::make_shared<ObserverLifetime>(
+        observer_and_cache_.get())}
     , target_name_(target_name)
+    , default_value_(default_value)
     , target_configuration_group_(configuration_group)
   {
     switch (checkOptionPolicy) {
       case CheckOptionPolicy::kCheckExists: {
-        CHECK(basic::MultiConf::GetInstance().hasOptionWithName(target_name, configuration_group));
+        DCHECK(default_value_.empty()); // default value not used
+        DCHECK(!loaders.size()); // loaders not used
+        CHECK(basic::MultiConf::GetInstance().hasOptionWithName(
+          target_name, configuration_group));
         break;
       }
       case CheckOptionPolicy::kCheckAddedNew: {
@@ -902,6 +1005,8 @@ class MultiConfWrapper {
         break;
       }
       case CheckOptionPolicy::kIgnoreCheck: {
+        DCHECK(default_value_.empty()); // default value not used
+        DCHECK(!loaders.size()); // loaders not used
         break;
       }
       default: {
@@ -913,35 +1018,80 @@ class MultiConfWrapper {
   T GetValue(
     const base::Location& location = base::Location::Current()) const NO_EXCEPTION
   {
-    return mco_->GetValue();
+    return observer_and_cache_->GetValue();
   }
 
   basic::Status error_status() const NO_EXCEPTION {
-    return mco_->error_status();
+    return observer_and_cache_->error_status();
+  }
+
+  /// \note for thread-safety purposes we want to create
+  /// separate `observer_lifetime_` and `observer_and_cache_`
+  /// i.e. will not copy shared pointers
+  MultiConfWrapper duplicate() {
+    auto conf = MultiConfWrapper{
+      /// \note kCheckExists - we do not create new config option,
+      /// just use existing one
+      CheckOptionPolicy::kCheckExists
+      , target_name_
+      , /* default value not used */ ""
+      , /* loaders not used */ std::initializer_list<MultiConfLoader>{}
+      , target_configuration_group_};
+
+    /// \note separate object
+    DCHECK(conf.observer_and_cache_ != observer_and_cache_);
+
+    conf.observer_and_cache_->target_name_
+      = observer_and_cache_->target_name_;
+
+    conf.observer_and_cache_->target_configuration_group_
+       = observer_and_cache_->target_configuration_group_;
+
+    conf.observer_and_cache_->error_status_
+       = observer_and_cache_->error_status_;
+
+    conf.observer_and_cache_->cached_value_
+       = observer_and_cache_->cached_value_;
+
+    /// \note separate object
+    DCHECK(conf.observer_lifetime_ != observer_lifetime_);
+
+    conf.target_name_ = target_name_;
+    conf.default_value_ = default_value_;
+    conf.target_configuration_group_ = target_configuration_group_;
+
+    return conf;
   }
 
   MultiConfWrapper(const MultiConfWrapper& other)
-    : mco_{other.mco_}
-    , sao_{other.sao_}
+    : observer_and_cache_{other.observer_and_cache_}
+    , observer_lifetime_{other.observer_lifetime_}
     , target_name_{other.target_name_}
+    , default_value_{other.default_value_}
     , target_configuration_group_{other.target_configuration_group_}
   {
+    *this = other;
   }
 
   MultiConfWrapper(MultiConfWrapper&& other)
-    : mco_{RVALUE_CAST(other.mco_)}
-    , sao_{RVALUE_CAST(other.sao_)}
+    : observer_and_cache_{RVALUE_CAST(other.observer_and_cache_)}
+    , observer_lifetime_{RVALUE_CAST(other.observer_lifetime_)}
     , target_name_{RVALUE_CAST(other.target_name_)}
+    , default_value_{RVALUE_CAST(other.default_value_)}
     , target_configuration_group_{RVALUE_CAST(other.target_configuration_group_)}
   {
   }
 
+  /// \note We copy shared pointer to `observer_and_cache_` and  `observer_lifetime_`,
+  /// so cached in `observer_and_cache_` value will remain same
+  /// and observer will be kept registered by `observer_lifetime_`.
   MultiConfWrapper& operator=(
     const MultiConfWrapper& other)
   {
-    mco_ = other.mco_;
-    sao_ = other.sao_;
+    observer_and_cache_ = other.observer_and_cache_;
+    observer_lifetime_ = other.observer_lifetime_;
     target_name_ = other.target_name_;
+    default_value_ = other.default_value_;
     target_configuration_group_ = other.target_configuration_group_;
     return *this;
   }
@@ -949,13 +1099,16 @@ class MultiConfWrapper {
   MultiConfWrapper& operator=(
     MultiConfWrapper&& other)
   {
-    mco_ = RVALUE_CAST(other.mco_);
-    sao_ = RVALUE_CAST(other.sao_);
+    observer_and_cache_ = RVALUE_CAST(other.observer_and_cache_);
+    observer_lifetime_ = RVALUE_CAST(other.observer_lifetime_);
     target_name_ = RVALUE_CAST(other.target_name_);
+    default_value_ = RVALUE_CAST(other.default_value_);
     target_configuration_group_ = RVALUE_CAST(other.target_configuration_group_);
     return *this;
   }
 
+  // optionFormatted() prints to string informatin about configuration option.
+  //
   // USAGE
   //
   // ::base::FilePath file_exe_{};
@@ -993,16 +1146,21 @@ class MultiConfWrapper {
     return target_name_;
   }
 
+  std::string default_value() const NO_EXCEPTION {
+    return default_value;
+  }
+
   std::string target_configuration_group() const NO_EXCEPTION {
     return target_configuration_group_;
   }
 
  private:
-  // Multiple wrappers can have shared MCO (MultiConfObserver<T>)
-  // and shared SAO (ScopedAddConfObserver)
-  std::shared_ptr<MCO> mco_;
-  std::shared_ptr<SAO> sao_;
+  // Multiple wrappers can have shared ConfOptionObserverAndCache<T>
+  // and shared ConfObserverLifetimeHelper
+  std::shared_ptr<ObserverAndCache> observer_and_cache_;
+  std::shared_ptr<ObserverLifetime> observer_lifetime_;
   std::string target_name_;
+  std::string default_value_;
   std::string target_configuration_group_;
 };
 
