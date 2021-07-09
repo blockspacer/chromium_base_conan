@@ -67,19 +67,19 @@ endif()
 #
 # TODO
 # [  FAILED  ] 258: [ RUN      ] ScopedRunLoopTimeoutTest.OnTimeoutLog
-# [  FAILED  ] 258: /home/denis/.conan/data/conan_gtest/stable/conan/stable/build/6c4f123ede24f5b530592b743ef64a8b8bcd19e9/source_subfolder/googletest/src/gtest.cc:907: Failure
+# [  FAILED  ] 258: ~/.conan/data/conan_gtest/stable/conan/stable/build/6c4f123ede24f5b530592b743ef64a8b8bcd19e9/source_subfolder/googletest/src/gtest.cc:907: Failure
 # [  FAILED  ] 258: Expected: 1 fatal failure containing "Run() timed out. Timeout set at TestBody@../../base/test/scoped_run_loop_timeout_unittest.cc:70.
 # [  FAILED  ] 258: I like kittens!"
 # [  FAILED  ] 258:   Actual:
-# [  FAILED  ] 258: /home/denis/code/chromium_base_conan/base/test/scoped_run_loop_timeout_unittest.cc:79: Fatal failure:
+# [  FAILED  ] 258: ~/code/chromium_base_conan/base/test/scoped_run_loop_timeout_unittest.cc:79: Fatal failure:
 # [  FAILED  ] 258: Failed
-# [  FAILED  ] 258: RunLoop::Run() timed out. Timeout set at TestBody@/home/denis/code/chromium_base_conan/base/test/scoped_run_loop_timeout_unittest.cc:70.
+# [  FAILED  ] 258: RunLoop::Run() timed out. Timeout set at TestBody@~/code/chromium_base_conan/base/test/scoped_run_loop_timeout_unittest.cc:70.
 # [  FAILED  ] 258: I like kittens!
 # "test/scoped_run_loop_timeout_unittest.cc"
 #
 # TODO
 # [  FAILED  ] 259: [ RUN      ] TaskEnvironmentTest.SetsDefaultRunTimeout
-# [  FAILED  ] 259: /home/denis/.conan/data/conan_gtest/stable/conan/stable/build/6c4f123ede24f5b530592b743ef64a8b8bcd19e9/source_subfolder/googletest/src/gtest.cc:907: Failure
+# [  FAILED  ] 259: ~/.conan/data/conan_gtest/stable/conan/stable/build/6c4f123ede24f5b530592b743ef64a8b8bcd19e9/source_subfolder/googletest/src/gtest.cc:907: Failure
 # [  FAILED  ] 259: Expected: 1 fatal failure containing "RunLoop::Run() timed out. Timeout set at TaskEnvironment@../../base/test/task_environment.cc:"
 # [  FAILED  ] 259:   Actual:
 # [  FAILED  ] 259: ./base/test/task_environment_unittest.cc:888: Fatal failure:
@@ -821,10 +821,14 @@ foreach(FILEPATH ${base_unittests})
 endforeach()
 
 list(APPEND basic_extensions_unittests
-  crc32_unittest.cc
   output_parameter_unittest.cc
   stl_util_unittest.cc
   type_id_unittest.cc
+)
+
+list(APPEND basic_extensions_unittests
+  secure_clear/secure_string_unittest.cc
+  secure_clear/secure_blob_unittest.cc
 )
 
 list(APPEND basic_extensions_unittests
@@ -835,6 +839,7 @@ list(APPEND basic_extensions_unittests
   containers/bounded_inline_vector_unittest.cc
   containers/unique_any_unittest.cc
   containers/any_internal_unittest.cc
+  containers/any_dictionary_unittest.cc
   containers/prioritized_job_dispatcher_unittest.cc
   containers/prioritized_list_unittest.cc
   containers/prioritized_repeating_task_list_unittest.cc
@@ -867,6 +872,7 @@ list(APPEND basic_extensions_unittests
 )
 
 list(APPEND basic_extensions_unittests
+  hash/crc32_unittest.cc
   hash/city_hash_unittest.cc
   hash/farmhash_unittest.cc
   hash/murmurhash_unittest.cc
@@ -1158,3 +1164,11 @@ foreach(FILEPATH ${crypto_extensions_unittests})
   chromium_base_test_gtest(${ROOT_PROJECT_NAME}-crypto-${FILENAME_WITHOUT_EXT}
     "${test_sources}")
 endforeach()
+
+
+## ------------------------------- mojo ----------------------------------- ##
+
+# TODO
+# include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_c_system_tests.cmake)
+# include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_platform_tests.cmake)
+# include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_system_tests.cmake)

@@ -554,4 +554,20 @@ inline typename T::mapped_type GetOrDefault(
   return it->second;
 }
 
+// Joins strings into a single string separated by |delimiter|.
+template <class InputIterator>
+std::string JoinRange(const std::string& delimiter,
+                      InputIterator first,
+                      InputIterator last) {
+  std::string result;
+  if (first == last)
+    return result;
+  result = *first;
+  for (++first; first != last; ++first) {
+    result += delimiter;
+    result += *first;
+  }
+  return result;
+}
+
 }  // namespace basic

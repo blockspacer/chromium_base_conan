@@ -12,18 +12,9 @@
   macros.h
   logging.h
   enum_to_int.h
-  crc32.h
-  crc32.cc
   cmd_util.h
   cmd_util.cc
   compiler_specific.h
-)
-
-list(APPEND COMPONENT_BASIC_SOURCES
-  portability/basictypes.h
-  portability/c_portability.h
-  portability/config.h
-  portability/constexpr.h
 )
 
 list(APPEND COMPONENT_BASIC_SOURCES
@@ -50,6 +41,7 @@ list(APPEND COMPONENT_BASIC_SOURCES
   containers/unique_any.cc
   containers/any_internal.h
   containers/any_internal.cc
+  containers/any_dictionary.h
   containers/prioritized_job_dispatcher.h
   containers/prioritized_job_dispatcher.cc
   containers/prioritized_list.h
@@ -71,6 +63,14 @@ list(APPEND COMPONENT_BASIC_SOURCES
   portability/unistd.h
   portability/unistd.cc
   portability/malloc_impl.cc
+  portability/basictypes.h
+  portability/c_portability.h
+  portability/config.h
+  portability/constexpr.h
+  portability/SysTime.h
+  portability/SysTime.cc
+  portability/SysResource.h
+  portability/SysResource.cc
 )
 
 list(APPEND COMPONENT_BASIC_SOURCES
@@ -243,6 +243,15 @@ list(APPEND COMPONENT_BASIC_SOURCES
 )
 
 list(APPEND COMPONENT_BASIC_SOURCES
+  secure_clear/secure_string.h
+  secure_clear/secure_string.cc
+  secure_clear/secure_blob.h
+  secure_clear/secure_blob.cc
+)
+
+list(APPEND COMPONENT_BASIC_SOURCES
+  hash/crc32.h
+  hash/crc32.cc
   hash/city_hash.h
   hash/city_hash.cc
   hash/farmhash.h

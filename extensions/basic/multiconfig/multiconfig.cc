@@ -637,7 +637,9 @@ basic::StatusOr<std::string> MultiConf::loadAsStringWithoutDefaults(
     basic::StatusOr<std::string> result
       = loader.func.Run(option.name, option.configuration_group, option.optionSettings);
     if (result.ok()) {
-      // Valid configuration value loaded by loader
+      VLOG(999) << "Valid configuration option ("
+        << formatConfigNameAndGroup(option.name, option.configuration_group)
+        << ") loaded by loader " << loader.name;
       return result;
     }
   }
@@ -647,7 +649,9 @@ basic::StatusOr<std::string> MultiConf::loadAsStringWithoutDefaults(
       basic::StatusOr<std::string> result
         = loader.func.Run(option.name, option.configuration_group, option.optionSettings);
       if (result.ok()) {
-        // Valid configuration value loaded by loader
+        VLOG(999) << "Valid configuration option ("
+          << formatConfigNameAndGroup(option.name, option.configuration_group)
+          << ") loaded by loader " << loader.name;
         return result;
       }
     }

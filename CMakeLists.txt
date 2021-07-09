@@ -894,6 +894,16 @@ endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/setup_sanitizers.cmake)
 
+## ------------------------------- mojo ----------------------------------- ##
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_c_system.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_platform.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_system.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_interfaces_bindings.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_bindings.cmake)
+
+## ------------------------------ exports ---------------------------------- ##
+
 # install and export steps
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Exports.cmake)
 
