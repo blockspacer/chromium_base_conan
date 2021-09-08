@@ -7,8 +7,6 @@ set( TESTS_BINARY_DIR_NAME "${BASE_LIB_NAME}-tests" )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${${ROOT_PROJECT_NAME}_CMAKE_MODULE_PATH}")
 
-
-
 macro(chromium_base_test test_name source_list TEST_ARGS TEST_RUNNER_LIB)
   set(single_unittest_target run_test_${test_name})
 

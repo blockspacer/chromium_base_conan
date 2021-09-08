@@ -154,6 +154,10 @@ class ProcessUtilTest : public MultiProcessTest {
   void SetUp() override {
     ASSERT_TRUE(PathService::Get(DIR_ASSETS, &test_helper_path_));
     test_helper_path_ = test_helper_path_.AppendASCII(kTestHelper);
+    if (!base::PathExists(test_helper_path_)) {
+      LOG(ERROR) << "Could not find path " << test_helper_path_;
+      return;
+    }
   }
 
 #if defined(OS_POSIX) || defined(OS_FUCHSIA)

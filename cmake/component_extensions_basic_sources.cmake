@@ -39,6 +39,8 @@ list(APPEND COMPONENT_BASIC_SOURCES
   containers/bounded_inline_vector.h
   containers/unique_any.h
   containers/unique_any.cc
+  containers/invertible_map.h
+  containers/invertible_map.cc
   containers/any_internal.h
   containers/any_internal.cc
   containers/any_dictionary.h

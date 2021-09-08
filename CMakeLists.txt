@@ -901,6 +901,15 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_platform.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_system.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_interfaces_bindings.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_bindings.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_base.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_core_ports.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_core.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_core_embedder.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ipc.cmake)
+
+## ------------------------------- examples ----------------------------------- ##
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakeLists.txt)
 
 ## ------------------------------ exports ---------------------------------- ##
 

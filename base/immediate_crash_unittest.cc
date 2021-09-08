@@ -12,6 +12,7 @@
 #include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/optional.h"
+#include "base/logging.h"
 #include "base/path_service.h"
 #include "base/ranges/algorithm.h"
 #include "base/scoped_native_library.h"
@@ -110,6 +111,10 @@ void GetTestFunctionInstructions(std::vector<Instruction>* body) {
 #if defined(OS_ANDROID) && defined(COMPONENT_BUILD)
   helper_library_path = helper_library_path.ReplaceExtension(".cr.so");
 #endif
+  if (!base::PathExists(helper_library_path)) {
+    LOG(ERROR) << "Could not find path " << helper_library_path;
+  }
+  CHECK(base::PathExists(helper_library_path));
   ScopedNativeLibrary helper_library(helper_library_path);
   ASSERT_TRUE(helper_library.is_valid())
       << "shared library load failed: "

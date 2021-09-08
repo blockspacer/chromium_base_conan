@@ -14,13 +14,6 @@ if (NOT CMAKE_BUILD_TYPE MATCHES "Debug" )
   )
 endif()
 
-# TODO undefined reference to `g_native_library_exported_value'
-# "scoped_native_library_unittest.cc"
-# "native_library_unittest.cc"
-#
-# TODO requires helper_library.is_valid()
-# "immediate_crash_unittest.cc"
-#
 # TODO
 # [  FAILED  ] HeapAndPersistent/HistogramTest.WriteAscii/0, where GetParam() = false
 # [  FAILED  ] HeapAndPersistent/HistogramTest.WriteAscii/1, where GetParam() = true
@@ -36,15 +29,6 @@ endif()
 # [  FAILED  ] HeapAndPersistent/SparseHistogramTest.ToGraphDict/0, where GetParam() = false
 # [  FAILED  ] HeapAndPersistent/SparseHistogramTest.ToGraphDict/1, where GetParam() = true
 # "metrics/sparse_histogram_unittest.cc"
-#
-# TODO
-# [  FAILED  ] ProcessUtilTest.GetAppOutput
-# [  FAILED  ] 149: ./base/process/process_util_unittest.cc:912: Failure
-# [  FAILED  ] 149: Value of: GetAppOutput(command, &output)
-# [  FAILED  ] 149:   Actual: false
-# [  FAILED  ] 149: Expected: true
-# [  FAILED  ] 149: ./base/process/process_util_unittest.cc:913: Failure
-# "process/process_util_unittest.cc"
 #
 # TODO
 # [  FAILED  ] ./base/profiler/module_cache_unittest.cc:117: Failure
@@ -88,7 +72,25 @@ endif()
 # [  FAILED  ] 259: {"active_queues":[{"any_thread_.immediate_incoming_queuecapacity":0,"any_thread_.immediate_incoming_queuesize":0,"delayed_incoming_queue":[],"delayed_incoming_queue_size":0,"delayed_work_queue":[],"delayed_work_queue_capacity":0,"delayed_work_queue_size":0,"enabled":true,"immediate_incoming_queue":[],"immediate_work_queue":[],"immediate_work_queue_capacity":0,"immediate_work_queue_size":0,"name":"task_environment_default","priority":"normal","task_queue_id":"0x7f84ffc278c0","time_domain_name":"RealTimeDomain"}],"native_work_priority":"best_effort","queues_to_delete":[],"queues_to_gracefully_shutdown":[],"selector":{"immediate_starvation_count":0},"time_domains":[{"name":"RealTimeDomain","registered_delay_count":0}]}
 # "test/task_environment_unittest.cc"
 #
+# TODO
+# ImmediateCrashTest.ExpectedOpcodeSequence
+# /home/denis/code/chromium_base_conan/base/immediate_crash_unittest.cc:152: Failure
+# Expected equality of these values:
+#   inst
+#     Which is: '\xCC' (204)
+#   *iter
+#     Which is: 'f' (102, 0x66)
+#   "immediate_crash_unittest.cc"
+#
+# TODO
+# [7/8] NativeLibraryTest.LoadLibraryPreferOwnSymbols (CRASHED)
+# [ RUN      ] NativeLibraryTest.LoadLibrary
+# [1747161:1747161:0908/155755.652110:5466021643373:FATAL:native_library_unittest.cc(94)] Check failed: library_.
+# "native_library_unittest.cc"
+#
 list(APPEND base_unittests
+  "scoped_native_library_unittest.cc"
+  "process/process_util_unittest.cc"
   "allocator/tcmalloc_unittest.cc"
   "at_exit_unittest.cc"
   "atomicops_unittest.cc"
@@ -508,6 +510,11 @@ if(TARGET_POSIX)
   endif()
 endif()
 
+list(APPEND base_unittest_utils
+  "test/native_library_test_utils.cc"
+  "test/native_library_test_utils.h"
+)
+
 if(TARGET_ANDROID)
   if(can_unwind_with_cfi_table)
     list(APPEND base_unittests
@@ -838,6 +845,7 @@ list(APPEND basic_extensions_unittests
 list(APPEND basic_extensions_unittests
   containers/bounded_inline_vector_unittest.cc
   containers/unique_any_unittest.cc
+  containers/invertible_map_unittest.cc
   containers/any_internal_unittest.cc
   containers/any_dictionary_unittest.cc
   containers/prioritized_job_dispatcher_unittest.cc
@@ -1165,10 +1173,15 @@ foreach(FILEPATH ${crypto_extensions_unittests})
     "${test_sources}")
 endforeach()
 
+add_dependencies(chromium_base-base-process_util_unittest
+  test_child_process)
 
-## ------------------------------- mojo ----------------------------------- ##
+## ------------------------------- test mojo -------------------------------- ##
 
 # TODO
 # include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_c_system_tests.cmake)
 # include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_platform_tests.cmake)
 # include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_public_cpp_system_tests.cmake)
+# include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_core_ports_tests.cmake)
+# include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_core_tests.cmake)
+# include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_core_embedder_tests.cmake)

@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include "base/files/file_path.h"
+#include "base/logging.h"
 #include "base/native_library.h"
 #include "base/path_service.h"
+#include "base/files/file_util.h"
 #include "base/test/native_library_test_utils.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -83,6 +85,10 @@ class TestLibrary {
     CHECK(base::PathService::Get(base::DIR_EXE, &exe_path));
 #endif
 
+    if (!base::PathExists(exe_path.AppendASCII(kTestLibraryName))) {
+      LOG(ERROR) << "Could not find path " << exe_path.AppendASCII(kTestLibraryName);
+    }
+    CHECK(base::PathExists(exe_path.AppendASCII(kTestLibraryName)));
     library_ = LoadNativeLibraryWithOptions(
         exe_path.AppendASCII(kTestLibraryName), options, nullptr);
     CHECK(library_);

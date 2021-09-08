@@ -92,10 +92,6 @@ add_library(bindings_base
   ${COMPONENT_MOJO_PUBLIC_CPP_BINDINGS_BASE_SOURCES}
 )
 
-add_dependencies(bindings_base
-  ${MOJO_SOURCES_PATH}/public/cpp/bindings/mojo_buildflags.h
-)
-
 target_link_libraries(bindings_base PUBLIC
   ${BASE_LIB_NAME}
   mojo_public_system_cpp
@@ -238,13 +234,16 @@ endif()
 list(TRANSFORM COMPONENT_MOJO_PUBLIC_CPP_BINDINGS_SOURCES
   PREPEND "${MOJO_SOURCES_PATH}/public/cpp/bindings/")
 
-list(APPEND COMPONENT_MOJO_PUBLIC_CPP_BINDINGS_SOURCES MOJO_STRUCT_TRAITS)
+list(APPEND COMPONENT_MOJO_PUBLIC_CPP_BINDINGS_SOURCES ${MOJO_STRUCT_TRAITS})
 
-add_library(bindings
+add_library(mojo_public_cpp_bindings
   ${COMPONENT_MOJO_PUBLIC_CPP_BINDINGS_SOURCES}
 )
 
-add_dependencies(bindings
+# add_dependencies(bindings
+#   ${MOJO_SOURCES_PATH}/public/cpp/bindings/mojo_buildflags.h
+# )
+target_sources(mojo_public_cpp_bindings PUBLIC
   ${MOJO_SOURCES_PATH}/public/cpp/bindings/mojo_buildflags.h
 )
 
@@ -252,7 +251,7 @@ add_dependencies(bindings
 # "//ipc:message_support",
 # "//ipc:param_traits",
 # deps = [ "//ipc:native_handle_type_converters" ]
-target_link_libraries(bindings PUBLIC
+target_link_libraries(mojo_public_cpp_bindings PUBLIC
   ${BASE_LIB_NAME}
   bindings_base
   mojo_public_system_cpp
@@ -267,7 +266,7 @@ target_link_libraries(bindings PUBLIC
 #   ]
 # }
 
-target_compile_definitions(bindings PRIVATE
+target_compile_definitions(mojo_public_cpp_bindings PRIVATE
   IS_MOJO_CPP_BINDINGS_IMPL=1
 )
 

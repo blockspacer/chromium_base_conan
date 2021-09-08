@@ -186,6 +186,7 @@ endif()
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tracing_buildflags.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/profiler_buildflags.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mojo_buildflags.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ipc_buildflags.cmake)
 
 configure_file_if_changed(
   INPUT ${BUILDFLAGS_GENERATORS_PATH}/buildflags/clang_profiling_buildflags.h.inc
