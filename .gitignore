@@ -25,6 +25,7 @@ base/generated_build_date.h
 
 *.lib
 
+/.generated
 /*build*
 # Executables
 *.exe
