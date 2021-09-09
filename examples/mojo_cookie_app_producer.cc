@@ -7,6 +7,7 @@
 #include <base/base_switches.h>
 #include <base/feature_list.h>
 #include <base/at_exit.h>
+#include <base/rand_util.h>
 #include <base/bind.h>
 #include <build/build_config.h>
 #include "base/at_exit.h"
@@ -83,24 +84,6 @@
 
 using namespace examples;
 
-//template <class T>
-//using AssociatedRemote = mojo::AssociatedRemote<T>;
-//template <class T>
-//using PendingAssociatedRemote = mojo::AssociatedInterfacePtrInfo<T>;
-//template <class T>
-//using AssociatedReceiver = mojo::AssociatedReceiver<T>;
-//template <class T>
-//using PendingAssociatedReceiver = mojo::AssociatedInterfaceRequest<T>;
-//
-//template <class T>
-//using Remote = mojo::InterfacePtr<T>;
-//template <class T>
-//using PendingRemote = mojo::InterfacePtrInfo<T>;
-//template <class T>
-//using Receiver = mojo::Receiver<T>;
-//template <class T>
-//using PendingReceiver = mojo::InterfaceRequest<T>;
-
 namespace switches {
 
 const char kLogFile[] = "log-file";
@@ -110,6 +93,13 @@ const char kTraceToConsole[] = "trace-to-console";
 const int kTraceEventAppSortIndex = -1;
 
 } // namespace switches
+
+namespace {
+
+constexpr char kMojoRemoteToken[] = "mojo-remote-token";
+constexpr char kMojoReceiverToken[] = "mojo-receiver-token";
+
+}  // namespace
 
 namespace tracing {
 
@@ -140,31 +130,69 @@ using namespace mojo;
 using namespace sample;
 using namespace base;
 
-base::Closure cb;
+/// \todo find better way for bidirectional communication
+struct BidirectionalPipes {
+  mojo::ScopedMessagePipeHandle pipe_remote;
+  mojo::ScopedMessagePipeHandle pipe_receiver;
+};
 
 class AppDemo {
  public:
   AppDemo();
   ~AppDemo();
 
-  void Initialize(){}
+  void Initialize();
   void Destroy();
   void Run();
 
  private:
   void OnCloseRequest();
+  void QuitWhenIdle();
   void RenderFrame();
+  BidirectionalPipes LaunchAndConnect();
 
 private:
   base::RunLoop* run_loop_ = nullptr;
   bool is_running_ = false;
+  base::Time next_render_time_ = base::Time::Now();
+  std::unique_ptr<
+    examples::FortuneCookieRemote> cookie_remote_;
+  std::unique_ptr<
+    examples::FortuneCookieReceiver> cookie_receiver_;
+  base::Process child_process_;
 };
 
 AppDemo::AppDemo() = default;
 
-AppDemo::~AppDemo() = default;
+AppDemo::~AppDemo() {
+  Destroy();
+}
 
 void AppDemo::OnCloseRequest() {
+  LOG(INFO)
+    << "OnCloseRequest";
+
+  if (cookie_receiver_) {
+    cookie_receiver_->SetWish("Producer already closed!");
+  }
+
+  if (cookie_remote_) {
+    cookie_remote_->SendCrack();
+    cookie_remote_->SendCloseStream();
+  }
+
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&AppDemo::QuitWhenIdle, base::Unretained(this)),
+      base::TimeDelta::FromSeconds(5));
+}
+
+void AppDemo::QuitWhenIdle() {
+  Destroy();
+
+  LOG(INFO)
+    << "QuitWhenIdle";
+
   is_running_ = false;
   if (run_loop_)
     run_loop_->QuitWhenIdle();
@@ -174,17 +202,150 @@ void AppDemo::RenderFrame() {
   if (!is_running_)
     return;
 
-  //base::ThreadTaskRunnerHandle::Get()->PostTask(
-  //    FROM_HERE,
-  //    base::BindOnce(&AppDemo::RenderFrame, base::Unretained(this)));
+  LOG(INFO)
+    << "RenderFrame";
+
+  if (base::Time::Now() >= next_render_time_) {
+    static const base::TimeDelta tickrate{
+      base::TimeDelta::FromMilliseconds(500)};
+    next_render_time_ = base::Time::Now() + tickrate;
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&AppDemo::RenderFrame, base::Unretained(this)),
+        tickrate);
+  }
 
   /// \note stops main loop
-  //base::ThreadTaskRunnerHandle::Get()->PostTask(
-  //    FROM_HERE,
-  //    base::BindOnce(&AppDemo::OnCloseRequest, base::Unretained(this)));
+  // base::ThreadTaskRunnerHandle::Get()->PostTask(
+  //     FROM_HERE,
+  //     base::BindOnce(&AppDemo::OnCloseRequest, base::Unretained(this)));
 }
 
-void AppDemo::Destroy() {}
+void AppDemo::Initialize() {
+  BidirectionalPipes pipes = LaunchAndConnect();
+
+  cookie_receiver_ = std::make_unique<
+    examples::FortuneCookieReceiver>(
+    mojo::PendingReceiver<
+      mojom::FortuneCookie>(std::move(pipes.pipe_remote)));
+  cookie_receiver_->SetId("Producer");
+  cookie_receiver_->SetWish("Producer world!");
+  cookie_receiver_->SetCallbackOnError(
+    base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
+
+  cookie_remote_ = std::make_unique<
+    examples::FortuneCookieRemote>(
+      PendingRemote<mojom::FortuneCookie>(
+        std::move(pipes.pipe_receiver), 0));
+  cookie_remote_->SetId("Producer");
+  cookie_remote_->SetCallbackOnError(
+    base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
+
+  cookie_remote_->SendCrack();
+
+  // quit by request or automatically after some time
+  {
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&AppDemo::OnCloseRequest, base::Unretained(this)),
+        base::TimeDelta::FromSeconds(7));
+  }
+}
+
+BidirectionalPipes AppDemo::LaunchAndConnect() {
+  // Under the hood, this is essentially always an OS pipe (domain socket pair,
+  // Windows named pipe, Fuchsia channel, etc).
+  mojo::PlatformChannel channel;
+
+  LOG(INFO)
+    << "(LaunchAndConnect) local: "
+    << channel.local_endpoint().platform_handle().GetFD().get()
+    << " remote: "
+    << channel.remote_endpoint().platform_handle().GetFD().get();
+
+  mojo::OutgoingInvitation invitation;
+
+  std::string token_remote = base::NumberToString(base::RandUint64());
+  std::string token_receiver = base::NumberToString(base::RandUint64());
+  CHECK_NE(token_remote, token_receiver);
+
+  // Attach a message pipe to be extracted by the receiver.
+  // The other end of the
+  // pipe is returned for us to use locally.
+  mojo::ScopedMessagePipeHandle pipe_remote =
+      invitation.AttachMessagePipe(token_remote);
+
+  mojo::ScopedMessagePipeHandle pipe_receiver =
+      invitation.AttachMessagePipe(token_receiver);
+
+  static const char kTestTargetName[]
+    = "mojo_cookie_app_consumer";
+
+  base::LaunchOptions options;
+  base::CommandLine command_line
+    = *base::CommandLine::ForCurrentProcess();
+
+  base::FilePath target_path;
+  CHECK(base::PathService::Get(base::DIR_EXE, &target_path));
+#if defined(OS_WIN)
+    target_path =
+      target_path.AppendASCII(kTestTargetName)
+        .AddExtensionASCII("exe");
+#else
+    target_path
+      = target_path.Append(FILE_PATH_LITERAL(kTestTargetName));
+#endif
+
+  command_line.SetProgram(
+    base::MakeAbsoluteFilePath(target_path));
+
+  command_line.AppendSwitchASCII(kMojoRemoteToken, token_remote);
+  command_line.AppendSwitchASCII(kMojoReceiverToken, token_receiver);
+  channel.PrepareToPassRemoteEndpoint(&options, &command_line);
+  child_process_
+    = base::LaunchProcess(command_line, options);
+  channel.RemoteProcessLaunchAttempted();
+
+  if (child_process_.IsValid()) {
+    mojo::OutgoingInvitation::Send(
+      std::move(invitation),
+      child_process_.Handle(),
+      channel.TakeLocalEndpoint(),
+      base::BindRepeating(
+        [](const std::string& error)
+        {
+          LOG(ERROR)
+            << "OutgoingInvitation: "
+            << error;
+        })
+    );
+  } else {
+    LOG(ERROR)
+      << "Invalid child process";
+  }
+
+  return BidirectionalPipes{
+    std::move(pipe_remote),
+    std::move(pipe_receiver)};
+}
+
+void AppDemo::Destroy() {
+  if (cookie_remote_) {
+    cookie_remote_.reset();
+  }
+  if (cookie_receiver_) {
+    cookie_receiver_.reset();
+  }
+
+  if (child_process_.IsValid()) {
+    int exit_code;
+    child_process_.WaitForExitWithTimeout(
+      base::TimeDelta::FromSeconds(5), &exit_code);
+    LOG(INFO)
+      << "child_process exit_code:"
+      << exit_code;
+  }
+}
 
 void AppDemo::Run() {
   DCHECK(!is_running_);
@@ -192,7 +353,6 @@ void AppDemo::Run() {
   base::RunLoop run_loop;
   is_running_ = true;
   run_loop_ = &run_loop;
-  cb = run_loop.QuitClosure();
   RenderFrame();
   run_loop.Run();
   run_loop_ = nullptr;
@@ -293,29 +453,9 @@ int main(int argc, const char* argv[]) {
     << "app_demo.Initialize... ";
   app_demo.Initialize();
 
-  mojo::Remote<mojom::FortuneCookie> real_cookie;
-  examples::FortuneCookieImplAlpha impl(
-    real_cookie.BindNewPipeAndPassReceiver());
-
-  // although the method is defined as private, it can still be called through
-  // mojo interface pointer. But this call is asynchronous, which won't run
-  // until RunLoop().Run() is called
-  real_cookie->Crack(base::BindOnce([](const std::string& data){
-    LOG(INFO)
-      << "OnCrack: "
-      << data;
-    CHECK(cb);
-    std::move(cb).Run();
-  }));
-
-  // this call is executed BEFORE Crack() above
-  impl.EatMe();
-
   LOG(INFO)
     << "app_demo.Run... ";
   app_demo.Run();
-
-  real_cookie.reset();  // Closes the client end.
 
   LOG(INFO)
     << "app_demo.Destroy... ";

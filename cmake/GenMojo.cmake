@@ -91,12 +91,13 @@ endfunction()
 #   TARGET parse_mojom_fortune_cookie
 #   INPUT ${CMAKE_CURRENT_SOURCE_DIR}/fortune_cookie.mojom
 #   OUTPUT_DIR ".generated/mojo"
+#   INPUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}
 #   WORK_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 #
 function(parse_mojom)
   # see https://cliutils.gitlab.io/modern-cmake/chapters/basics/functions.html
   #set(options ) # empty
-  set(oneValueArgs PARSER_PATH TARGET INPUT OUTPUT_DIR WORK_DIR)
+  set(oneValueArgs PARSER_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR WORK_DIR)
   set(multiValueArgs ) # empty
   #
   cmake_parse_arguments(
@@ -130,6 +131,14 @@ function(parse_mojom)
   #
   set(OUTPUT_DIR ${ARGUMENTS_OUTPUT_DIR})
   #
+  set(INPUT_DIR ${ARGUMENTS_INPUT_DIR})
+  if (NOT EXISTS "${INPUT_DIR}")
+    message(FATAL_ERROR
+      "(parse_mojom) \
+      unable to find path: \
+      INPUT_DIR=${INPUT_DIR}")
+  endif()
+  #
   set(WORK_DIR ${ARGUMENTS_WORK_DIR})
   #
   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
@@ -147,7 +156,7 @@ function(parse_mojom)
   set(mojo_parse_command ${Python_EXECUTABLE}
     ${PARSER_PATH}
     --output-root=${OUTPUT_DIR}
-    --input-root=${EXTENSIONS_PATH}
+    --input-root=${INPUT_DIR}
     --mojoms=${INPUT}
   )
   message(STATUS "mojo_parse_command=${mojo_parse_command}")
@@ -174,13 +183,14 @@ endfunction()
 #   OUTPUT_DIR ".generated/mojo"
 #   BYTECODE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/.generated/mojo"
 #   OUTPUT_FILES "fortune_cookie.mojom-module.cc"
+#   INPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
 #   WORK_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
 #   TEMPLATE_FILES module.cc.tmpl)
 #
 function(generate_mojom_cpp_bindings)
   # see https://cliutils.gitlab.io/modern-cmake/chapters/basics/functions.html
   #set(options ) # empty
-  set(oneValueArgs GENERATOR_PATH TARGET INPUT OUTPUT_DIR
+  set(oneValueArgs GENERATOR_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR
     BYTECODE_PATH WORK_DIR)
   set(multiValueArgs TEMPLATE_FILES OUTPUT_FILES)
   #
@@ -214,6 +224,14 @@ function(generate_mojom_cpp_bindings)
   set(INPUT ${ARGUMENTS_INPUT})
   #
   set(OUTPUT_DIR ${ARGUMENTS_OUTPUT_DIR})
+  #
+  set(INPUT_DIR ${ARGUMENTS_INPUT_DIR})
+  if (NOT EXISTS "${INPUT_DIR}")
+    message(FATAL_ERROR
+      "(generate_mojom_cpp_bindings) \
+      unable to find path: \
+      INPUT_DIR=${INPUT_DIR}")
+  endif()
   #
   set(BYTECODE_PATH ${ARGUMENTS_BYTECODE_PATH})
   #
@@ -261,7 +279,7 @@ function(generate_mojom_cpp_bindings)
     --use_bundled_pylibs
     generate
     ${INPUT}
-    --depth=${EXTENSIONS_PATH}
+    --depth=${INPUT_DIR}
     --import_directories=${WORK_DIR}/${OUTPUT_DIR},${WORK_DIR},${MOJO_SOURCES_PATH},${EXTENSIONS_PATH},${bindings_generators_path},${bindings_generators_path}/..,${bindings_generators_path}/../..,${bindings_generators_path}/../../..,${bindings_generators_path}/../../../..,${bindings_generators_path}/../../../../..
     --output_dir=${OUTPUT_DIR}
     --gen_dir=${bindings_generators_path}/cpp_templates
@@ -316,7 +334,7 @@ function(generate_mojom_cpp_bindings)
       --use_bundled_pylibs
       generate
       ${INPUT}
-      --depth=${EXTENSIONS_PATH}
+      --depth=${INPUT_DIR}
       --import_directories=${WORK_DIR}/${OUTPUT_DIR},${WORK_DIR},${MOJO_SOURCES_PATH},${EXTENSIONS_PATH},${bindings_generators_path},${bindings_generators_path}/..,${bindings_generators_path}/../..,${bindings_generators_path}/../../..,${bindings_generators_path}/../../../..,${bindings_generators_path}/../../../../..
       --output_dir=${OUTPUT_DIR}
       --gen_dir=${bindings_generators_path}/cpp_templates
@@ -363,7 +381,7 @@ endfunction()
 function(generate_all_mojom_cpp_bindings)
   # see https://cliutils.gitlab.io/modern-cmake/chapters/basics/functions.html
   #set(options ) # empty
-  set(oneValueArgs GENERATOR_PATH TARGET INPUT OUTPUT_DIR
+  set(oneValueArgs GENERATOR_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR
     BYTECODE_PATH WORK_DIR)
   set(multiValueArgs OUTPUT_FILES)
   #
@@ -398,6 +416,14 @@ function(generate_all_mojom_cpp_bindings)
   #
   set(OUTPUT_DIR ${ARGUMENTS_OUTPUT_DIR})
   #
+  set(INPUT_DIR ${ARGUMENTS_INPUT_DIR})
+  if (NOT EXISTS "${INPUT_DIR}")
+    message(FATAL_ERROR
+      "(generate_all_mojom_cpp_bindings) \
+      unable to find path: \
+      INPUT_DIR=${INPUT_DIR}")
+  endif()
+  #
   set(BYTECODE_PATH ${ARGUMENTS_BYTECODE_PATH})
   #
   set(OUTPUT_FILES ${ARGUMENTS_OUTPUT_FILES})
@@ -415,6 +441,7 @@ function(generate_all_mojom_cpp_bindings)
     TARGET parse_mojom_${TARGET}
     INPUT ${INPUT}
     OUTPUT_DIR ${OUTPUT_DIR}
+    INPUT_DIR ${WORK_DIR}
     WORK_DIR ${WORK_DIR})
 
   add_dependencies(parse_mojom_${TARGET}
@@ -426,6 +453,7 @@ function(generate_all_mojom_cpp_bindings)
     BYTECODE_PATH ${BYTECODE_PATH}
     OUTPUT_DIR ${OUTPUT_DIR}
     OUTPUT_FILES ${OUTPUT_FILES}
+    INPUT_DIR ${WORK_DIR}
     WORK_DIR ${WORK_DIR}
     TEMPLATE_FILES
       module.cc.tmpl
@@ -452,6 +480,7 @@ function(generate_all_mojom_cpp_bindings)
   #  INPUT ${INPUT}
   #  BYTECODE_PATH ${BYTECODE_PATH}
   #  OUTPUT_DIR ${OUTPUT_DIR}
+  #  INPUT_DIR ${WORK_DIR}
   #  OUTPUT_FILES ${OUTPUT_FILES}
   #  WORK_DIR ${WORK_DIR}
   #  TEMPLATE_FILES

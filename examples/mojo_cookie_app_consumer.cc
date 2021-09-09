@@ -83,23 +83,12 @@
 
 using namespace examples;
 
-//template <class T>
-//using AssociatedRemote = mojo::AssociatedRemote<T>;
-//template <class T>
-//using PendingAssociatedRemote = mojo::AssociatedInterfacePtrInfo<T>;
-//template <class T>
-//using AssociatedReceiver = mojo::AssociatedReceiver<T>;
-//template <class T>
-//using PendingAssociatedReceiver = mojo::AssociatedInterfaceRequest<T>;
-//
-//template <class T>
-//using Remote = mojo::InterfacePtr<T>;
-//template <class T>
-//using PendingRemote = mojo::InterfacePtrInfo<T>;
-//template <class T>
-//using Receiver = mojo::Receiver<T>;
-//template <class T>
-//using PendingReceiver = mojo::InterfaceRequest<T>;
+namespace {
+
+constexpr char kMojoRemoteToken[] = "mojo-remote-token";
+constexpr char kMojoReceiverToken[] = "mojo-receiver-token";
+
+} // namespace
 
 namespace switches {
 
@@ -111,29 +100,10 @@ const int kTraceEventAppSortIndex = -1;
 
 } // namespace switches
 
-namespace {
-
-std::string copy_msg;
-base::Closure cb;
-
-void PrintAndQuit() {
-  std::cout << "check the copied message asynchronously: " << copy_msg << std::endl;
-  CHECK(cb);
-  std::move(cb).Run();
-}
-
-void CopyMessage(std::string* out_msg, const std::string& in_msg) {
-  std::cout << "Copy message: " << in_msg << std::endl;
-  *out_msg = in_msg;
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::BindOnce(&PrintAndQuit));
-}
-
-}  // namespace
-
 namespace tracing {
 
 namespace {
+
 // These categories will cause deadlock when ECHO_TO_CONSOLE. crbug.com/325575.
 const char kEchoToConsoleCategoryFilter[] = "-ipc,-toplevel";
 }  // namespace
@@ -165,24 +135,56 @@ class AppDemo {
   AppDemo();
   ~AppDemo();
 
-  void Initialize(){}
+  void Initialize();
   void Destroy();
   void Run();
 
  private:
   void OnCloseRequest();
   void RenderFrame();
+  void QuitWhenIdle();
 
 private:
   base::RunLoop* run_loop_ = nullptr;
   bool is_running_ = false;
+  base::Time next_render_time_ = base::Time::Now();
+  std::unique_ptr<
+    examples::FortuneCookieRemote> cookie_remote_;
+  std::unique_ptr<
+    examples::FortuneCookieReceiver> cookie_receiver_;
 };
 
 AppDemo::AppDemo() = default;
 
-AppDemo::~AppDemo() = default;
+AppDemo::~AppDemo() {
+  Destroy();
+}
 
 void AppDemo::OnCloseRequest() {
+  LOG(INFO)
+    << "OnCloseRequest";
+
+  if (cookie_receiver_) {
+    cookie_receiver_->SetWish("Consumer already closed!");
+  }
+
+  if (cookie_remote_) {
+    cookie_remote_->SendCrack();
+    cookie_remote_->SendCloseStream();
+  }
+
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&AppDemo::QuitWhenIdle, base::Unretained(this)),
+      base::TimeDelta::FromSeconds(5));
+}
+
+void AppDemo::QuitWhenIdle() {
+  Destroy();
+
+  LOG(INFO)
+    << "QuitWhenIdle";
+
   is_running_ = false;
   if (run_loop_)
     run_loop_->QuitWhenIdle();
@@ -192,17 +194,72 @@ void AppDemo::RenderFrame() {
   if (!is_running_)
     return;
 
-  //base::ThreadTaskRunnerHandle::Get()->PostTask(
-  //    FROM_HERE,
-  //    base::BindOnce(&AppDemo::RenderFrame, base::Unretained(this)));
+  LOG(INFO)
+    << "RenderFrame";
+
+  if (base::Time::Now() >= next_render_time_) {
+    static const base::TimeDelta tickrate{
+      base::TimeDelta::FromMilliseconds(500)};
+    next_render_time_ = base::Time::Now() + tickrate;
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&AppDemo::RenderFrame, base::Unretained(this)),
+        tickrate);
+  }
 
   /// \note stops main loop
-  // base::ThreadTaskRunnerHandle::Get()->PostTask(
-  //     FROM_HERE,
-  //     base::BindOnce(&AppDemo::OnCloseRequest, base::Unretained(this)));
+  //base::ThreadTaskRunnerHandle::Get()->PostTask(
+  //    FROM_HERE,
+  //    base::BindOnce(&AppDemo::OnCloseRequest, base::Unretained(this)));
 }
 
-void AppDemo::Destroy() {}
+void AppDemo::Initialize() {
+  auto* command_line = base::CommandLine::ForCurrentProcess();
+  auto endpoint
+    = mojo::PlatformChannel::RecoverPassedEndpointFromCommandLine(
+      *command_line);
+
+  // Accept an invitation.
+  mojo::IncomingInvitation invitation
+    = mojo::IncomingInvitation::Accept(std::move(endpoint));
+
+  mojo::ScopedMessagePipeHandle pipe_remote
+    = invitation.ExtractMessagePipe(
+      command_line->GetSwitchValueASCII(kMojoRemoteToken));
+
+  mojo::ScopedMessagePipeHandle pipe_receiver
+    = invitation.ExtractMessagePipe(
+      command_line->GetSwitchValueASCII(kMojoReceiverToken));
+
+  cookie_remote_ = std::make_unique<
+    examples::FortuneCookieRemote>(
+      PendingRemote<mojom::FortuneCookie>(
+        std::move(pipe_remote), 0));
+  cookie_remote_->SetId("Consumer");
+  cookie_remote_->SetCallbackOnError(
+    base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
+
+  cookie_receiver_ = std::make_unique<
+    examples::FortuneCookieReceiver>(
+    mojo::PendingReceiver<
+      mojom::FortuneCookie>(std::move(pipe_receiver)));
+  cookie_receiver_->SetId("Consumer");
+  cookie_receiver_->SetCallbackOnError(
+    base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
+
+  cookie_receiver_->SetWish("Consumer world!");
+
+  cookie_remote_->SendCrack();
+}
+
+void AppDemo::Destroy() {
+  if (cookie_remote_) {
+    cookie_remote_.reset();
+  }
+  if (cookie_receiver_) {
+    cookie_receiver_.reset();
+  }
+}
 
 void AppDemo::Run() {
   DCHECK(!is_running_);
@@ -210,7 +267,6 @@ void AppDemo::Run() {
   base::RunLoop run_loop;
   is_running_ = true;
   run_loop_ = &run_loop;
-  cb = run_loop.QuitClosure();
   RenderFrame();
   run_loop.Run();
   run_loop_ = nullptr;
@@ -311,21 +367,9 @@ int main(int argc, const char* argv[]) {
     << "app_demo.Initialize... ";
   app_demo.Initialize();
 
-  mojo::Remote<mojom::FortuneCookie> real_cookie;
-  examples::FortuneCookieImplAlpha impl(
-    real_cookie.BindNewPipeAndPassReceiver());
-
-  real_cookie->Crack(base::BindOnce(&CopyMessage, &copy_msg));
-  // since Crack() is called asynchronously, |copy_msg| is empty here
-  std::cout << "check the copied message synchronously: " << (copy_msg.empty() ? "Empty" : copy_msg) << std::endl;
-
-  impl.EatMe();
-
   LOG(INFO)
     << "app_demo.Run... ";
   app_demo.Run();
-
-  real_cookie.reset();
 
   LOG(INFO)
     << "app_demo.Destroy... ";

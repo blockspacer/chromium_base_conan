@@ -706,17 +706,14 @@ Read:
 Run examples:
 
 ```bash
-./local_build/mojo_cookie_app_a \
+# NOTE: will start mojo_cookie_app_consumer as child process
+./local_build/mojo_cookie_app_producer \
   --vmodule=*=9999 \
   --test-data-dir="$PWD/tests/data/" \
   --icu-data-file="$PWD/tests/data/resources/icu/optimal/icudt68l.dat"
 
-./local_build/mojo_cookie_app_b \
-  --vmodule=*=9999 \
-  --test-data-dir="$PWD/tests/data/" \
-  --icu-data-file="$PWD/tests/data/resources/icu/optimal/icudt68l.dat"
-
-./local_build/mojo_receiver_example \
+# NOTE: does nothing, must quit without errors
+./local_build/mojo_dummy_example \
   --vmodule=*=9999 \
   --test-data-dir="$PWD/tests/data/" \
   --icu-data-file="$PWD/tests/data/resources/icu/optimal/icudt68l.dat"

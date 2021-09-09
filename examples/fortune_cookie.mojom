@@ -2,6 +2,7 @@ module examples.mojom;
 
 interface FortuneCookie {
   Crack() => (string message);
+  CloseStream() => (string message);
 };
 
 const string kCookieDeliveryApp = "cookie_delivery_app";

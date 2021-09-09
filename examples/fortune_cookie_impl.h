@@ -23,23 +23,75 @@
 #include "mojo/public/interfaces/bindings/tests/sample_interfaces.mojom.h"
 #include "mojo/public/interfaces/bindings/tests/sample_service.mojom.h"
 
-#include "mojom/fortune_cookie.mojom.h"
+#include "examples/fortune_cookie.mojom.h"
 
 namespace examples {
-class FortuneCookieImplAlpha : public mojom::FortuneCookie {
- public:
-  FortuneCookieImplAlpha(
-    mojo::PendingReceiver<mojom::FortuneCookie> receiver);
-  ~FortuneCookieImplAlpha() override;
 
-  void EatMe();
+class FortuneCookieReceiver : public mojom::FortuneCookie {
+ public:
+  FortuneCookieReceiver(
+    mojo::PendingReceiver<mojom::FortuneCookie> receiver);
+
+  ~FortuneCookieReceiver() override;
+
+  void SetCallbackOnError(base::RepeatingClosure callback);
+
+  void SetWish(const std::string& wish);
+
+  void SetId(const std::string& id);
 
  private:
-  // mojom::FortuneCookie impl
+  void OnError();
+
+ private:
+  // sends answer
   void Crack(CrackCallback callback) override;
+
+  // sends answer
+  void CloseStream(CloseStreamCallback callback) override;
+
+ private:
+  std::string id_{"Unknown"};
+
+  base::RepeatingClosure errorCallback_;
 
   mojo::Receiver<mojom::FortuneCookie> receiver_;
 
-  DISALLOW_COPY_AND_ASSIGN(FortuneCookieImplAlpha);
+  std::string wish_{"A dream you have will come true."};
+
+  DISALLOW_COPY_AND_ASSIGN(FortuneCookieReceiver);
 };
+
+class FortuneCookieRemote {
+ public:
+  FortuneCookieRemote(
+    mojo::PendingRemote<mojom::FortuneCookie> remote);
+
+  ~FortuneCookieRemote();
+
+  void SetCallbackOnError(base::RepeatingClosure callback);
+
+  void SetId(const std::string& id);
+
+  void SendCrack();
+
+  void SendCloseStream();
+
+ private:
+  void OnCloseStreamAnswer(const std::string& data);
+
+  void OnCrackAnswer(const std::string& data);
+
+  void OnError();
+
+ private:
+  mojo::Remote<mojom::FortuneCookie> remote_;
+
+  std::string id_{"Unknown"};
+
+  base::RepeatingClosure errorCallback_;
+
+  DISALLOW_COPY_AND_ASSIGN(FortuneCookieRemote);
+};
+
 }  // namespace examples
