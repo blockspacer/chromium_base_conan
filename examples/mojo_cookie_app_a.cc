@@ -81,6 +81,8 @@
 #include <string>
 #include <iostream>
 
+using namespace examples;
+
 //template <class T>
 //using AssociatedRemote = mojo::AssociatedRemote<T>;
 //template <class T>
@@ -98,8 +100,6 @@
 //using Receiver = mojo::Receiver<T>;
 //template <class T>
 //using PendingReceiver = mojo::InterfaceRequest<T>;
-
-using namespace examples;
 
 namespace switches {
 
@@ -140,131 +140,7 @@ using namespace mojo;
 using namespace sample;
 using namespace base;
 
-class ServiceImpl : public sample::Service {
- public:
-  ServiceImpl() = default;
-  explicit ServiceImpl(bool* was_deleted)
-      : destruction_callback_(base::BindLambdaForTesting(
-            [was_deleted] { *was_deleted = true; })) {}
-  explicit ServiceImpl(base::OnceClosure destruction_callback)
-      : destruction_callback_(std::move(destruction_callback)) {}
-
-  ~ServiceImpl() override {
-    if (destruction_callback_)
-      std::move(destruction_callback_).Run();
-  }
-
- private:
-  // sample::Service implementation
-  void Frobinate(sample::FooPtr foo,
-                 BazOptions options,
-                 PendingRemote<sample::Port> port,
-                 FrobinateCallback callback) override {
-    std::move(callback).Run(1);
-  }
-  void GetPort(PendingReceiver<sample::Port> port) override {}
-
-  base::OnceClosure destruction_callback_;
-
-  DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
-};
-
-class PingServiceImpl : public mojo::test::PingService {
- public:
-  PingServiceImpl() = default;
-  ~PingServiceImpl() override = default;
-
-  // mojo::test::PingService:
-  void Ping(PingCallback callback) override {
-    if (ping_handler_)
-      ping_handler_.Run();
-    std::move(callback).Run();
-  }
-
-  void set_ping_handler(base::RepeatingClosure handler) {
-    ping_handler_ = std::move(handler);
-  }
-
- private:
-  base::RepeatingClosure ping_handler_;
-
-  DISALLOW_COPY_AND_ASSIGN(PingServiceImpl);
-};
-
-class CallbackFilter : public MessageFilter {
- public:
-  explicit CallbackFilter(const base::RepeatingClosure& will_dispatch_callback,
-                          const base::RepeatingClosure& did_dispatch_callback)
-      : will_dispatch_callback_(will_dispatch_callback),
-        did_dispatch_callback_(did_dispatch_callback) {}
-  ~CallbackFilter() override {}
-
-  static std::unique_ptr<CallbackFilter> Wrap(
-      const base::RepeatingClosure& will_dispatch_callback,
-      const base::RepeatingClosure& did_dispatch_callback) {
-    return std::make_unique<CallbackFilter>(will_dispatch_callback,
-                                            did_dispatch_callback);
-  }
-
-  // MessageFilter:
-  bool WillDispatch(Message* message) override {
-    will_dispatch_callback_.Run();
-    return true;
-  }
-
-  void DidDispatchOrReject(Message* message, bool accepted) override {
-    did_dispatch_callback_.Run();
-  }
-
- private:
-  const base::RepeatingClosure will_dispatch_callback_;
-  const base::RepeatingClosure did_dispatch_callback_;
-};
-
-// interface PingService {
-//   [Sync]
-//   Ping() => ();
-// };
-class PingImpl : public mojo::test::PingService {
- public:
-  explicit PingImpl(PendingReceiver<mojo::test::PingService> receiver)
-      : receiver_(this, std::move(receiver)) {}
-  ~PingImpl() override = default;
-
-  bool pinged() const { return pinged_; }
-
-  // mojo::test::PingService:
-  void Ping(PingCallback callback) override {
-    pinged_ = true;
-    std::move(callback).Run();
-  }
-
- private:
-  bool pinged_ = false;
-  Receiver<mojo::test::PingService> receiver_;
-
-  DISALLOW_COPY_AND_ASSIGN(PingImpl);
-};
-
-// interface EchoService {
-//   Echo(string test_data) => (string echo_data);
-// };
-class EchoImpl : public mojo::test::EchoService {
- public:
-  explicit EchoImpl(PendingReceiver<mojo::test::EchoService> receiver)
-      : receiver_(this, std::move(receiver)) {}
-  ~EchoImpl() override = default;
-
-  // mojo::test::EchoService:
-  void Echo(const std::string& message, EchoCallback callback) override {
-    std::move(callback).Run(message);
-  }
-
- private:
-  Receiver<mojo::test::EchoService> receiver_;
-
-  DISALLOW_COPY_AND_ASSIGN(EchoImpl);
-};
+base::Closure cb;
 
 class AppDemo {
  public:
@@ -298,14 +174,14 @@ void AppDemo::RenderFrame() {
   if (!is_running_)
     return;
 
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&AppDemo::RenderFrame, base::Unretained(this)));
+  //base::ThreadTaskRunnerHandle::Get()->PostTask(
+  //    FROM_HERE,
+  //    base::BindOnce(&AppDemo::RenderFrame, base::Unretained(this)));
 
   /// \note stops main loop
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&AppDemo::OnCloseRequest, base::Unretained(this)));
+  //base::ThreadTaskRunnerHandle::Get()->PostTask(
+  //    FROM_HERE,
+  //    base::BindOnce(&AppDemo::OnCloseRequest, base::Unretained(this)));
 }
 
 void AppDemo::Destroy() {}
@@ -316,6 +192,7 @@ void AppDemo::Run() {
   base::RunLoop run_loop;
   is_running_ = true;
   run_loop_ = &run_loop;
+  cb = run_loop.QuitClosure();
   RenderFrame();
   run_loop.Run();
   run_loop_ = nullptr;
@@ -416,9 +293,29 @@ int main(int argc, const char* argv[]) {
     << "app_demo.Initialize... ";
   app_demo.Initialize();
 
+  mojo::Remote<mojom::FortuneCookie> real_cookie;
+  examples::FortuneCookieImplAlpha impl(
+    real_cookie.BindNewPipeAndPassReceiver());
+
+  // although the method is defined as private, it can still be called through
+  // mojo interface pointer. But this call is asynchronous, which won't run
+  // until RunLoop().Run() is called
+  real_cookie->Crack(base::BindOnce([](const std::string& data){
+    LOG(INFO)
+      << "OnCrack: "
+      << data;
+    CHECK(cb);
+    std::move(cb).Run();
+  }));
+
+  // this call is executed BEFORE Crack() above
+  impl.EatMe();
+
   LOG(INFO)
     << "app_demo.Run... ";
   app_demo.Run();
+
+  real_cookie.reset();  // Closes the client end.
 
   LOG(INFO)
     << "app_demo.Destroy... ";

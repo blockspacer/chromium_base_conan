@@ -297,6 +297,8 @@ endif(ENABLE_COMPACT_ENC_DET)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenBuildFlags.cmake)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenMojo.cmake)
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProjectFiles.cmake)
 
 if(TARGET_EMSCRIPTEN)

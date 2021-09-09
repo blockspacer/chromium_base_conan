@@ -691,22 +691,36 @@ Re-install conan workspace with `--build=missing`.
 
 NOTE: You can use `-e chromium_base:compile_with_llvm_tools=True` instead.
 
-## Mojo IPC example
+## Mojo IPC examples
+
+Read:
+* https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/docs/basics.md
+* https://chromium.googlesource.com/chromium/src/+/HEAD/docs/mojo_and_services.md
+* https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/cpp/bindings/README.md
+* https://source.chromium.org/chromium/chromium/src/+/master:mojo/public/cpp/bindings/README.md
+* https://xzwang2005.github.io/Prelude/crack_the_code/Chap_3/mojo_101.html
+* https://github.com/xzwang2005/Prelude/blob/bd005acdcffcb54564597246a6ee613b21fa592f/prelude/excerpt02_mojo/public/mojom/fortune_cookie.mojom
+* https://github.com/metux/chromium-deb/blob/3c08e9b89a1b6f95f103a61ff4f528dbcd57fc42/mojo/public/cpp/bindings/README.md
+* https://www.chromium.org/Home/chromium-security/education/security-tips-for-ipc
+
+Run examples:
 
 ```bash
+./local_build/mojo_cookie_app_a \
+  --vmodule=*=9999 \
+  --test-data-dir="$PWD/tests/data/" \
+  --icu-data-file="$PWD/tests/data/resources/icu/optimal/icudt68l.dat"
+
+./local_build/mojo_cookie_app_b \
+  --vmodule=*=9999 \
+  --test-data-dir="$PWD/tests/data/" \
+  --icu-data-file="$PWD/tests/data/resources/icu/optimal/icudt68l.dat"
+
 ./local_build/mojo_receiver_example \
   --vmodule=*=9999 \
   --test-data-dir="$PWD/tests/data/" \
   --icu-data-file="$PWD/tests/data/resources/icu/optimal/icudt68l.dat"
 ```
-
-Read:
-* https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/docs/basics.md
-* https://chromium.googlesource.com/chromium/src/+/HEAD/docs/mojo_and_services.md
-* https://source.chromium.org/chromium/chromium/src/+/master:mojo/public/cpp/bindings/README.md
-* https://xzwang2005.github.io/Prelude/crack_the_code/Chap_3/mojo_101.html
-* https://github.com/xzwang2005/Prelude/blob/bd005acdcffcb54564597246a6ee613b21fa592f/prelude/excerpt02_mojo/public/mojom/fortune_cookie.mojom
-* https://github.com/metux/chromium-deb/blob/3c08e9b89a1b6f95f103a61ff4f528dbcd57fc42/mojo/public/cpp/bindings/README.md
 
 ## Disclaimer
 

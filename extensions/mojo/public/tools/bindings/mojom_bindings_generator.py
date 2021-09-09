@@ -63,6 +63,7 @@ _BUILTIN_GENERATORS = {
 
 
 def LoadGenerators(generators_string):
+  print("LoadGenerators")
   if not generators_string:
     return []  # No generators.
 
@@ -72,6 +73,7 @@ def LoadGenerators(generators_string):
     if language not in _BUILTIN_GENERATORS:
       print("Unknown generator name %s" % generator_name)
       sys.exit(1)
+    print("generators.%s" % _BUILTIN_GENERATORS[language])
     generator_module = importlib.import_module(
         "generators.%s" % _BUILTIN_GENERATORS[language])
     generators[language] = generator_module
@@ -96,7 +98,9 @@ class RelativePath(object):
     elif path.startswith(output_dir):
       self.root = output_dir
     else:
-      raise Exception("Invalid input path %s ; source_root is %s ; output_dir is %s" % (path, source_root, output_dir))
+      raise Exception("Invalid input path %s ;\
+         source_root is %s ;\
+          output_dir is %s" % (path, source_root, output_dir))
 
   def relative_path(self):
     return os.path.relpath(
@@ -184,7 +188,10 @@ class MojomProcessor(object):
           MakeImportStackMessage(imported_filename_stack + [rel_filename.path]))
       sys.exit(1)
 
+    print("_GenerateModule rel_filename.path " + str(rel_filename.path))
+    print("_GenerateModule args.output_dir " + str(args.output_dir))
     module_path = _GetModulePath(rel_filename, args.output_dir)
+    print("_GenerateModule module_path " + str(module_path))
     with open(module_path, 'rb') as f:
       module = Module.Load(f)
 
@@ -237,6 +244,12 @@ def _Generate(args, remaining_args):
     else:
       args.import_directories[idx] = RelativePath(tokens[0], args.depth,
                                                   args.output_dir)
+    print("_Generate tokens[0] %s" % str(tokens[0]))
+    if len(tokens) >= 2:
+      print("_Generate tokens[1] %s" % str(tokens[1]))
+    print("_Generate args.depth %s" % str(args.depth))
+    print("_Generate args.output_dir %s" % str(args.output_dir))
+  print("_Generate generators_string %s" % args.generators_string)
   generator_modules = LoadGenerators(args.generators_string)
 
   fileutil.EnsureDirectoryExists(args.output_dir)
@@ -247,6 +260,7 @@ def _Generate(args, remaining_args):
   if args.filelist:
     with open(args.filelist) as f:
       args.filename.extend(f.read().split())
+  print("_Generate args.output_dir " + str(args.output_dir))
 
   for filename in args.filename:
     processor._GenerateModule(
@@ -257,6 +271,7 @@ def _Generate(args, remaining_args):
 
 
 def _Precompile(args, _):
+  #print("_BUILTIN_GENERATORS")
   generator_modules = LoadGenerators(",".join(_BUILTIN_GENERATORS.keys()))
 
   template_expander.PrecompileTemplates(generator_modules, args.output_dir)
@@ -279,6 +294,16 @@ def main():
 
   generate_parser = subparsers.add_parser(
       "generate", description="Generate bindings from mojom files.")
+
+  generate_parser.add_argument("--use_bundled_pylibs", action="store_true",
+                      help="use Python modules bundled in the SDK")
+  generate_parser.add_argument(
+      "-o",
+      "--output_dir",
+      dest="output_dir",
+      default=".",
+      help="output directory for generated files")
+
   generate_parser.add_argument("filename", nargs="*",
                                help="mojom input file")
   generate_parser.add_argument("--filelist", help="mojom input file list")
@@ -386,6 +411,7 @@ def main():
   precompile_parser.set_defaults(func=_Precompile)
 
   args, remaining_args = parser.parse_known_args()
+  print("parse_known_args args.output_dir " + str(args.output_dir))
   return args.func(args, remaining_args)
 
 

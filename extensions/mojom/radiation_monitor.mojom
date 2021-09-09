@@ -1,0 +1,9 @@
+module examples.mojom;
+
+interface RadiationListener {
+  OnRadiationLeak(string msg);
+};
+
+interface RadiationMonitor {
+  RegisterListener(RadiationListener listener);
+};

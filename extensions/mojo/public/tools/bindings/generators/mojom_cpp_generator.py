@@ -476,6 +476,7 @@ class Generator(generator.Generator):
         self.WriteWithComment(self._GenerateModuleSharedMessageIdsHeader(),
                               "%s-shared-message-ids.h" % self.module.path)
       else:
+        print("_GenerateModuleSharedHeader %s" + self.module.path)
         self.WriteWithComment(self._GenerateModuleSharedHeader(),
                               "%s-shared.h" % self.module.path)
         self.WriteWithComment(self._GenerateModuleSharedInternalHeader(),
@@ -486,6 +487,8 @@ class Generator(generator.Generator):
                               "%s-params-data.h" % self.module.path)
     else:
       suffix = "-%s" % self.variant if self.variant else ""
+      print("suffix "+suffix)
+      print("self.module.path "+self.module.path)
       self.WriteWithComment(self._GenerateModuleHeader(),
                             "%s%s.h" % (self.module.path, suffix))
       self.WriteWithComment(self._GenerateModuleForwardHeader(),

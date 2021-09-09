@@ -107,8 +107,9 @@ set(EXTENSIONS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/extensions/)
 
 set(MOJO_SOURCES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/extensions/mojo/)
 
-# TODO: generate code from ".mojom" files
 set(MOJO_GENERATOR_PATH ${CMAKE_CURRENT_SOURCE_DIR}/extensions/mojo/public/tools/bindings/mojom_bindings_generator.py)
+
+set(MOJO_PARSER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/extensions/mojo/public/tools/mojom/mojom_parser.py)
 
 set(IPC_SOURCES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/extensions/ipc/)
 
