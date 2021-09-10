@@ -60,6 +60,44 @@ void FortuneCookieReceiver::SetName(const std::string& who,
   std::move(callback).Run(is_valid);
 }
 
+void FortuneCookieReceiver::FillRects(
+  base::Optional<std::vector<::examples::mojom::RectPtr>> elements,
+  const std::vector<uint64_t>& uuid,
+  base::Optional<
+    base::flat_map<uint64_t,
+    ::examples::mojom::RectPtr>> maybe_map,
+  uint64_t hint,
+  FillRectsCallback callback)
+{
+  ALLOW_UNUSED_LOCAL(elements);
+  ALLOW_UNUSED_LOCAL(uuid);
+  ALLOW_UNUSED_LOCAL(maybe_map);
+  ALLOW_UNUSED_LOCAL(hint);
+
+  ::examples::mojom::Department dpt
+    = ::examples::mojom::Department::kDev;
+
+  LOG(INFO)
+    << id_
+    << " recieved FillRects request.";
+  std::move(callback).Run(std::move(dpt));
+}
+
+void FortuneCookieReceiver::AttachFingerPrint(
+  uint64_t id,
+  const std::vector<uint8_t>& finger_print,
+  AttachFingerPrintCallback callback)
+{
+  LOG(INFO)
+    << id_
+    << " recieved FillRects request.";
+
+  /// \todo do smth
+  bool ok = true;
+
+  std::move(callback).Run(std::move(ok));
+}
+
 void FortuneCookieReceiver::SetCallbackOnError(base::RepeatingClosure callback) {
   errorCallback_ = callback;
 }
@@ -121,6 +159,35 @@ void FortuneCookieRemote::OnCloseStreamAnswer(const std::string& data) {
   LOG(INFO)
     << id_
     << " OnCloseStreamAnswer: "
+    << data;
+}
+void FortuneCookieRemote::SendFillRects()
+{
+  /// \todo send smth
+  base::Optional<std::vector<::examples::mojom::RectPtr>> elements{
+    base::nullopt};
+  std::vector<uint64_t> uuid{7,3};
+  base::Optional<
+    base::flat_map<uint64_t,
+    ::examples::mojom::RectPtr>> maybe_map{base::nullopt};
+  uint64_t hint{0};
+
+  remote_->FillRects(
+    std::move(elements),
+    std::move(uuid),
+    std::move(maybe_map),
+    std::move(hint),
+    base::BindOnce(
+      &FortuneCookieRemote::OnFillRectsAnswer,
+      base::Unretained(this)));
+}
+
+void FortuneCookieRemote::OnFillRectsAnswer(
+  ::examples::mojom::Department data)
+{
+  LOG(INFO)
+    << id_
+    << " OnFillRectsAnswer"
     << data;
 }
 

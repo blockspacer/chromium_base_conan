@@ -30,13 +30,15 @@
 #include "mojo/public/interfaces/bindings/tests/sample_interfaces.mojom.h"
 #include "mojo/public/interfaces/bindings/tests/sample_service.mojom.h"
 
-#include "examples/fortune_cookie.mojom.h"
+#include "examples/mojom/fortune_cookie/fortune_cookie.mojom.h"
 
 namespace examples {
 
+// Used to receive the interface messages sent by Remote.
 class FortuneCookieReceiver : public mojom::FortuneCookie {
  public:
   FortuneCookieReceiver(
+    // Typed container to hold the other end of a Remote’s pipe.
     mojo::PendingReceiver<mojom::FortuneCookie> receiver);
 
   ~FortuneCookieReceiver() override;
@@ -52,13 +54,31 @@ class FortuneCookieReceiver : public mojom::FortuneCookie {
 
  private:
   // sends answer
-  void Crack(CrackCallback callback) override;
+  void Crack(
+    CrackCallback callback) override;
 
   // sends answer
-  void CloseStream(CloseStreamCallback callback) override;
+  void CloseStream(
+    CloseStreamCallback callback) override;
 
   // sends answer
-  void SetName(const std::string& who, SetNameCallback callback) override;
+  void SetName(const std::string& who,
+    SetNameCallback callback) override;
+
+  // sends answer
+  void FillRects(
+    base::Optional<std::vector<::examples::mojom::RectPtr>> elements,
+    const std::vector<uint64_t>& uuid,
+    base::Optional<
+      base::flat_map<uint64_t,
+      ::examples::mojom::RectPtr>> maybe_map,
+    uint64_t hint,
+    FillRectsCallback callback) override;
+
+  void AttachFingerPrint(
+    uint64_t id,
+    const std::vector<uint8_t>& finger_print,
+    AttachFingerPrintCallback callback) override;
 
  private:
   std::string id_{"Unknown"};
@@ -74,9 +94,11 @@ class FortuneCookieReceiver : public mojom::FortuneCookie {
   DISALLOW_COPY_AND_ASSIGN(FortuneCookieReceiver);
 };
 
+// Used to send messages described by the interface.
 class FortuneCookieRemote {
  public:
   FortuneCookieRemote(
+    // Typed container to hold the other end of a Receiver’s pipe.
     mojo::PendingRemote<mojom::FortuneCookie> remote);
 
   ~FortuneCookieRemote();
@@ -89,9 +111,13 @@ class FortuneCookieRemote {
 
   void SendCloseStream();
 
+  void SendFillRects();
+
   base::Promise<bool> SendSetName(const std::string& data);
 
  private:
+  void OnFillRectsAnswer(::examples::mojom::Department data);
+
   void OnSetNameAnswer(
     base::OnceCallback<void(bool)>&& resolveCallback,
     bool data);

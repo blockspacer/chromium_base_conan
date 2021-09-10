@@ -231,10 +231,16 @@ void AppDemo::Initialize() {
     = invitation.ExtractMessagePipe(
       command_line->GetSwitchValueASCII(kMojoReceiverToken));
 
+  // if a client on version above X
+  // interface with [MinVersion=X]
+  // sends an request to an implementation of version kMinVersion,
+  // the client will be disconnected.
+  static uint64_t kMinVersion = 0;
+
   cookie_remote_ = std::make_unique<
     examples::FortuneCookieRemote>(
       PendingRemote<mojom::FortuneCookie>(
-        std::move(pipe_remote), 0));
+        std::move(pipe_remote), kMinVersion));
   cookie_remote_->SetId("Consumer");
   cookie_remote_->SetCallbackOnError(
     base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
@@ -259,6 +265,7 @@ void AppDemo::Initialize() {
     })
   );
   cookie_remote_->SendCrack();
+  cookie_remote_->SendFillRects();
 }
 
 void AppDemo::Destroy() {

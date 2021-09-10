@@ -98,7 +98,7 @@ function(parse_mojom)
   # see https://cliutils.gitlab.io/modern-cmake/chapters/basics/functions.html
   #set(options ) # empty
   set(oneValueArgs PARSER_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR WORK_DIR)
-  set(multiValueArgs ) # empty
+  set(multiValueArgs BYPRODUCTS)
   #
   cmake_parse_arguments(
     ARGUMENTS # prefix of output variables
@@ -143,6 +143,8 @@ function(parse_mojom)
   #
   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
   #
+  set(BYPRODUCTS ${ARGUMENTS_BYPRODUCTS})
+  #
   set(MOJO_PYTHON_VERSION ""
     CACHE STRING "Optional user-selected Python version")
   if(MOJO_PYTHON_VERSION)
@@ -161,7 +163,10 @@ function(parse_mojom)
   )
   message(STATUS "mojo_parse_command=${mojo_parse_command}")
 
-  add_custom_target(${TARGET}
+  set_source_files_properties(${BYPRODUCTS}
+    PROPERTIES GENERATED TRUE)
+
+  add_custom_command(OUTPUT ${BYPRODUCTS}
     COMMAND ${CMAKE_COMMAND} -E echo
       ----------------------------------
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -169,7 +174,12 @@ function(parse_mojom)
     COMMAND ${CMAKE_COMMAND} -E time
       ${mojo_parse_command}
     WORKING_DIRECTORY ${WORK_DIR}
-    COMMENT "Parsing file ${INPUT} into ${OUTPUT}"
+    BYPRODUCTS ${BYPRODUCTS}
+    COMMENT "Parsing file ${INPUT} into ${OUTPUT}")
+
+  add_custom_target(${TARGET}
+    DEPENDS ${BYPRODUCTS}
+    COMMENT "Target: Parsing file ${INPUT} into ${OUTPUT}"
   )
 endfunction()
 
@@ -192,7 +202,7 @@ function(generate_mojom_cpp_bindings)
   #set(options ) # empty
   set(oneValueArgs GENERATOR_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR
     BYTECODE_PATH WORK_DIR)
-  set(multiValueArgs TEMPLATE_FILES OUTPUT_FILES)
+  set(multiValueArgs TEMPLATE_FILES OUTPUT_FILES DEPENDS)
   #
   cmake_parse_arguments(
     ARGUMENTS # prefix of output variables
@@ -239,7 +249,10 @@ function(generate_mojom_cpp_bindings)
   #
   set(WORK_DIR ${ARGUMENTS_WORK_DIR})
   #
+  set(DEPENDS ${ARGUMENTS_DEPENDS})
+  #
   set(TEMPLATE_FILES ${ARGUMENTS_TEMPLATE_FILES})
+  message(STATUS "TEMPLATE_FILES=${TEMPLATE_FILES}")
   #
   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
   #
@@ -270,6 +283,7 @@ function(generate_mojom_cpp_bindings)
     COMMAND ${CMAKE_COMMAND} -E make_directory
       ${OUTPUT_DIR}
     WORKING_DIRECTORY ${WORK_DIR}
+    DEPENDS ${DEPENDS}
     COMMENT "Generating files ${OUTPUT_FILES} \
       from ${TEMPLATE_FILEPATH}"
   )
@@ -302,6 +316,7 @@ function(generate_mojom_cpp_bindings)
       --generate_message_ids
     COMMAND ${CMAKE_COMMAND} -E time
       ${mojo_gen_command}
+    DEPENDS ${DEPENDS}
     WORKING_DIRECTORY ${WORK_DIR}
     COMMENT "${TARGET}-templates: \
       Generating files ${OUTPUT_FILES}"
@@ -362,6 +377,7 @@ function(generate_mojom_cpp_bindings)
         --generate_message_ids
       COMMAND ${CMAKE_COMMAND} -E time
         ${mojo_gen_command}
+      DEPENDS ${DEPENDS}
       WORKING_DIRECTORY ${WORK_DIR}
       COMMENT "${TARGET}-${TEMPLATE_FILENAME}: \
         Generating files ${OUTPUT_FILES} \
@@ -383,7 +399,7 @@ function(generate_all_mojom_cpp_bindings)
   #set(options ) # empty
   set(oneValueArgs GENERATOR_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR
     BYTECODE_PATH WORK_DIR)
-  set(multiValueArgs OUTPUT_FILES)
+  set(multiValueArgs OUTPUT_FILES BYPRODUCTS)
   #
   cmake_parse_arguments(
     ARGUMENTS # prefix of output variables
@@ -432,20 +448,19 @@ function(generate_all_mojom_cpp_bindings)
   #
   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
   #
-  precompile_mojom_bindings(
-    TARGET precompile_mojom_${TARGET}
-    OUTPUT_DIR ${OUTPUT_DIR}
-    WORK_DIR ${WORK_DIR})
+  set(BYPRODUCTS ${ARGUMENTS_BYPRODUCTS})
+  #
 
   parse_mojom(
     TARGET parse_mojom_${TARGET}
     INPUT ${INPUT}
     OUTPUT_DIR ${OUTPUT_DIR}
     INPUT_DIR ${WORK_DIR}
-    WORK_DIR ${WORK_DIR})
+    WORK_DIR ${WORK_DIR}
+    BYPRODUCTS ${BYPRODUCTS})
 
   add_dependencies(parse_mojom_${TARGET}
-    precompile_mojom_${TARGET})
+    precompile_mojom)
 
   generate_mojom_cpp_bindings(
     TARGET generate_mojom_${TARGET}
@@ -455,6 +470,7 @@ function(generate_all_mojom_cpp_bindings)
     OUTPUT_FILES ${OUTPUT_FILES}
     INPUT_DIR ${WORK_DIR}
     WORK_DIR ${WORK_DIR}
+    DEPENDS ${BYPRODUCTS}
     TEMPLATE_FILES
       module.cc.tmpl
       module.h.tmpl

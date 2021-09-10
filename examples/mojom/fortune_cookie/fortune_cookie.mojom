@@ -1,0 +1,43 @@
+module examples.mojom;
+
+import "examples/mojom/rect/rect.mojom";
+
+[Extensible]
+enum Department {
+  [Default] kUnknown,
+  kSales,
+  kDev,
+  kResearch,
+};
+
+struct StringPair {
+  string first;
+  string second;
+};
+
+enum YesOrNo {
+  kYES = 0,
+  kNO
+};
+
+union ExampleUnion {
+  string str;
+  StringPair pair;
+  int64 id;
+  array<uint64, 2> guid;
+};
+
+interface FortuneCookie {
+  FillRects(array<Rect>? elements, 
+    array<uint64, 2> uuid, 
+    map<uint64, Rect>? maybe_map,
+    uint64 hint) => (Department department);
+  SetName(string who) => (bool is_valid);
+  Crack() => (string message);
+  CloseStream() => (string message);
+  [MinVersion=1]
+  AttachFingerPrint(uint64 id, array<uint8> finger_print)
+      => (bool success);
+};
+
+const string kCookieDeliveryApp = "cookie_delivery_app";

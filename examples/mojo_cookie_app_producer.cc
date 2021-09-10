@@ -233,10 +233,16 @@ void AppDemo::Initialize() {
   cookie_receiver_->SetCallbackOnError(
     base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
 
+  // if a client on version above X
+  // interface with [MinVersion=X]
+  // sends an request to an implementation of version kMinVersion,
+  // the client will be disconnected.
+  static uint64_t kMinVersion = 0;
+
   cookie_remote_ = std::make_unique<
     examples::FortuneCookieRemote>(
       PendingRemote<mojom::FortuneCookie>(
-        std::move(pipes.pipe_receiver), 0));
+        std::move(pipes.pipe_receiver), kMinVersion));
   cookie_remote_->SetId("Producer");
   cookie_remote_->SetCallbackOnError(
     base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
@@ -251,6 +257,7 @@ void AppDemo::Initialize() {
     })
   );
   cookie_remote_->SendCrack();
+  cookie_remote_->SendFillRects();
 
   // quit by request or automatically after some time
   {

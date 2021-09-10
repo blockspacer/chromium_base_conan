@@ -698,6 +698,7 @@ Mojo IPC supports communication between multiple processes.
 Most of the other IPCs only support communication between two processes.
 
 Read:
+* https://blogs.igalia.com/gyuyoung/2020/05/11/how-chromium-got-its-mojo/
 * https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/docs/basics.md
 * https://chromium.googlesource.com/chromium/src/+/HEAD/docs/mojo_and_services.md
 * https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/cpp/bindings/README.md
@@ -714,6 +715,7 @@ Read:
 * https://docs.google.com/document/d/1M0-K0gi1xXO0f_-YKSH2LFVh4RJY-xe9T9VaGFOSXb0/edit#
 * https://gitlab.developers.cam.ac.uk/jz448/browser-android-tabs/-/blob/f0a26d6eef948eb21d53ca3a9f9962bc633b06ed/docs/README.md#mojo-services
 * https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/tools/bindings/README.md
+* https://mariospr.org/category/mojo-ipc/
 
 Run examples, note example with `Promise` usage:
 
