@@ -691,7 +691,11 @@ Re-install conan workspace with `--build=missing`.
 
 NOTE: You can use `-e chromium_base:compile_with_llvm_tools=True` instead.
 
-## Mojo IPC examples
+## Mojo IPC
+
+Mojo IPC supports communication between multiple processes.
+
+Most of the other IPCs only support communication between two processes.
 
 Read:
 * https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/docs/basics.md
@@ -699,11 +703,19 @@ Read:
 * https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/cpp/bindings/README.md
 * https://source.chromium.org/chromium/chromium/src/+/master:mojo/public/cpp/bindings/README.md
 * https://xzwang2005.github.io/Prelude/crack_the_code/Chap_3/mojo_101.html
+* https://keyou.github.io/blog/2020/01/03/Chromium-Mojo&IPC/
 * https://github.com/xzwang2005/Prelude/blob/bd005acdcffcb54564597246a6ee613b21fa592f/prelude/excerpt02_mojo/public/mojom/fortune_cookie.mojom
 * https://github.com/metux/chromium-deb/blob/3c08e9b89a1b6f95f103a61ff4f528dbcd57fc42/mojo/public/cpp/bindings/README.md
 * https://www.chromium.org/Home/chromium-security/education/security-tips-for-ipc
+* https://docs.google.com/document/d/1n7qYjQ5iy8xAkQVMYGqjIy_AXu2_JJtMoAcOOupO_jQ/edit
+* https://docs.google.com/document/d/1Jwfbzbe8ozaoilhqj5mAPYbYGpgZCen_XAAAdwmyP1E/edit#heading=h.serv9pzfw6sd
+* https://docs.google.com/document/d/18pOsJOTuLVH-V7s9xwR-em9t-R4icyPjk7i8I8bfjjg/edit#heading=h.d88n53n8beml
+* https://docs.google.com/document/d/1nq3J_HbS-gvVfIoEhcVyxm1uY-9G_7lhD-4Kyxb1WIY/edit
+* https://docs.google.com/document/d/1M0-K0gi1xXO0f_-YKSH2LFVh4RJY-xe9T9VaGFOSXb0/edit#
+* https://gitlab.developers.cam.ac.uk/jz448/browser-android-tabs/-/blob/f0a26d6eef948eb21d53ca3a9f9962bc633b06ed/docs/README.md#mojo-services
+* https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/tools/bindings/README.md
 
-Run examples:
+Run examples, note example with `Promise` usage:
 
 ```bash
 # NOTE: will start mojo_cookie_app_consumer as child process

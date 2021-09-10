@@ -241,6 +241,15 @@ void AppDemo::Initialize() {
   cookie_remote_->SetCallbackOnError(
     base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
 
+  base::Promise<bool> task1
+    = cookie_remote_->SendSetName("Producer");
+  task1.ThenHere(FROM_HERE,
+    base::BindOnce([](bool data){
+      LOG(INFO)
+        << "SendSetName finished with response: "
+        << std::to_string(data);
+    })
+  );
   cookie_remote_->SendCrack();
 
   // quit by request or automatically after some time
@@ -358,94 +367,148 @@ void AppDemo::Run() {
   run_loop_ = nullptr;
 }
 
-int main(int argc, const char* argv[]) {
-  setlocale(LC_ALL, "en_US.UTF-8");
+// Initializes and owns mojo.
+class InitMojo {
+ public:
+  InitMojo() : thread_("Mojo thread") {
+    mojo::core::Configuration mojo_config;
+    /// \note Instead of calling `mojo::core::Init()`
+    /// as embedders do, an application using
+    /// dynamic Mojo Core instead calls `MojoInitialize()`
+    /// from the C System API. This
+    /// call will attempt to locate (see above)
+    /// and load the Mojo Core library to
+    /// support subsequent Mojo API usage within the process.
+    mojo::core::Init(mojo_config);
+    thread_.StartWithOptions(
+      base::Thread::Options(base::MessagePumpType::IO, 0));
+    thread_.WaitUntilThreadStarted();
+    // As long as this object is alive,
+    // all API surface relevant to IPC
+    // connections is usable and message pipes
+    // which span a process boundary will
+    // continue to function.
+    ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      thread_.task_runner(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+  }
 
-  base::EnableTerminationOnHeapCorruption();
-  // Manages the destruction of singletons.
-  base::AtExitManager exit_manager;
+  ~InitMojo() {
+    thread_.Stop();
+  }
 
-  CHECK(base::CommandLine::Init(argc, argv));
-  const base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
+ private:
+  base::Thread thread_;
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+
+  DISALLOW_COPY_AND_ASSIGN(InitMojo);
+};
+
+
+// Initializes and owns the components from base necessary to run the app.
+class InitBase {
+ public:
+  InitBase(int argc, const char** argv)
+    // Build UI thread task executor. This is used by platform
+    // implementations for event polling & running background tasks.
+    : main_task_executor_(base::MessagePumpType::UI)
+  {
+    setlocale(LC_ALL, "en_US.UTF-8");
+
+    base::EnableTerminationOnHeapCorruption();
+
+    CHECK(base::CommandLine::Init(argc, argv));
+    const base::CommandLine& command_line
+      = *base::CommandLine::ForCurrentProcess();
 
 #if defined(OS_WIN) && !defined(NDEBUG)
-  base::RouteStdioToConsole(false);
+    base::RouteStdioToConsole(false);
 #endif
 
-  base::FilePath log_filename =
-      command_line.GetSwitchValuePath(switches::kLogFile);
-  if (log_filename.empty()) {
-    base::PathService::Get(base::DIR_EXE, &log_filename);
-    log_filename = log_filename.AppendASCII("app_logfile.log");
-  }
+    base::FilePath log_filename =
+        command_line.GetSwitchValuePath(switches::kLogFile);
+    if (log_filename.empty()) {
+      base::PathService::Get(base::DIR_EXE, &log_filename);
+      log_filename = log_filename.AppendASCII("app_logfile.log");
+    }
 
-// Only use OutputDebugString in debug mode.
+  // Only use OutputDebugString in debug mode.
 #ifdef NDEBUG
-  logging::LoggingDestination destination = logging::LOG_TO_FILE;
+    logging::LoggingDestination destination = logging::LOG_TO_FILE;
 #else
-  logging::LoggingDestination destination =
-      logging::LOG_TO_ALL;
+    logging::LoggingDestination destination =
+        logging::LOG_TO_ALL;
 #endif
 
-  logging::LoggingSettings settings;
-  settings.logging_dest = destination;
+    logging::LoggingSettings settings;
+    settings.logging_dest = destination;
 
-  settings.log_file_path = log_filename.value().c_str();
-  settings.delete_old = logging::DELETE_OLD_LOG_FILE;
-  logging::InitLogging(settings);
+    settings.log_file_path = log_filename.value().c_str();
+    settings.delete_old = logging::DELETE_OLD_LOG_FILE;
+    logging::InitLogging(settings);
 
-  logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
-                       true /* Timestamp */, false /* Tick count */);
+    logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
+                         true /* Timestamp */, false /* Tick count */);
 
-  /// \todo provide ICU data file
-  /// base::i18n::InitializeICU();
+    /// \todo provide ICU data file
+    /// base::i18n::InitializeICU();
 
 #ifndef NDEBUG
-  CHECK(base::debug::EnableInProcessStackDumping());
+    CHECK(base::debug::EnableInProcessStackDumping());
 #endif
 
-  // Initialize tracing.
-  base::trace_event::TraceLog::GetInstance()->set_process_name("Browser");
-  base::trace_event::TraceLog::GetInstance()->SetProcessSortIndex(
-      switches::kTraceEventAppSortIndex);
-  if (command_line.HasSwitch(switches::kTraceToConsole)) {
-    base::trace_event::TraceConfig trace_config =
-        tracing::GetConfigForTraceToConsole();
-    base::trace_event::TraceLog::GetInstance()->SetEnabled(
+    logging::SetLogPrefix("producer");
+
+    // Initialize tracing.
+    base::trace_event::TraceLog::GetInstance()
+      ->set_process_name("producer");
+    base::trace_event::TraceLog::GetInstance()
+      ->SetProcessSortIndex(
+        switches::kTraceEventAppSortIndex);
+    if (command_line.HasSwitch(switches::kTraceToConsole)) {
+      base::trace_event::TraceConfig trace_config
+        = tracing::GetConfigForTraceToConsole();
+      base::trace_event::TraceLog::GetInstance()->SetEnabled(
         trace_config, base::trace_event::TraceLog::RECORDING_MODE);
+    }
+
+    base::FeatureList::InitializeInstance(
+      command_line.GetSwitchValueASCII(switches::kEnableFeatures),
+      command_line.GetSwitchValueASCII(switches::kDisableFeatures));
+
+    // Initialize ThreadPool.
+    constexpr int kMaxForegroundThreads = 6;
+    base::ThreadPoolInstance::InitParams thread_pool_init_params(
+        kMaxForegroundThreads);
+
+    base::ThreadPoolInstance::Create("AppThreadPool");
+    base::ThreadPoolInstance::Get()->Start(thread_pool_init_params);
+
+    LOG(INFO)
+      << "Command Line: "
+      << command_line.GetCommandLineString();
   }
 
-  // Build UI thread task executor. This is used by platform
-  // implementations for event polling & running background tasks.
-  base::SingleThreadTaskExecutor main_task_executor(base::MessagePumpType::UI);
+  ~InitBase() {
+    base::ThreadPoolInstance::Get()->Shutdown();
+  }
 
-  // Initialize ThreadPool.
-  constexpr int kMaxForegroundThreads = 6;
-  base::ThreadPoolInstance::InitParams thread_pool_init_params(
-      kMaxForegroundThreads);
+ private:
+  // The exit manager is in charge
+  // of calling the dtors of singleton objects.
+  base::AtExitManager exit_manager_;
+  base::SingleThreadTaskExecutor main_task_executor_;
 
-  base::ThreadPoolInstance::Create("AppThreadPool");
-  base::ThreadPoolInstance::Get()->Start(thread_pool_init_params);
+  DISALLOW_COPY_AND_ASSIGN(InitBase);
+};
+
+int main(int argc, const char* argv[]) {
+  InitBase base(argc, &argv[0]);
 
   LOG(INFO)
     << "Starting mojo... ";
 
-  mojo::core::Configuration mojo_config;
-  mojo::core::Init(mojo_config);
-
-  base::Thread ipc_thread("AppIpcThread");
-  ipc_thread.StartWithOptions(
-      base::Thread::Options(base::MessagePumpType::IO, 0));
-  ipc_thread.WaitUntilThreadStarted();
-
-  // As long as this object is alive,
-  // all API surface relevant to IPC
-  // connections is usable and message pipes
-  // which span a process boundary will
-  // continue to function.
-  mojo::core::ScopedIPCSupport ipc_support(
-    ipc_thread.task_runner(),
-    mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+  InitMojo mojo;
 
   AppDemo app_demo;
 
@@ -460,10 +523,6 @@ int main(int argc, const char* argv[]) {
   LOG(INFO)
     << "app_demo.Destroy... ";
   app_demo.Destroy();
-
-  base::ThreadPoolInstance::Get()->Shutdown();
-
-  ipc_thread.Stop();
 
   return 0;
 }

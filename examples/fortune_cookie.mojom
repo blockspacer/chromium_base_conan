@@ -1,6 +1,7 @@
 module examples.mojom;
 
 interface FortuneCookie {
+  SetName(string who) => (bool is_valid);
   Crack() => (string message);
   CloseStream() => (string message);
 };

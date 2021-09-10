@@ -36,7 +36,10 @@ void FortuneCookieReceiver::Crack(CrackCallback callback) {
   LOG(INFO)
     << id_
     << " recieved Crack request.";
-  std::move(callback).Run(wish_);
+  std::move(callback).Run(wish_
+    + (who_.empty()
+       ? ""
+       : ". Wish for " + who_));
 }
 
 void FortuneCookieReceiver::CloseStream(CloseStreamCallback callback) {
@@ -44,6 +47,17 @@ void FortuneCookieReceiver::CloseStream(CloseStreamCallback callback) {
     << id_
     << " recieved CloseStream request.";
   std::move(callback).Run("ok");
+}
+
+void FortuneCookieReceiver::SetName(const std::string& who,
+  SetNameCallback callback)
+{
+  LOG(INFO)
+    << id_
+    << " recieved SetName request.";
+  const bool is_valid = who_ != who;
+  who_ = who;
+  std::move(callback).Run(is_valid);
 }
 
 void FortuneCookieReceiver::SetCallbackOnError(base::RepeatingClosure callback) {
@@ -108,6 +122,32 @@ void FortuneCookieRemote::OnCloseStreamAnswer(const std::string& data) {
     << id_
     << " OnCloseStreamAnswer: "
     << data;
+}
+
+base::Promise<bool> FortuneCookieRemote::SendSetName(
+  const std::string& data)
+{
+  using Resolver
+    = ::base::ManualPromiseResolver<
+        bool, ::base::NoReject
+      >;
+  Resolver promiseResolver(FROM_HERE);
+  remote_->SetName(data, base::BindOnce(
+    &FortuneCookieRemote::OnSetNameAnswer,
+    base::Unretained(this),
+    basic::rvalue_cast(promiseResolver.GetResolveCallback())));
+  return promiseResolver.promise();
+}
+
+void FortuneCookieRemote::OnSetNameAnswer(
+  base::OnceCallback<void(bool)>&& resolveCallback,
+  bool data)
+{
+  LOG(INFO)
+    << id_
+    << " OnSetNameAnswer: "
+    << std::to_string(data);
+  basic::rvalue_cast(resolveCallback).Run(data);
 }
 
 void FortuneCookieRemote::SendCrack()

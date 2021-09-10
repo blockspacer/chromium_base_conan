@@ -2,6 +2,13 @@
 
 #include "base/macros.h"
 
+#include "basic/promise/post_promise.h"
+#include "basic/promise/post_task_executor.h"
+#include "basic/promise/do_nothing_promise.h"
+#include "basic/promise/abstract_promise.h"
+#include "basic/promise/helpers.h"
+#include "basic/rvalue_cast.h"
+
 #include "mojo/public/cpp/bindings/associated_receiver.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
@@ -50,8 +57,13 @@ class FortuneCookieReceiver : public mojom::FortuneCookie {
   // sends answer
   void CloseStream(CloseStreamCallback callback) override;
 
+  // sends answer
+  void SetName(const std::string& who, SetNameCallback callback) override;
+
  private:
   std::string id_{"Unknown"};
+
+  std::string who_{""};
 
   base::RepeatingClosure errorCallback_;
 
@@ -77,7 +89,13 @@ class FortuneCookieRemote {
 
   void SendCloseStream();
 
+  base::Promise<bool> SendSetName(const std::string& data);
+
  private:
+  void OnSetNameAnswer(
+    base::OnceCallback<void(bool)>&& resolveCallback,
+    bool data);
+
   void OnCloseStreamAnswer(const std::string& data);
 
   void OnCrackAnswer(const std::string& data);
