@@ -369,6 +369,8 @@ cmake -E time \
   --source-folder . \
   --install-folder local_build
 
+rm -rf .generated
+
 # You can use `cmake --build . -- -j14` on second run.
 cmake -E time \
   conan build . \
@@ -612,6 +614,8 @@ conan workspace install \
   -e chromium_base:enable_tests=True \
   -o chromium_base:shared=True
 
+rm -rf .generated
+
 cmake -E time \
   conan build .. \
   --build-folder . \
@@ -716,6 +720,11 @@ Read:
 * https://gitlab.developers.cam.ac.uk/jz448/browser-android-tabs/-/blob/f0a26d6eef948eb21d53ca3a9f9962bc633b06ed/docs/README.md#mojo-services
 * https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/tools/bindings/README.md
 * https://mariospr.org/category/mojo-ipc/
+* https://groups.google.com/a/chromium.org/g/chromium-mojo
+* https://chromium.googlesource.com/chromium/src/+/HEAD/docs/README.md#mojo-services
+* proposals https://groups.google.com/a/chromium.org/g/chromium-mojo/c/H7N9mF6gy8Y
+* #mojo slack channel https://app.slack.com/client/T039UTRBS/CGGGVPSQ4
+* mojo bugs https://bugs.chromium.org/p/chromium/issues/list?q=component%3AInternals%3EMojo&can=2
 
 Run examples, note example with `Promise` usage:
 

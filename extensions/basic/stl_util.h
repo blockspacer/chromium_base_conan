@@ -570,4 +570,20 @@ std::string JoinRange(const std::string& delimiter,
   return result;
 }
 
+// Round up |size| to a multiple of |alignment| (must be a power of two).
+//
+// USAGE
+//
+// constexpr auto kAlignment = 8;  // 64 bits to use aligned memcpy().
+// constexpr auto kHeaderSize = kAlignment;
+// const uint64_t size_with_header =
+//   base::AlignUp<kAlignment>(size + kHeaderSize);
+//
+template <size_t alignment>
+constexpr size_t AlignUp(size_t size) {
+  static_assert((alignment & (alignment - 1)) == 0,
+    "alignment must be a pow2");
+  return (size + alignment - 1) & ~(alignment - 1);
+}
+
 }  // namespace basic

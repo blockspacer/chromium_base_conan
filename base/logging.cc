@@ -613,7 +613,8 @@ LogMessage::~LogMessage() {
   // Give any log message handler first dibs on the message.
   if (log_message_handler &&
       log_message_handler(severity_, file_, line_,
-                          message_start_, str_newline)) {
+                          logStream_.needFormat() ? message_start_ : 0,
+                          str_newline)) {
     // The handler took care of it, no further processing.
     return;
   }

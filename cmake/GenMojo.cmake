@@ -71,7 +71,7 @@ function(precompile_mojom_bindings)
   )
   message(STATUS "mojo_precompile_command=${mojo_precompile_command}")
 
-  add_custom_target(${TARGET}
+  add_custom_command(OUTPUT ${OUTPUT_DIR}/cpp_templates.zip
     COMMAND ${CMAKE_COMMAND} -E echo
       ----------------------------------
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -79,8 +79,15 @@ function(precompile_mojom_bindings)
     COMMAND ${CMAKE_COMMAND} -E time
       ${mojo_precompile_command}
     WORKING_DIRECTORY ${WORK_DIR}
-    COMMENT "Precompiling into ${OUTPUT_DIR}"
+    COMMENT "Precompiling into ${OUTPUT_DIR}")
+
+  add_custom_target(${TARGET}
+    DEPENDS ${OUTPUT_DIR}/cpp_templates.zip
+    COMMENT "Generating bytecode into ${OUTPUT_DIR}"
   )
+
+  set_source_files_properties(${OUTPUT_DIR}/cpp_templates.zip
+    PROPERTIES GENERATED TRUE)
 endfunction()
 
 # Generates mojom-module files (binary)
@@ -98,7 +105,7 @@ function(parse_mojom)
   # see https://cliutils.gitlab.io/modern-cmake/chapters/basics/functions.html
   #set(options ) # empty
   set(oneValueArgs PARSER_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR WORK_DIR)
-  set(multiValueArgs BYPRODUCTS)
+  set(multiValueArgs BYPRODUCTS ENABLED_FEATURES)
   #
   cmake_parse_arguments(
     ARGUMENTS # prefix of output variables
@@ -145,6 +152,8 @@ function(parse_mojom)
   #
   set(BYPRODUCTS ${ARGUMENTS_BYPRODUCTS})
   #
+  set(ENABLED_FEATURES ${ARGUMENTS_ENABLED_FEATURES})
+  #
   set(MOJO_PYTHON_VERSION ""
     CACHE STRING "Optional user-selected Python version")
   if(MOJO_PYTHON_VERSION)
@@ -155,11 +164,22 @@ function(parse_mojom)
       REQUIRED COMPONENTS Interpreter Development)
   endif()
 
+  set(OPTIONAL_ENABLED_FEATURES "")
+  foreach(ENABLED_FEATURE ${ENABLED_FEATURES})
+    if (NOT "${OPTIONAL_ENABLED_FEATURES}" STREQUAL "")
+      set(OPTIONAL_ENABLED_FEATURES
+        "${OPTIONAL_ENABLED_FEATURES},")
+    endif()
+    set(OPTIONAL_ENABLED_FEATURES
+      "${OPTIONAL_ENABLED_FEATURES}${ENABLED_FEATURE}")
+  endforeach()
+
   set(mojo_parse_command ${Python_EXECUTABLE}
     ${PARSER_PATH}
     --output-root=${OUTPUT_DIR}
     --input-root=${INPUT_DIR}
     --mojoms=${INPUT}
+    ${OPTIONAL_ENABLED_FEATURES}
   )
   message(STATUS "mojo_parse_command=${mojo_parse_command}")
 
@@ -399,7 +419,7 @@ function(generate_all_mojom_cpp_bindings)
   #set(options ) # empty
   set(oneValueArgs GENERATOR_PATH TARGET INPUT INPUT_DIR OUTPUT_DIR
     BYTECODE_PATH WORK_DIR)
-  set(multiValueArgs OUTPUT_FILES BYPRODUCTS)
+  set(multiValueArgs OUTPUT_FILES BYPRODUCTS ENABLED_FEATURES)
   #
   cmake_parse_arguments(
     ARGUMENTS # prefix of output variables
@@ -449,6 +469,8 @@ function(generate_all_mojom_cpp_bindings)
   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
   #
   set(BYPRODUCTS ${ARGUMENTS_BYPRODUCTS})
+  #
+  set(ENABLED_FEATURES ${ARGUMENTS_ENABLED_FEATURES})
   #
 
   parse_mojom(

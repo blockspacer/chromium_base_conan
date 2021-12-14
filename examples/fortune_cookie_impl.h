@@ -87,6 +87,7 @@ class FortuneCookieReceiver : public mojom::FortuneCookie {
 
   base::RepeatingClosure errorCallback_;
 
+  // Wraps a message pipe endpoint that receives incoming messages.
   mojo::Receiver<mojom::FortuneCookie> receiver_;
 
   std::string wish_{"A dream you have will come true."};

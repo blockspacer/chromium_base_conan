@@ -9,6 +9,9 @@ generate_all_mojom_cpp_bindings(
   BYTECODE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/.generated/mojo"
   OUTPUT_DIR ".generated/mojo"
   INPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+  ENABLED_FEATURES
+    base
+    basic
   BYPRODUCTS
     "examples/mojom/rect/rect.mojom-module"
   OUTPUT_FILES
@@ -29,6 +32,9 @@ generate_all_mojom_cpp_bindings(
   BYTECODE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/.generated/mojo"
   OUTPUT_DIR ".generated/mojo"
   INPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+  ENABLED_FEATURES
+    base
+    basic
   BYPRODUCTS
     "examples/mojom/fortune_cookie/fortune_cookie.mojom-module"
   OUTPUT_FILES

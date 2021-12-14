@@ -170,3 +170,20 @@ https://chromium.googlesource.com/aosp/platform/external/libchrome/+/e922041a3a2
 * Replaced "third_party/boringssl/src/include/openssl/...".
 * Added `extensions/bssl_compat`
 * Updated to new OpenSSL version
+
+## Patched mojo library
+
+* Added arguments into `mojom_bindings_generator.py`:
+  ```python
+    generate_parser.add_argument("--use_bundled_pylibs", action="store_true",
+                        help="use Python modules bundled in the SDK")
+    generate_parser.add_argument(
+        "-o",
+        "--output_dir",
+        dest="output_dir",
+        default=".",
+        help="output directory for generated files")
+  ```
+
+* Due to `Issue 1050744: grit broken outside of the Chromium tree` patched `mojom_bindings_generator.py` to fallback if fail if `crbug_1001171` is not available.
+  Resulting patch similar to https://chromium-review.googlesource.com/c/chromium/src/+/2047863

@@ -215,11 +215,13 @@ void AppDemo::RenderFrame() {
 
 void AppDemo::Initialize() {
   auto* command_line = base::CommandLine::ForCurrentProcess();
-  auto endpoint
+  mojo::PlatformChannelEndpoint endpoint
     = mojo::PlatformChannel::RecoverPassedEndpointFromCommandLine(
       *command_line);
 
   // Accept an invitation.
+  // Invitations provide the means to bootstrap one or more
+  // primordial cross-process message pipes between two processes.
   mojo::IncomingInvitation invitation
     = mojo::IncomingInvitation::Accept(std::move(endpoint));
 
@@ -237,6 +239,7 @@ void AppDemo::Initialize() {
   // the client will be disconnected.
   static uint64_t kMinVersion = 0;
 
+  // Wraps a message pipe endpoint for making remote calls.
   cookie_remote_ = std::make_unique<
     examples::FortuneCookieRemote>(
       PendingRemote<mojom::FortuneCookie>(
@@ -245,6 +248,7 @@ void AppDemo::Initialize() {
   cookie_remote_->SetCallbackOnError(
     base::BindRepeating(&AppDemo::OnCloseRequest, base::Unretained(this)));
 
+  // Wraps a message pipe endpoint that receives incoming messages.
   cookie_receiver_ = std::make_unique<
     examples::FortuneCookieReceiver>(
     mojo::PendingReceiver<
@@ -289,6 +293,13 @@ void AppDemo::Run() {
 }
 
 // Initializes and owns mojo.
+// In order to use any of the more interesting
+// high-level support libraries like the System APIs or Bindings APIs,
+// a process must first initialize Mojo Core.
+// This is a one-time initialization which remains active
+// for the remainder of the process's lifetime.
+// There are two ways to initialize Mojo Core:
+// via the Embedder API, or through a dynamically linked library.
 class InitMojo {
  public:
   InitMojo() : thread_("Mojo thread") {

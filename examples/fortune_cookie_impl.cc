@@ -8,8 +8,14 @@ namespace examples {
 
 FortuneCookieReceiver::FortuneCookieReceiver(
   mojo::PendingReceiver<mojom::FortuneCookie> receiver)
-  : receiver_(this, std::move(receiver))
+  : receiver_(this)
 {
+  // |PendingReceiver| is movable and may be passed around.
+  // While unbound, received IPCs are buffered and not processed.
+  // The pending receiver may be passed to the mojo::Receiver<T> constructor
+  // or mojo::Receiver<T>::Bind() to rebind the endpoint.
+  receiver_.Bind(std::move(receiver));
+
   receiver_.set_disconnect_handler(base::BindOnce(
     &FortuneCookieReceiver::OnError,
     base::Unretained(this)));
@@ -36,6 +42,7 @@ void FortuneCookieReceiver::Crack(CrackCallback callback) {
   LOG(INFO)
     << id_
     << " recieved Crack request.";
+  // send a reply to the caller
   std::move(callback).Run(wish_
     + (who_.empty()
        ? ""
@@ -46,6 +53,7 @@ void FortuneCookieReceiver::CloseStream(CloseStreamCallback callback) {
   LOG(INFO)
     << id_
     << " recieved CloseStream request.";
+  // send a reply to the caller
   std::move(callback).Run("ok");
 }
 
@@ -57,6 +65,7 @@ void FortuneCookieReceiver::SetName(const std::string& who,
     << " recieved SetName request.";
   const bool is_valid = who_ != who;
   who_ = who;
+  // send a reply to the caller
   std::move(callback).Run(is_valid);
 }
 
@@ -80,6 +89,7 @@ void FortuneCookieReceiver::FillRects(
   LOG(INFO)
     << id_
     << " recieved FillRects request.";
+  // send a reply to the caller
   std::move(callback).Run(std::move(dpt));
 }
 
@@ -95,6 +105,7 @@ void FortuneCookieReceiver::AttachFingerPrint(
   /// \todo do smth
   bool ok = true;
 
+  // send a reply to the caller
   std::move(callback).Run(std::move(ok));
 }
 
@@ -115,6 +126,10 @@ void FortuneCookieReceiver::OnError()
 FortuneCookieRemote::FortuneCookieRemote(
   mojo::PendingRemote<mojom::FortuneCookie> remote)
 {
+  // |PendingRemote| is movable and may be passed around.
+  // While unbound, the endpoint cannot be used to send IPCs.
+  // The pending remote may be passed to the mojo::Remote<T> constructor
+  // or mojo::Remote<T>::Bind() to rebind the endpoint.
   remote_.Bind(std::move(remote));
 
   remote_.set_disconnect_handler(base::BindOnce(

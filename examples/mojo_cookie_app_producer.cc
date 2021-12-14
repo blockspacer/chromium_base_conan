@@ -131,6 +131,10 @@ using namespace sample;
 using namespace base;
 
 /// \todo find better way for bidirectional communication
+// A message pipe is a bidirectional messaging channel
+// which can carry arbitrary unstructured binary messages
+// with zero or more MojoHandle attachments
+// to be transferred from one end of a pipe to the other.
 struct BidirectionalPipes {
   mojo::ScopedMessagePipeHandle pipe_remote;
   mojo::ScopedMessagePipeHandle pipe_receiver;
@@ -224,6 +228,7 @@ void AppDemo::RenderFrame() {
 void AppDemo::Initialize() {
   BidirectionalPipes pipes = LaunchAndConnect();
 
+  // Wraps a message pipe endpoint that receives incoming messages.
   cookie_receiver_ = std::make_unique<
     examples::FortuneCookieReceiver>(
     mojo::PendingReceiver<
@@ -239,6 +244,7 @@ void AppDemo::Initialize() {
   // the client will be disconnected.
   static uint64_t kMinVersion = 0;
 
+  // Wraps a message pipe endpoint for making remote calls.
   cookie_remote_ = std::make_unique<
     examples::FortuneCookieRemote>(
       PendingRemote<mojom::FortuneCookie>(
@@ -279,6 +285,8 @@ BidirectionalPipes AppDemo::LaunchAndConnect() {
     << " remote: "
     << channel.remote_endpoint().platform_handle().GetFD().get();
 
+  // Invitations provide the means to bootstrap one or more
+  // primordial cross-process message pipes between two processes.
   mojo::OutgoingInvitation invitation;
 
   std::string token_remote = base::NumberToString(base::RandUint64());
@@ -375,6 +383,13 @@ void AppDemo::Run() {
 }
 
 // Initializes and owns mojo.
+// In order to use any of the more interesting
+// high-level support libraries like the System APIs or Bindings APIs,
+// a process must first initialize Mojo Core.
+// This is a one-time initialization which remains active
+// for the remainder of the process's lifetime.
+// There are two ways to initialize Mojo Core:
+// via the Embedder API, or through a dynamically linked library.
 class InitMojo {
  public:
   InitMojo() : thread_("Mojo thread") {

@@ -1025,6 +1025,7 @@ list(APPEND basic_extensions_unittests
   core/typed_enum_unittest.cc
   core/move_wrapper_unittest.cc
   core/memory_unittest.cc
+  core/copyable_ptr_unittest.cc
 )
 
 list(APPEND basic_extensions_unittests
