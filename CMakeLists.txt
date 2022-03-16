@@ -644,9 +644,7 @@ find_package(Threads)
 list(APPEND USED_3DPARTY_LIBS
   ${CUSTOM_ICU_LIB}
   CONAN_PKG::abseil
-  CONAN_PKG::boost_preprocessor
-  CONAN_PKG::boost_intrusive
-  CONAN_PKG::boost_iterator
+  CONAN_PKG::boost
   ${FMTLIB}
   ${CMAKE_THREAD_LIBS_INIT}
   #CONAN_PKG::protobuf # TODO: collides with perfetto_trace_protos in function google::protobuf::Base64Escape
@@ -667,6 +665,18 @@ endif()
 if(NOT DEFINED build_util_LIB)
   message(FATAL_ERROR "NOT DEFINED: build_util_LIB")
 endif(NOT DEFINED build_util_LIB)
+
+target_compile_definitions(${BASE_LIB_NAME} PUBLIC
+  # https://stackoverflow.com/a/30877725
+  BOOST_SYSTEM_NO_DEPRECATED
+  BOOST_ERROR_CODE_HEADER_ONLY
+  # TODO: make program_options work without rtti (boost::bad_any_cast)
+  #BOOST_NO_RTTI
+  #BOOST_NO_TYPEID
+  # TODO
+  #BOOST_NO_EXCEPTIONS
+  BOOST_ASIO_STANDALONE=1
+)
 
 if(ENABLE_BORINGSSL)
   target_compile_definitions(${BASE_LIB_NAME} PUBLIC

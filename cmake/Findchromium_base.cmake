@@ -19,8 +19,7 @@ find_package(perfetto QUIET)
 find_package(double-conversion QUIET)
 find_package(protobuf QUIET)
 find_package(fmt QUIET)
-find_package(boost_intrusive QUIET)
-find_package(boost_preprocessor QUIET)
+find_package(boost QUIET)
 
 # see use_test_support option in base
 find_package(chromium_libxml QUIET)

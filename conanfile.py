@@ -82,6 +82,8 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
         "enable_web_pthreads=False",
         "enable_profiling=False",
         # build
+        "boost:header_only=True",
+        # build
         "openssl:shared=True"
     )
 
@@ -270,18 +272,14 @@ class chromium_base_conan_project(conan_build_helper.CMakePackage):
 
         self.requires("fmt/master@dev/stable")
 
-        self.requires("boost_iterator/1.69.0@bincrafters/stable")
-
-        self.requires("boost_intrusive/1.69.0@bincrafters/stable")
-
-        self.requires("boost_preprocessor/1.69.0@bincrafters/testing")
+        self.requires("boost/1.71.0@dev/stable")
 
         # NOTE: also update headers in `extensions/third_party/abseil-cpp`
         self.requires("abseil/lts_2020_09_23@conan/stable")
 
         if self.options.enable_protoc_autoinstall:
             # TODO: https://github.com/gaeus/conan-grpc
-            #self.requires("protobuf/3.6.1@bincrafters/stable")
+            #self.requires("protobuf/3.6.1@conan-center/stable")
             #self.requires("grpc_conan/v1.26.x@conan/stable")
             #self.requires("openssl/OpenSSL_1_1_1-stable@conan/stable")
             #self.requires("zlib/v1.2.11@conan/stable")
