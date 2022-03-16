@@ -114,7 +114,7 @@ conan_build_target_if(
   "conan/stable"
   "${CURRENT_SCRIPT_DIR}/.tmp/conan_abseil" # target to build
   ALWAYS_BUILD
-  "")
+  ";-s;compiler.cppstd=11")
 
 # conan_google_benchmark
 
