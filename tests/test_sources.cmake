@@ -1174,6 +1174,12 @@ foreach(FILEPATH ${crypto_extensions_unittests})
     "${test_sources}")
 endforeach()
 
+get_target_property(test_child_process_path test_child_process RUNTIME_OUTPUT_DIRECTORY)
+message(STATUS "test_child_process_path: ${test_child_process_path}")
+target_compile_definitions( chromium_base-base-process_util_unittest PUBLIC
+  TEST_CHILD_PROCESS_PATH="${test_child_process_path}"
+)
+
 add_dependencies(chromium_base-base-process_util_unittest
   test_child_process)
 

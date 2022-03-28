@@ -152,8 +152,20 @@ const int kSuccess = 0;
 class ProcessUtilTest : public MultiProcessTest {
  public:
   void SetUp() override {
-    ASSERT_TRUE(PathService::Get(DIR_ASSETS, &test_helper_path_));
-    test_helper_path_ = test_helper_path_.AppendASCII(kTestHelper);
+#ifdef TEST_CHILD_PROCESS_PATH
+    test_helper_path_ = base::FilePath{FILE_PATH_LITERAL(TEST_CHILD_PROCESS_PATH)};
+#else
+    ASSERT_TRUE(base::PathService::Get(base::DIR_EXE, &test_helper_path_));
+#endif
+#if defined(OS_WIN)
+    test_helper_path_ =
+      test_helper_path_.AppendASCII(kTestHelper)
+        .AddExtensionASCII("exe");
+#else
+    test_helper_path_
+      = test_helper_path_.Append(FILE_PATH_LITERAL(kTestHelper));
+#endif
+
     if (!base::PathExists(test_helper_path_)) {
       LOG(ERROR) << "Could not find path " << test_helper_path_;
       return;
@@ -907,6 +919,7 @@ TEST_F(ProcessUtilTest, InheritSpecifiedHandles) {
 #endif  // defined(OS_WIN)
 
 TEST_F(ProcessUtilTest, GetAppOutput) {
+  EXPECT_TRUE(base::PathExists(test_helper_path_));
   base::CommandLine command(test_helper_path_);
   command.AppendArg("hello");
   command.AppendArg("there");
@@ -927,6 +940,7 @@ TEST_F(ProcessUtilTest, GetAppOutput) {
 }
 
 TEST_F(ProcessUtilTest, GetAppOutputWithExitCode) {
+  EXPECT_TRUE(base::PathExists(test_helper_path_));
   const char* kEchoMessage1 = "doge";
   int exit_code = -1;
   base::CommandLine command(test_helper_path_);

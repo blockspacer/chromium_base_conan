@@ -18,12 +18,10 @@ add_dependencies(copy_testdata
 )
 
 set(test_child_process_path
-  "${CMAKE_CURRENT_BINARY_DIR}/test_child_process")
+  "${CMAKE_CURRENT_BINARY_DIR}/${TESTS_BINARY_DIR_NAME}/test_child_process")
 
-message(STATUS "in test_child_process_path=
-  ${test_child_process_path}")
-message(STATUS "out test_child_process_path=
-  ${CMAKE_CURRENT_BINARY_DIR}/${TESTS_BINARY_DIR_NAME}/test_child_process")
+set_target_properties(test_child_process PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TESTS_BINARY_DIR_NAME}/)
 
 # ----
 

@@ -53,7 +53,7 @@ function(precompile_mojom_bindings)
   #
   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
   #
-  set(MOJO_PYTHON_VERSION ""
+  set(MOJO_PYTHON_VERSION "2.7"
     CACHE STRING "Optional user-selected Python version")
   if(MOJO_PYTHON_VERSION)
     find_package(Python ${MOJO_PYTHON_VERSION}
@@ -154,7 +154,7 @@ function(parse_mojom)
   #
   set(ENABLED_FEATURES ${ARGUMENTS_ENABLED_FEATURES})
   #
-  set(MOJO_PYTHON_VERSION ""
+  set(MOJO_PYTHON_VERSION "2.7"
     CACHE STRING "Optional user-selected Python version")
   if(MOJO_PYTHON_VERSION)
     find_package(Python ${MOJO_PYTHON_VERSION}
@@ -276,7 +276,7 @@ function(generate_mojom_cpp_bindings)
   #
   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
   #
-  set(MOJO_PYTHON_VERSION ""
+  set(MOJO_PYTHON_VERSION "2.7"
     CACHE STRING "Optional user-selected Python version")
   if(MOJO_PYTHON_VERSION)
     find_package(Python ${MOJO_PYTHON_VERSION}
@@ -579,7 +579,7 @@ endfunction()
 #   #
 #   set(UNPARSED_ARGUMENTS ${ARGUMENTS_UNPARSED_ARGUMENTS})
 #   #
-#   set(MOJO_PYTHON_VERSION "" CACHE STRING "Optional user-selected Python version")
+#   set(MOJO_PYTHON_VERSION "2.7" CACHE STRING "Optional user-selected Python version")
 #   if(MOJO_PYTHON_VERSION)
 #     find_package(Python ${MOJO_PYTHON_VERSION} EXACT REQUIRED COMPONENTS Interpreter Development)
 #   else()

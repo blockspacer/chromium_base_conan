@@ -298,6 +298,12 @@ Re-build dependencies:
 ```bash
 git clone https://github.com/blockspacer/conan_github_downloader.git ~/conan_github_downloader
 
+export VERBOSE=1
+export CONAN_REVISIONS_ENABLED=1
+export CONAN_VERBOSE_TRACEBACK=1
+export CONAN_PRINT_RUN_COMMANDS=1
+export CONAN_LOGGING_LEVEL=10
+
 cmake \
   -DSCRIPT_PATH="$PWD/get_conan_dependencies.cmake"\
   -DEXTRA_CONAN_OPTS="--profile;clang12_compiler\
@@ -359,6 +365,8 @@ cmake -E time \
   -s llvm_tools:build_type=Release \
   --profile clang12_compiler \
   -o chromium_base:shared=True \
+  -o openssl:shared=True \
+  -o boost:header_only=True \
   -e chromium_base:enable_tests=True \
   -o perfetto:is_hermetic_clang=False
 
@@ -393,7 +401,9 @@ cmake -E time \
   -s cling_conan:build_type=Release \
   -s llvm_tools:build_type=Release \
   --profile clang12_compiler \
+  -o boost:header_only=True \
   -o chromium_base:shared=True \
+  -o openssl:shared=True \
   -e chromium_base:enable_tests=True \
   -o perfetto:is_hermetic_clang=False
 
@@ -403,7 +413,9 @@ cmake -E time \
   -s cling_conan:build_type=Release \
   -s llvm_tools:build_type=Release \
   --profile clang12_compiler \
+  -o boost:header_only=True \
   -o chromium_base:shared=True \
+  -o openssl:shared=True \
   -e chromium_base:enable_tests=True \
   -o perfetto:is_hermetic_clang=False
 
@@ -434,6 +446,7 @@ conan create . \
   -e chromium_base:enable_tests=True \
   -o chromium_base:shared=True \
   -o perfetto:is_hermetic_clang=False \
+  -o boost:header_only=True \
   -o openssl:shared=True
 
 # clean build cache
@@ -469,6 +482,7 @@ conan create . \
     -o abseil:enable_tsan=True \
     -e abseil:enable_llvm_tools=True \
     -o perfetto:is_hermetic_clang=False \
+    -o boost:header_only=True \
     -o openssl:shared=True
 
 # clean build cache
@@ -606,12 +620,14 @@ cd conan_workspace
 
 conan workspace install \
   ./conan_workspace.yml \
-  --profile=clang \
+  --profile=clang12_compiler \
   -s build_type=Debug \
   -s cling_conan:build_type=Release \
   -s llvm_tools:build_type=Release \
+  -o boost:header_only=True \
   -o openssl:shared=True \
   -e chromium_base:enable_tests=True \
+  -o perfetto:is_hermetic_clang=False \
   -o chromium_base:shared=True
 
 rm -rf .generated
@@ -619,7 +635,8 @@ rm -rf .generated
 cmake -E time \
   conan build .. \
   --build-folder . \
-  --source-folder . \
+  --package-folder ./package_dir \
+  --source-folder .. \
   --install-folder .
 ```
 

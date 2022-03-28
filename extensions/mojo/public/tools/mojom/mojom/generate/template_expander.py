@@ -99,5 +99,5 @@ def PrecompileTemplates(generator_modules, output_dir):
         output_dir, "%s.zip" % generator.GetTemplatePrefix()),
                                 extensions=["tmpl"],
                                 zip="stored",
-                                py_compile=sys.version_info.major < 3,
+                                #py_compile=sys.version_info.major < 3,
                                 ignore_errors=False)
