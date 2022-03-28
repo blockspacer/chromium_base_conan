@@ -1,7 +1,7 @@
 ﻿include_guard( DIRECTORY )
 
 # https://cmake.org/cmake/help/latest/module/FindPythonInterp.html
-find_package(PythonInterp 2.7 REQUIRED)
+find_package(PythonInterp 3 REQUIRED)
 
 find_package(Git REQUIRED)
 

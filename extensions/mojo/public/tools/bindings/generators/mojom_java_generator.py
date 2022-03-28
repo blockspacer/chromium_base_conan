@@ -13,7 +13,7 @@ import shutil
 import sys
 import tempfile
 
-from jinja2 import contextfilter
+from jinja2 import pass_context
 
 import mojom.fileutil as fileutil
 import mojom.generate.generator as generator
@@ -204,7 +204,7 @@ def AppendEncodeDecodeParams(initial_params, context, kind, bit):
   return params
 
 
-@contextfilter
+@pass_context
 def DecodeMethod(context, kind, offset, bit):
   def _DecodeMethodName(kind):
     if mojom.IsArrayKind(kind):
@@ -226,7 +226,7 @@ def DecodeMethod(context, kind, offset, bit):
   params = AppendEncodeDecodeParams([ str(offset) ], context, kind, bit)
   return '%s(%s)' % (methodName, ', '.join(params))
 
-@contextfilter
+@pass_context
 def EncodeMethod(context, kind, variable, offset, bit):
   params = AppendEncodeDecodeParams(
       [ variable, str(offset) ], context, kind, bit)
@@ -255,7 +255,7 @@ def GetNameForKind(context, kind):
   elements += _GetNameHierachy(kind)
   return '.'.join(elements)
 
-@contextfilter
+@pass_context
 def GetJavaClassForEnum(context, kind):
   return GetNameForKind(context, kind)
 
@@ -265,7 +265,7 @@ def GetBoxedJavaType(context, kind, with_generics=True):
     return _java_primitive_to_boxed_type[unboxed_type]
   return unboxed_type
 
-@contextfilter
+@pass_context
 def GetJavaType(context, kind, boxed=False, with_generics=True):
   if boxed:
     return GetBoxedJavaType(context, kind)
@@ -297,7 +297,7 @@ def GetJavaType(context, kind, boxed=False, with_generics=True):
     return 'int'
   return _spec_to_java_type[kind.spec]
 
-@contextfilter
+@pass_context
 def DefaultValue(context, field):
   assert field.default
   if isinstance(field.kind, mojom.Struct):
@@ -307,20 +307,20 @@ def DefaultValue(context, field):
       GetJavaType(context, field.kind),
       ExpressionToText(context, field.default, kind_spec=field.kind.spec))
 
-@contextfilter
+@pass_context
 def ConstantValue(context, constant):
   return '(%s) %s' % (
       GetJavaType(context, constant.kind),
       ExpressionToText(context, constant.value, kind_spec=constant.kind.spec))
 
-@contextfilter
+@pass_context
 def NewArray(context, kind, size):
   if mojom.IsArrayKind(kind.kind):
     return NewArray(context, kind.kind, size) + '[]'
   return 'new %s[%s]' % (
       GetJavaType(context, kind.kind, boxed=False, with_generics=False), size)
 
-@contextfilter
+@pass_context
 def ExpressionToText(context, token, kind_spec=''):
   def _TranslateNamedValue(named_value):
     entity_name = GetNameForElement(named_value)

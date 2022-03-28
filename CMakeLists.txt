@@ -728,7 +728,7 @@ target_link_libraries(${BASE_LIB_NAME} PUBLIC
   ${USED_3DPARTY_LIBS}
 )
 
-set_property(TARGET ${BASE_LIB_NAME} PROPERTY CXX_STANDARD 17)
+#set_property(TARGET ${BASE_LIB_NAME} PROPERTY CXX_STANDARD 17)
 
 # POSITION_INDEPENDENT_CODE for -fPIC
 # -fPIC may be used to link static library into dynamic one
@@ -835,7 +835,7 @@ target_compile_definitions(${BASE_LIB_NAME} PRIVATE
 )
 
 if(TARGET_EMSCRIPTEN)
-  # use PROPERTY CXX_STANDARD 17
+  # use PROPERTY compiler.cppstd
 else()
   target_compile_features(${BASE_LIB_NAME}
     PUBLIC cxx_auto_type

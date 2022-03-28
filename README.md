@@ -291,6 +291,12 @@ Extra docs:
 
 ## Before build (dependencies)
 
+```
+sudo apt-get install python3
+sudo apt-get install python3-dev
+pip3 install -U Jinja2
+```
+
 Create clang conan profile https://docs.conan.io/en/1.34/reference/profiles.html#examples
 
 Re-build dependencies:
@@ -659,7 +665,7 @@ If QT Creator crashes or does not work properly - disable `Clang code model` i.e
 
 ## Coroutines support
 
-First, change `CXX_STANDARD` to (at least) `20` in CMake files.
+First, change `CXX_STANDARD` to (at least) `20`: `compiler.cppstd=20`.
 
 Used conan profile:
 
