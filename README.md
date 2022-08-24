@@ -299,6 +299,8 @@ pip3 install -U Jinja2
 
 Create clang conan profile https://docs.conan.io/en/1.34/reference/profiles.html#examples
 
+You can create profile `clang12_compiler` based on https://github.com/blockspacer/conan_llvm_9
+
 Re-build dependencies:
 
 ```bash
@@ -338,12 +340,15 @@ compiler.cppstd=17
 
 llvm_9:build_type=Release
 
+[options]
+cmake:with_openssl=False
+
 [env]
 CC=/usr/bin/clang-12
 CXX=/usr/bin/clang++-12
 
 [build_requires]
-cmake_installer/3.15.5@conan/stable
+cmake/3.22.3
 ```
 
 ## Dev-only build (local conan flow)
@@ -657,7 +662,7 @@ qtcreator
 
 Create kit in QT Creator with same compiler version as in conan profile.
 
-Use same CMake as in conan profile, path may look similar to `~/.conan/data/cmake_installer/3.15.5/conan/stable/package/.../bin/cmake` i.e. run `find ~/.conan/data/cmake_installer/ -name "cmake"` to find path to `bin/cmake`
+Use same CMake as in conan profile, path may look similar to `~/.conan/data/cmake/3.22.3/conan/stable/package/.../bin/cmake` i.e. run `find ~/.conan/data/cmake/ -name "cmake"` to find path to `bin/cmake`
 
 Open `conan_workspace/CMakelists.txt` file in QT Creator, but enable only `Debug` output directory and set `Debug` output directory to `conan_workspace` (replace with full path to build folder that used `conan build` above).
 
@@ -682,13 +687,16 @@ compiler.version=11
 compiler.libcxx=libc++
 compiler.cppstd=20
 
+[options]
+cmake:with_openssl=False
+
 [env]
 CC=/usr/bin/clang-11
 CXX=/usr/bin/clang++-11
 CXXFLAGS="-v"
 
 [build_requires]
-cmake_installer/3.15.5@conan/stable
+cmake/3.22.3
 ```
 
 Used clang version:

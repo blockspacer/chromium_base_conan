@@ -41,12 +41,32 @@ Location::Location(const char* function_name,
 #endif
 }
 
-std::string Location::ToString() const {
+namespace {
+
+std::string LocToString(const char* file_name,
+  const char* function_name,
+  int line_number,
+  const void* program_counter,
+  const bool has_source_info)
+{
   if (has_source_info()) {
     return std::string(function_name_) + "@" + file_name_ + ":" +
            NumberToString(line_number_);
   }
   return StringPrintf("pc:%p", program_counter_);
+}
+
+} // namespace
+
+std::string Location::ToString() const {
+  return LocToString(file_name_, function_name_, line_number_, program_counter_, has_source_info());
+}
+
+std::string Location::ToShortString() const {
+  const std::string file_name = file_name_
+    ? std::filesystem::path{file_name_}.filename().string()
+    : "";
+  return LocToString(file_name.c_str(), function_name_, line_number_, program_counter_, has_source_info());
 }
 
 #if defined(OS_EMSCRIPTEN) && defined(USE_OFFSET_CONVERTER)

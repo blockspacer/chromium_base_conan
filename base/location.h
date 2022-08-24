@@ -83,6 +83,9 @@ class BASE_EXPORT Location {
   // are not available, this will return "pc:<hex address>".
   std::string ToString() const;
 
+  // uses short name of file from |file_name_|
+  std::string ToShortString() const;
+
 #if !BUILDFLAG(FROM_HERE_USES_LOCATION_BUILTINS)
 #if !BUILDFLAG(ENABLE_LOCATION_SOURCE)
   static Location CreateFromHere(const char* file_name);
@@ -126,6 +129,48 @@ BASE_EXPORT const void* GetProgramCounter();
 
 // TODO(http://crbug.com/760702) remove the __FILE__ argument from these calls.
 #define FROM_HERE ::base::Location::CreateFromHere(__FILE__)
+
+#endif
+
+#define LOG_HERE_IF(power, condition) \
+  LAZY_STREAM(LOG_STREAM(power), LOG_IS_ON(power) && (condition)) << ( std::string{"{"} + FROM_HERE.ToShortString() + std::string{"} "})
+
+#define LOG_HERE(power) \
+  LOG_HERE_IF(power, true)
+
+#define VLOG_HERE_IF(power, condition) \
+  LAZY_STREAM(VLOG_STREAM(power), VLOG_IS_ON(power) && (condition)) << (std::string{"{"} + FROM_HERE.ToShortString() + std::string{"} "})
+
+#define VLOG_HERE(power) \
+  VLOG_HERE_IF(power, true)
+
+#ifdef _DEBUG
+
+#define DLOG_HERE_IF(power, condition) \
+  LAZY_STREAM(LOG_STREAM(power), LOG_IS_ON(power) && (condition)) << (std::string{"{"} + FROM_HERE.ToShortString() + std::string{"} "})
+
+#define DLOG_HERE(power) \
+  DLOG_HERE_IF(power, true)
+
+#define DVLOG_HERE_IF(power, condition) \
+  LAZY_STREAM(VLOG_STREAM(power), VLOG_IS_ON(power) && (condition)) << (std::string{"{"} + FROM_HERE.ToShortString() + std::string{"} "})
+
+#define DVLOG_HERE(power) \
+  DVLOG_HERE_IF(power, true)
+
+#else
+
+#define DLOG_HERE_IF(power, condition) \
+  EAT_STREAM_PARAMETERS
+
+#define DLOG_HERE(power) \
+  EAT_STREAM_PARAMETERS
+
+#define DVLOG_HERE_IF(power, condition) \
+  EAT_STREAM_PARAMETERS
+
+#define DVLOG_HERE(power) \
+  EAT_STREAM_PARAMETERS
 
 #endif
 

@@ -130,6 +130,7 @@ See `app_error_space.h`
 - http://www.furidamu.org/blog/2017/01/28/error-handling-with-statusor/
 - https://github.com/sabbakumov/rst/blob/83004dfb406ffc5d3a791e71815320488b0d7b3d/README.md#statusor
 - https://github.com/samiurkh1n/condit
+- media/base/TypedStatus https://source.chromium.org/chromium/chromium/src/+/main:media/base/status.md?q=TypedStatus&ss=chromium%2Fchromium%2Fsrc
 
 ## constructors
 

@@ -317,6 +317,30 @@ constexpr std::enable_if_t<std::is_floating_point<_Fp>::value, _Fp> midpoint(
     __a/2 + __b/2;                                         // otherwise correctly rounded
 }
 
+template<class T>
+static T RoundF(T a)
+{
+  static_assert(std::is_floating_point<T>::value,
+    "Round<T>: T must be floating point");
+
+  return (a > 0)
+    ? ::floor(a + static_cast<T>(0.5))
+    : ::ceil(a - static_cast<T>(0.5));
+}
+
+// Round((double) -1000.123d, 3) == 1000.123000000
+// Round((float)  -1000.123f, 3) == 1000.12299
+template<class T>
+static T RoundF(T a, int places)
+{
+  static_assert(std::is_floating_point<T>::value,
+    "Round<T>: T must be floating point");
+
+  const T shift = pow(static_cast<T>(10.0), places);
+
+  return RoundF(a * shift) / shift;
+}
+
 // clang-format on
 
 } // namespace basic
